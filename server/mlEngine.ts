@@ -25,12 +25,13 @@ export interface SimulationResult {
   actionableInsights: string[];
 }
 
+/**
+ * Rule-based Scenario Simulation Engine for Infrastructure Policy Interventions.
+ * Simulates policy interventions (land clearance, liquidity injection, geotechnical mitigation, HPC)
+ * on top of computed PRISM Risk Indices and indicator weights.
+ * Note: Uses rule-based sensitivity multipliers; not an ungrounded ML black-box.
+ */
 export class MLRiskEngine {
-  /**
-   * Calibrated XGBoost/GBDT scoring formula for Indian infrastructure projects
-   * incorporating PAIMANA / MoSPI indicators.
-   * Only applicable to DEMO mode with seeded baselines.
-   */
   public static calculateProjectRisk(
     p: Project,
     simParams?: Partial<SimulationParams>
@@ -40,7 +41,7 @@ export class MLRiskEngine {
     predictedDelayMonths: number | null;
     predictedCostEscalationCr: number | null;
     confidenceScore: number | null;
-    shapDrivers: RiskDriver[];
+    shapDrivers: RiskDriver[]; // Retained field name for interface compatibility; contains evidence weights
   } {
     // Return null / UNRATED only for projects without a computed risk score.
     // PAIMANA projects now receive a deterministic score from PRISMRiskEngine.
@@ -94,7 +95,7 @@ export class MLRiskEngine {
     const predictedDelay = p.predictedDelayMonths != null ? Math.max(0.2, Math.round(p.predictedDelayMonths * scoreRatio * 10) / 10) : null;
     const predictedCostEscalation = p.predictedCostEscalationCr != null ? Math.max(0, Math.round(p.predictedCostEscalationCr * scoreRatio)) : null;
 
-    // Dynamic SHAP attribution adjustment
+    // Dynamic attribution weight adjustment under simulated intervention
     const updatedDrivers: RiskDriver[] = (p.topRiskDrivers || []).map((driver) => {
       let adjShap = driver.shapValue;
       if (driver.category === 'Land Acquisition' || driver.category === 'Clearances & Approvals') {

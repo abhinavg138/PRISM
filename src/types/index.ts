@@ -183,6 +183,8 @@ export interface Project {
   primaryRiskDriver?: string;
   urgency?: number;
   evidenceConfidence?: number;
+  /** Active early warning alert if project shows empirical indicators requiring attention */
+  alert?: EarlyWarningAlert | null;
   dataSource?: 'PAIMANA' | 'DEMO';
   /** Full raw PAIMANA record for complete source transparency */
   rawPaimana?: PaimanaObservation;
@@ -193,6 +195,34 @@ export interface Project {
     cashflowLiquidityPercent?: number;
     geologicalSupportLevel?: number;
   };
+}
+
+export type AlertType =
+  | 'Progress Stagnation'
+  | 'Deteriorating Progress'
+  | 'Schedule Pressure'
+  | 'Cost Escalation'
+  | 'Physical-Financial Divergence'
+  | 'High/Critical Risk';
+
+export type AlertSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM';
+
+export interface EarlyWarningAlert {
+  id: string;
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  state: string;
+  sector: string;
+  implementingAgency?: string;
+  alertType: AlertType;
+  severity: AlertSeverity;
+  evidence: string;
+  detectedPeriod: string;
+  recommendedAttention: string;
+  riskScore: number | null;
+  priorityScore: number | null;
+  priorityTier?: PriorityTier | null;
 }
 
 export interface PortfolioKPIs {
@@ -210,6 +240,8 @@ export interface PortfolioKPIs {
   averageDelayMonths: number;
   averageCostEscalationPercent: number;
   activeEscalationsCount: number;
+  averageRiskScore?: number;
+  averagePhysicalProgress?: number;
 }
 
 export interface FilterState {
@@ -239,3 +271,69 @@ export interface AICopilotMessage {
   groundedProjects?: Array<{ id: string; name: string; riskScore: number; riskTier: RiskTier }>;
   suggestedQuestions?: string[];
 }
+
+export interface FullAnalyticsData {
+  dataSource?: 'PAIMANA' | 'DEMO';
+  kpis: PortfolioKPIs;
+  observationsCoverage: {
+    totalObservations: number;
+    observationsByMonth: Record<string, number>;
+    coverageCounts: Record<string, number>;
+  };
+  riskDistribution: Array<{
+    name: string;
+    tier: string;
+    count: number;
+    percent: number;
+    color: string;
+  }>;
+  priorityDistribution: Array<{
+    name: string;
+    tier: string;
+    count: number;
+    percent: number;
+    color: string;
+  }>;
+  sectorAnalytics: Array<{
+    sector: string;
+    projectCount: number;
+    portfolioPercent: number;
+    originalCostCr: number;
+    revisedCostCr: number;
+    costOverrunPercent: number;
+    avgPhysicalProgress: number;
+    avgRiskScore: number;
+    criticalProjects: number;
+    highRiskProjects: number;
+    avgDelayMonths: number;
+  }>;
+  stateAnalytics: Array<{
+    state: string;
+    projectCount: number;
+    totalBudgetCr: number;
+    avgRiskScore: number;
+    criticalCount: number;
+    highCount: number;
+    avgPhysicalProgress: number;
+  }>;
+  costEscalation: {
+    totalOriginalCostCr: number;
+    totalRevisedCostCr: number;
+    totalEscalationCr: number;
+    overallOverrunPercent: number;
+    brackets: Array<{
+      name: string;
+      count: number;
+      percent: number;
+      color: string;
+    }>;
+  };
+  executionIndicators: {
+    prolongedStagnationCount: number;
+    stagnationRate: number;
+    divergenceCount: number;
+    divergenceRate: number;
+    criticalUrgencyCount: number;
+  };
+}
+

@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import XLSX from 'xlsx';
-import { Project, PaimanaObservation, PortfolioKPIs, RiskTier, PriorityTier, SectorStat } from '../src/types/index';
+import { Project, PaimanaObservation, PortfolioKPIs, RiskTier, PriorityTier, SectorStat, EarlyWarningAlert, AlertType, AlertSeverity } from '../src/types/index';
 import { PRISMRiskEngine, RiskAssessment } from './riskEngine';
 import { PRISMPriorityEngine, PriorityAssessment } from './priorityEngine';
+import { PRISMAlertEngine } from './alertEngine';
 
 export interface PaimanaFilterOptions {
   search?: string;
@@ -80,6 +81,9 @@ export class PaimanaRepository {
   private riskAssessmentsMap: Map<string, RiskAssessment> = new Map();
   /** Priority assessments keyed by project_id — computed once at load time (Phase 3A) */
   private priorityAssessmentsMap: Map<string, PriorityAssessment> = new Map();
+  /** Early warning alerts keyed by project_id */
+  private alertsMap: Map<string, EarlyWarningAlert> = new Map();
+  private alertsList: EarlyWarningAlert[] = [];
   private statesSet: Set<string> = new Set();
   private agenciesSet: Set<string> = new Set();
   private sectorsSet: Set<string> = new Set();
@@ -341,8 +345,22 @@ export class PaimanaRepository {
       }
     }
 
+    // Generate Early Warning Alerts (evidence-based, empirical)
+    this.alertsMap.clear();
+    this.alertsList = PRISMAlertEngine.generateAlerts(
+      Array.from(this.projectsMap.values()),
+      this.projectObservationsMap
+    );
+    for (const alert of this.alertsList) {
+      this.alertsMap.set(alert.projectId, alert);
+      const project = this.projectsMap.get(alert.projectId);
+      if (project) {
+        project.alert = alert;
+      }
+    }
+
     this.isLoaded = true;
-    console.log(`[PaimanaRepository] Successfully initialized ${this.projectsMap.size} PAIMANA projects from ${this.observations.length} observations. Risk & Priority assessed: ${ratedCount}.`);
+    console.log(`[PaimanaRepository] Successfully initialized ${this.projectsMap.size} PAIMANA projects from ${this.observations.length} observations. Risk & Priority assessed: ${ratedCount}. Early Warning Alerts: ${this.alertsList.length}.`);
   }
 
   /**
@@ -561,6 +579,10 @@ export class PaimanaRepository {
     return result;
   }
 
+  public getSectorAnalytics(projects?: Project[]): SectorStat[] {
+    return this.getSectorStats(projects);
+  }
+
   public computeKPIs(projects?: Project[]): PortfolioKPIs {
     this.ensureLoaded();
     const targetProjects = projects || Array.from(this.projectsMap.values());
@@ -578,11 +600,20 @@ export class PaimanaRepository {
     let budgetAtRiskCr = 0;
     let totalDelayMonths = 0;
     let totalCostEscalationPercent = 0;
+    let totalRiskScore = 0;
+    let ratedRiskCount = 0;
+    let totalPhysicalProgress = 0;
 
     for (const p of targetProjects) {
       totalBudgetCr += (p.revisedCostCr || 0);
       totalDelayMonths += (p.timeOverrunMonths || 0);
       totalCostEscalationPercent += (p.costOverrunPercent || 0);
+      totalPhysicalProgress += (p.physicalProgressPercent || 0);
+
+      if (p.riskScore != null) {
+        totalRiskScore += p.riskScore;
+        ratedRiskCount++;
+      }
 
       if (p.riskTier === 'CRITICAL') {
         criticalProjects++;
@@ -624,7 +655,190 @@ export class PaimanaRepository {
       budgetAtRiskCr: Math.round(budgetAtRiskCr),
       averageDelayMonths: totalProjects > 0 ? Math.round((totalDelayMonths / totalProjects) * 10) / 10 : 0,
       averageCostEscalationPercent: totalProjects > 0 ? Math.round((totalCostEscalationPercent / totalProjects) * 10) / 10 : 0,
-      activeEscalationsCount: criticalProjects + highRiskProjects
+      activeEscalationsCount: criticalProjects + highRiskProjects,
+      averageRiskScore: ratedRiskCount > 0 ? Math.round((totalRiskScore / ratedRiskCount) * 10) / 10 : 0,
+      averagePhysicalProgress: totalProjects > 0 ? Math.round((totalPhysicalProgress / totalProjects) * 10) / 10 : 0
+    };
+  }
+
+  /**
+   * Computes complete multi-dimensional analytics across all PAIMANA projects & observations.
+   * Zero hardcoded values.
+   */
+  public getFullAnalytics(targetProjects?: Project[]) {
+    this.ensureLoaded();
+    const projects = targetProjects || Array.from(this.projectsMap.values());
+    const totalProjects = projects.length;
+    const kpis = this.computeKPIs(projects);
+
+    // 1. Observations by Month & Longitudinal Coverage
+    const observationsByMonth: Record<string, number> = {};
+    for (const obs of this.observations) {
+      if (obs.report_month) {
+        observationsByMonth[obs.report_month] = (observationsByMonth[obs.report_month] || 0) + 1;
+      }
+    }
+
+    const coverageCounts = { '4 Observations': 0, '3 Observations': 0, '2 Observations': 0, '1 Observation': 0 };
+    for (const p of projects) {
+      const len = p.monthlyTrend?.length || 0;
+      if (len >= 4) coverageCounts['4 Observations']++;
+      else if (len === 3) coverageCounts['3 Observations']++;
+      else if (len === 2) coverageCounts['2 Observations']++;
+      else coverageCounts['1 Observation']++;
+    }
+
+    // 2. Risk Tier Distribution (CRITICAL: 80-100, HIGH: 60-79, MODERATE: 40-59, LOW: 0-39)
+    const riskDistribution = [
+      { name: 'Critical (80–100)', tier: 'CRITICAL', count: kpis.criticalProjects, percent: totalProjects > 0 ? parseFloat(((kpis.criticalProjects / totalProjects) * 100).toFixed(1)) : 0, color: '#ef4444' },
+      { name: 'High (60–79)', tier: 'HIGH', count: kpis.highRiskProjects, percent: totalProjects > 0 ? parseFloat(((kpis.highRiskProjects / totalProjects) * 100).toFixed(1)) : 0, color: '#f97316' },
+      { name: 'Moderate (40–59)', tier: 'MODERATE', count: kpis.moderateRiskProjects, percent: totalProjects > 0 ? parseFloat(((kpis.moderateRiskProjects / totalProjects) * 100).toFixed(1)) : 0, color: '#eab308' },
+      { name: 'Low (0–39)', tier: 'LOW', count: kpis.lowRiskProjects, percent: totalProjects > 0 ? parseFloat(((kpis.lowRiskProjects / totalProjects) * 100).toFixed(1)) : 0, color: '#10b981' }
+    ];
+
+    // 3. Priority Tier Distribution (P1 >= 70, P2: 50-69, P3 < 50)
+    const priorityDistribution = [
+      { name: 'P1 Immediate Urgency (≥70)', tier: 'P1', count: kpis.p1Projects || 0, percent: totalProjects > 0 ? parseFloat((((kpis.p1Projects || 0) / totalProjects) * 100).toFixed(1)) : 0, color: '#ef4444' },
+      { name: 'P2 Significant Oversight (50–69)', tier: 'P2', count: kpis.p2Projects || 0, percent: totalProjects > 0 ? parseFloat((((kpis.p2Projects || 0) / totalProjects) * 100).toFixed(1)) : 0, color: '#f97316' },
+      { name: 'P3 Routine Monitoring (<50)', tier: 'P3', count: kpis.p3Projects || 0, percent: totalProjects > 0 ? parseFloat((((kpis.p3Projects || 0) / totalProjects) * 100).toFixed(1)) : 0, color: '#10b981' }
+    ];
+
+    // 4. Sector-Wise Detailed Analytics
+    const sectorStats = this.getSectorStats(projects);
+    const sectorAnalytics = sectorStats.map(s => {
+      const sectorProjs = projects.filter(p => (p.sector as string) === s.sector);
+      const origCost = sectorProjs.reduce((sum, p) => sum + (p.originalCostCr || 0), 0);
+      const revCost = s.totalBudgetCr;
+      const overrunPct = origCost > 0 ? parseFloat((((revCost - origCost) / origCost) * 100).toFixed(1)) : 0;
+      const avgDelay = Math.round(sectorProjs.reduce((sum, p) => sum + (p.timeOverrunMonths || 0), 0) / (sectorProjs.length || 1));
+
+      return {
+        sector: s.sector,
+        projectCount: s.totalProjects,
+        portfolioPercent: totalProjects > 0 ? parseFloat(((s.totalProjects / totalProjects) * 100).toFixed(1)) : 0,
+        originalCostCr: Math.round(origCost),
+        revisedCostCr: revCost,
+        costOverrunPercent: overrunPct,
+        avgPhysicalProgress: s.avgPhysicalProgress,
+        avgRiskScore: s.avgRiskScore,
+        criticalProjects: s.criticalProjects,
+        highRiskProjects: s.highRiskProjects,
+        avgDelayMonths: avgDelay
+      };
+    });
+
+    // 5. State-Wise Detailed Analytics
+    const stateMap = new Map<string, {
+      count: number;
+      totalBudget: number;
+      totalRisk: number;
+      ratedCount: number;
+      criticalCount: number;
+      highCount: number;
+      totalProgress: number;
+    }>();
+
+    for (const p of projects) {
+      const state = p.state || 'Unspecified';
+      if (!stateMap.has(state)) {
+        stateMap.set(state, { count: 0, totalBudget: 0, totalRisk: 0, ratedCount: 0, criticalCount: 0, highCount: 0, totalProgress: 0 });
+      }
+      const item = stateMap.get(state)!;
+      item.count++;
+      item.totalBudget += (p.revisedCostCr || 0);
+      item.totalProgress += (p.physicalProgressPercent || 0);
+      if (p.riskTier === 'CRITICAL') item.criticalCount++;
+      if (p.riskTier === 'HIGH') item.highCount++;
+      if (p.riskScore != null) {
+        item.totalRisk += p.riskScore;
+        item.ratedCount++;
+      }
+    }
+
+    const stateAnalytics = Array.from(stateMap.entries())
+      .map(([state, data]) => ({
+        state,
+        projectCount: data.count,
+        totalBudgetCr: Math.round(data.totalBudget),
+        avgRiskScore: data.ratedCount > 0 ? parseFloat((data.totalRisk / data.ratedCount).toFixed(1)) : 0,
+        criticalCount: data.criticalCount,
+        highCount: data.highCount,
+        avgPhysicalProgress: data.count > 0 ? parseFloat((data.totalProgress / data.count).toFixed(1)) : 0
+      }))
+      .sort((a, b) => b.projectCount - a.projectCount);
+
+    // 6. Cost Escalation Brackets
+    let totalOriginalCostCr = 0;
+    let totalRevisedCostCr = 0;
+    let overrunSevere = 0; // > 50%
+    let overrunModerate = 0; // 20 - 50%
+    let overrunMinor = 0; // 1 - 20%
+    let overrunNone = 0; // 0%
+
+    for (const p of projects) {
+      totalOriginalCostCr += (p.originalCostCr || 0);
+      totalRevisedCostCr += (p.revisedCostCr || 0);
+      const over = p.costOverrunPercent || 0;
+      if (over >= 50) overrunSevere++;
+      else if (over >= 20) overrunModerate++;
+      else if (over > 0) overrunMinor++;
+      else overrunNone++;
+    }
+
+    const costEscalation = {
+      totalOriginalCostCr: Math.round(totalOriginalCostCr),
+      totalRevisedCostCr: Math.round(totalRevisedCostCr),
+      totalEscalationCr: Math.round(totalRevisedCostCr - totalOriginalCostCr),
+      overallOverrunPercent: totalOriginalCostCr > 0 ? parseFloat((((totalRevisedCostCr - totalOriginalCostCr) / totalOriginalCostCr) * 100).toFixed(1)) : 0,
+      brackets: [
+        { name: 'Severe (>50%)', count: overrunSevere, percent: totalProjects > 0 ? parseFloat(((overrunSevere / totalProjects) * 100).toFixed(1)) : 0, color: '#ef4444' },
+        { name: 'Moderate (20–50%)', count: overrunModerate, percent: totalProjects > 0 ? parseFloat(((overrunModerate / totalProjects) * 100).toFixed(1)) : 0, color: '#f97316' },
+        { name: 'Minor (1–20%)', count: overrunMinor, percent: totalProjects > 0 ? parseFloat(((overrunMinor / totalProjects) * 100).toFixed(1)) : 0, color: '#eab308' },
+        { name: 'On Budget (0%)', count: overrunNone, percent: totalProjects > 0 ? parseFloat(((overrunNone / totalProjects) * 100).toFixed(1)) : 0, color: '#10b981' }
+      ]
+    };
+
+    // 7. Execution Indicators & Stagnation Metrics
+    let stagnantCount = 0;
+    let deceleratingCount = 0;
+    let divergenceCount = 0;
+
+    for (const p of projects) {
+      const trend = p.monthlyTrend || [];
+      if (trend.length >= 2) {
+        let stag = 0;
+        for (let i = trend.length - 1; i >= 1; i--) {
+          if (Math.abs((trend[i].actualPercent ?? 0) - (trend[i - 1].actualPercent ?? 0)) <= 0.2) stag++;
+          else break;
+        }
+        if (stag >= 2) stagnantCount++;
+      }
+      if (p.urgency && p.urgency >= 80) deceleratingCount++;
+      const expPct = p.expenditurePctOfRevisedCost ?? (p.revisedCostCr > 0 ? (p.cumulativeExpenditureCr / p.revisedCostCr) * 100 : 0);
+      if (expPct - (p.physicalProgressPercent || 0) >= 15) divergenceCount++;
+    }
+
+    const executionIndicators = {
+      prolongedStagnationCount: stagnantCount,
+      stagnationRate: totalProjects > 0 ? parseFloat(((stagnantCount / totalProjects) * 100).toFixed(1)) : 0,
+      divergenceCount,
+      divergenceRate: totalProjects > 0 ? parseFloat(((divergenceCount / totalProjects) * 100).toFixed(1)) : 0,
+      criticalUrgencyCount: deceleratingCount
+    };
+
+    return {
+      kpis,
+      observationsCoverage: {
+        totalObservations: this.observations.length,
+        observationsByMonth,
+        coverageCounts
+      },
+      riskDistribution,
+      priorityDistribution,
+      sectorAnalytics,
+      stateAnalytics,
+      costEscalation,
+      executionIndicators
     };
   }
 
@@ -694,6 +908,87 @@ export class PaimanaRepository {
       p2Count,
       p3Count
     };
+  }
+
+  /**
+   * Retrieves Early Warning Alerts matching filter options.
+   * Evidence-based, empirical signals derived from observed PAIMANA data.
+   */
+  public getEarlyWarningAlerts(options: {
+    severity?: string;
+    alertType?: string;
+    sector?: string;
+    state?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  } = {}): {
+    alerts: EarlyWarningAlert[];
+    totalCount: number;
+    countsBySeverity: { critical: number; high: number; medium: number; total: number };
+    countsByType: Record<string, number>;
+  } {
+    this.ensureLoaded();
+
+    let filtered = [...this.alertsList];
+
+    if (options.severity && options.severity !== 'ALL') {
+      filtered = filtered.filter(a => a.severity === options.severity);
+    }
+
+    if (options.alertType && options.alertType !== 'ALL') {
+      filtered = filtered.filter(a => a.alertType === options.alertType);
+    }
+
+    if (options.sector && options.sector !== 'ALL') {
+      filtered = filtered.filter(a => a.sector === options.sector);
+    }
+
+    if (options.state && options.state !== 'ALL') {
+      filtered = filtered.filter(a => a.state === options.state);
+    }
+
+    if (options.search && typeof options.search === 'string') {
+      const q = options.search.toLowerCase().trim();
+      filtered = filtered.filter(a =>
+        a.projectName.toLowerCase().includes(q) ||
+        a.projectCode.toLowerCase().includes(q) ||
+        a.evidence.toLowerCase().includes(q) ||
+        a.state.toLowerCase().includes(q)
+      );
+    }
+
+    const countsBySeverity = {
+      critical: this.alertsList.filter(a => a.severity === 'CRITICAL').length,
+      high: this.alertsList.filter(a => a.severity === 'HIGH').length,
+      medium: this.alertsList.filter(a => a.severity === 'MEDIUM').length,
+      total: this.alertsList.length
+    };
+
+    const countsByType: Record<string, number> = {};
+    for (const a of this.alertsList) {
+      countsByType[a.alertType] = (countsByType[a.alertType] || 0) + 1;
+    }
+
+    const totalCount = filtered.length;
+    const offset = options.offset || 0;
+    const limit = options.limit || totalCount;
+    const paginated = filtered.slice(offset, offset + limit);
+
+    return {
+      alerts: paginated,
+      totalCount,
+      countsBySeverity,
+      countsByType
+    };
+  }
+
+  /**
+   * Retrieves Early Warning Alert for a single project (if active).
+   */
+  public getProjectAlert(projectId: string): EarlyWarningAlert | null {
+    this.ensureLoaded();
+    return this.alertsMap.get(projectId) || null;
   }
 
   private ensureLoaded(): void {

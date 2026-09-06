@@ -18,7 +18,7 @@ def score_project(physical, financial, land_backlog, clearance_days, geo_hazard,
     )
     risk_score = round(min(98.0, max(12.0, risk_score * 0.72)), 1)
     
-    tier = 'CRITICAL' if risk_score >= 75 else 'HIGH' if risk_score >= 65 else 'MEDIUM' if risk_score >= 45 else 'LOW'
+    tier = 'CRITICAL' if risk_score >= 80 else 'HIGH' if risk_score >= 60 else 'MODERATE' if risk_score >= 40 else 'LOW'
     predicted_delay = round(max(0.5, (risk_score / 10.0) * 0.9), 1)
     
     return {

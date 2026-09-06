@@ -6,19 +6,26 @@ import { ProjectTable } from './components/ProjectTable';
 import { GISMap } from './components/GISMap';
 import { SectorAnalytics } from './components/SectorAnalytics';
 import { SectorCards } from './components/SectorCards';
+import { PriorityProjectsOverview } from './components/PriorityProjectsOverview';
+import { EarlyWarningAlertsWidget } from './components/EarlyWarningAlertsWidget';
+import { EarlyWarningAlertsModal } from './components/EarlyWarningAlertsModal';
+import { PortfolioRiskInsight } from './components/PortfolioRiskInsight';
 import { ProjectDetailModal } from './components/ProjectDetailModal';
 import { AICopilotDrawer } from './components/AICopilotDrawer';
 import { ExecutiveFlashReportModal } from './components/ExecutiveFlashReportModal';
 import { DEMO_USER_ROLES, SEEDED_PROJECTS, computePortfolioKPIs } from '../data/projectsData';
-import { Project, FilterState, UserRole, PortfolioKPIs, SectorStat } from './types/index';
-import { Sparkles, ShieldAlert, ArrowRight, Zap, PlayCircle, Info, FileText } from 'lucide-react';
+import { Project, FilterState, UserRole, PortfolioKPIs, SectorStat, EarlyWarningAlert } from './types/index';
+import { Sparkles, ShieldAlert, ArrowRight, Zap, PlayCircle, Info, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function App() {
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
-  const [currentRole, setCurrentRole] = useState<UserRole>(DEMO_USER_ROLES[3]); // Default to SIH 2026 Jury Demo
+  const [alerts, setAlerts] = useState<EarlyWarningAlert[]>([]);
+  const [isAlertsModalOpen, setIsAlertsModalOpen] = useState<boolean>(false);
+  const [currentRole, setCurrentRole] = useState<UserRole>(DEMO_USER_ROLES[0]); // Default to MoSPI National Oversight
   const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'gis' | 'analytics'>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
@@ -26,6 +33,7 @@ export default function App() {
   const [dataSource, setDataSource] = useState<'PAIMANA' | 'DEMO'>('PAIMANA');
   const [sectorStats, setSectorStats] = useState<SectorStat[]>([]);
   const [isSectorsLoading, setIsSectorsLoading] = useState<boolean>(false);
+  const [projectQueueMode, setProjectQueueMode] = useState<'all' | 'priority' | 'p1'>('all');
 
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -50,7 +58,21 @@ export default function App() {
       .catch(err => console.warn('Could not load metadata:', err));
   }, []);
 
-  // Fetch projects from backend API
+  // Fetch complete unfiltered portfolio for Dashboard KPIs, sector intelligence, analytics, priority queue
+  const fetchAllProjects = async () => {
+    try {
+      const res = await fetch('/api/projects');
+      if (res.ok) {
+        const data = await res.json();
+        setAllProjects(data.projects || []);
+        if (data.dataSource) setDataSource(data.dataSource);
+      }
+    } catch (err) {
+      console.warn('Backend fetch all projects failed:', err);
+    }
+  };
+
+  // Fetch filtered projects from backend API (for Projects page table)
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
@@ -65,7 +87,7 @@ export default function App() {
       const res = await fetch(`/api/projects?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setProjects(data.projects);
+        setProjects(data.projects || []);
         if (data.dataSource) setDataSource(data.dataSource);
       }
     } catch (err) {
@@ -91,23 +113,51 @@ export default function App() {
     }
   };
 
+  // Fetch Early Warning Alerts
+  const fetchAlerts = async () => {
+    try {
+      const res = await fetch('/api/alerts');
+      if (res.ok) {
+        const data = await res.json();
+        setAlerts(data.alerts || []);
+      }
+    } catch (err) {
+      console.warn('Failed to load early warning alerts:', err);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchAllProjects();
+    fetchProjects();
+    fetchSectors();
+    fetchAlerts();
+  }, []);
+
+  // Re-fetch filtered projects when filters change
   useEffect(() => {
     fetchProjects();
   }, [filters]);
 
+  // Re-fetch all data when dataSource changes
   useEffect(() => {
+    fetchAllProjects();
+    fetchProjects();
     fetchSectors();
+    fetchAlerts();
   }, [dataSource]);
 
-  // Compute live KPIs
-  const kpis: PortfolioKPIs = useMemo(() => {
-    return computePortfolioKPIs(projects);
-  }, [projects]);
+  // Decoupled portfolio-wide KPIs computed across ALL projects (all 2,054 projects in PAIMANA mode)
+  const portfolioKPIs: PortfolioKPIs = useMemo(() => {
+    const fullList = allProjects.length > 0 ? allProjects : projects;
+    return computePortfolioKPIs(fullList);
+  }, [allProjects, projects]);
 
-  // Critical projects list for report
+  // Critical projects list for report (across entire portfolio)
   const criticalProjects = useMemo(() => {
-    return projects.filter(p => p.riskTier === 'CRITICAL').sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
-  }, [projects]);
+    const fullList = allProjects.length > 0 ? allProjects : projects;
+    return fullList.filter(p => p.riskTier === 'CRITICAL').sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
+  }, [allProjects, projects]);
 
   const handleFilterUpdate = (updates: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...updates }));
@@ -121,6 +171,7 @@ export default function App() {
         body: JSON.stringify({ preset: 'paimana' })
       });
       setDataSource('PAIMANA');
+      setCurrentRole(DEMO_USER_ROLES[0]);
       setFilters({
         search: '',
         sector: 'ALL',
@@ -131,8 +182,9 @@ export default function App() {
         sortBy: 'id' as any,
         sortDirection: 'asc'
       });
-      fetchProjects();
-      fetchSectors();
+      await fetchAllProjects();
+      await fetchProjects();
+      await fetchSectors();
     } catch (e) {
       console.error(e);
     }
@@ -147,7 +199,10 @@ export default function App() {
         body: JSON.stringify({ preset: 'demo' })
       });
       setDataSource('DEMO');
+      setCurrentRole(DEMO_USER_ROLES[3]);
+      await fetchAllProjects();
       await fetchProjects();
+      await fetchSectors();
       const res = await fetch('/api/projects/PRJ-IN-001');
       if (res.ok) {
         const usbrl = await res.json();
@@ -155,6 +210,15 @@ export default function App() {
       }
     } catch (err) {
       console.error('Judge flow error:', err);
+    }
+  };
+
+  const handleSelectRole = (role: UserRole) => {
+    setCurrentRole(role);
+    if (role.id === 'role-judge') {
+      triggerJudgeFlow();
+    } else if (dataSource === 'DEMO') {
+      handleResetDemo();
     }
   };
 
@@ -176,87 +240,193 @@ export default function App() {
       {/* Navigation Header */}
       <Navbar
         currentRole={currentRole}
-        onSelectRole={setCurrentRole}
+        onSelectRole={handleSelectRole}
         onOpenCopilot={() => setIsCopilotOpen(true)}
         onOpenReport={() => setIsReportOpen(true)}
         onResetDemo={handleResetDemo}
         isCopilotOpen={isCopilotOpen}
         activeView={activeView}
         onChangeView={handleChangeView}
+        dataSource={dataSource}
       />
 
       {/* Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
-        {/* Decision Intelligence Hero Banner */}
+        {/* ========================================================================= */}
+        {/* 1. DASHBOARD: MINIMAL EXECUTIVE OVERVIEW                                 */}
+        {/* ========================================================================= */}
         {activeView === 'dashboard' && (
-          <div className="p-4 bg-gradient-to-r from-white via-blue-50/60 to-white border border-blue-600 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
-                <Zap className="w-5 h-5" />
-              </div>
+          <div className="space-y-6">
+            
+            {/* 1. Executive Header */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    SIH 2026 DECISION INTELLIGENCE STREAM
-                  </h3>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${dataSource === 'PAIMANA' ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white'}`}>
-                    {dataSource} {dataSource === 'DEMO' ? 'SHOWCASE' : 'ACTIVE'}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                    National Infrastructure Risk Overview
+                  </h1>
+                  {dataSource === 'PAIMANA' ? (
+                    <>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                        PAIMANA: LIVE
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-mono">
+                        PRISM RISK ENGINE: ACTIVE
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-mono">
+                        DEMO SHOWCASE (15 PROJECTS)
+                      </span>
+                      <button
+                        onClick={handleResetDemo}
+                        className="text-[10px] font-bold px-2.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-mono transition-colors shadow-xs"
+                      >
+                        ← Return to PAIMANA Live
+                      </button>
+                    </>
+                  )}
                 </div>
-                <p className="text-xs text-slate-700 mt-0.5">
-                  Monitor 2,054 infrastructure projects using real PAIMANA monthly observations.
+                <p className="text-xs text-slate-500 mt-1">
+                  {dataSource === 'PAIMANA'
+                    ? `Real PAIMANA observations across ${(allProjects.length || 2054).toLocaleString()} monitored infrastructure projects.`
+                    : 'Curated showcase portfolio demonstrating USBRL mega-project escalation.'}
                 </p>
-                <div className="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-blue-700">
-                  <span>Evaluation flow:</span>
-                  <span className="font-semibold text-slate-800">Monitor → Assess Risk → Explain → Prioritize → Act</span>
-                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setIsAlertsModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 transition-all shadow-xs"
+                  title="View PRISM Early Warning Alerts"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Early Warnings ({alerts.length})</span>
+                </button>
+                <button
+                  onClick={() => setIsReportOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 transition-all shadow-xs"
+                  title="Generate MoSPI Executive Flash Report"
+                >
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Flash Report</span>
+                </button>
+                {dataSource === 'PAIMANA' ? (
+                  <button
+                    onClick={triggerJudgeFlow}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-xs"
+                    title="Switch to Demo Showcase preset with USBRL deep-dive"
+                  >
+                    <PlayCircle className="w-3.5 h-3.5" />
+                    <span>Judge Demo Mode</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleResetDemo}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs"
+                    title="Return to live PAIMANA database with 2,054 projects"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Live PAIMANA (2,054)</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setIsReportOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 transition-all shadow-sm"
-                title="Generate MoSPI Executive Flash Report"
-              >
-                <FileText className="w-4 h-4 text-blue-600" />
-                <span>Flash Report</span>
-              </button>
-              <button
-                onClick={triggerJudgeFlow}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white transition-all shadow-sm"
-                title="Switch to Demo Showcase preset with USBRL deep-dive"
-              >
-                <PlayCircle className="w-4 h-4" />
-                <span>Launch Judge Demo Mode (USBRL)</span>
-              </button>
+            {/* 2. National KPI Summary (5 High-Value KPIs across all 2,054 projects) */}
+            <KPISummary
+              kpis={portfolioKPIs}
+              onFilterRisk={(tier) => {
+                handleFilterUpdate({ riskTier: tier });
+                setActiveView('projects');
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+              }}
+              selectedTier={filters.riskTier}
+            />
+
+            {/* 3. Infrastructure Sector Cards (Main exploration mechanism across all projects) */}
+            <SectorCards
+              sectors={sectorStats}
+              selectedSector={filters.sector}
+              onSelectSector={(sec) => {
+                handleFilterUpdate({ sector: sec });
+                setActiveView('projects');
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+              }}
+              isLoading={isSectorsLoading}
+            />
+
+            {/* 4. Early Warning Alerts (Operational signals derived from longitudinal data) */}
+            <EarlyWarningAlertsWidget
+              alerts={alerts}
+              onOpenAlertsModal={() => setIsAlertsModalOpen(true)}
+              onSelectProject={(p) => setSelectedProject(p)}
+              allProjects={allProjects.length > 0 ? allProjects : projects}
+              limit={4}
+            />
+
+            {/* 5. Priority Projects (Max 5-10 High-Urgency Interventions) */}
+            <PriorityProjectsOverview
+              projects={allProjects.length > 0 ? allProjects : projects}
+              onSelectProject={(p) => setSelectedProject(p)}
+              onViewAllPriority={() => {
+                setProjectQueueMode('priority');
+                handleFilterUpdate({ riskTier: 'ALL', sector: 'ALL', search: '', state: 'ALL' });
+                setActiveView('projects');
+                setTimeout(() => {
+                  const el = document.getElementById('projects-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  else window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 50);
+              }}
+              limit={8}
+            />
+
+            {/* 5. One Small Portfolio Insight (Risk Distribution across all 2,054 projects) */}
+            <PortfolioRiskInsight
+              kpis={portfolioKPIs}
+              onViewAnalytics={() => {
+                setActiveView('analytics');
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+              }}
+            />
+
+            {/* 6. Optional Data Source Footer */}
+            <div className="text-center py-2 text-[11px] text-slate-500 border-t border-slate-100">
+              Source: MoSPI PAIMANA Monthly Flash Reports, Apr–Jul 2026. Sector classifications are derived from implementing agencies.
             </div>
+
           </div>
         )}
 
-        {/* Top KPI Metric Cards */}
-        {(activeView === 'dashboard' || activeView === 'projects') && (
-          <KPISummary
-            kpis={kpis}
-            onFilterRisk={(tier) => handleFilterUpdate({ riskTier: tier })}
-            selectedTier={filters.riskTier}
-          />
-        )}
-
-        {/* Infrastructure Sector Cards (Phase 3 Presentation) */}
-        {activeView === 'dashboard' && (
-          <SectorCards
-            sectors={sectorStats}
-            selectedSector={filters.sector}
-            onSelectSector={(sec) => handleFilterUpdate({ sector: sec })}
-            isLoading={isSectorsLoading}
-          />
-        )}
-
-        {/* View Switcher Output */}
-        {(activeView === 'dashboard' || activeView === 'projects') && (
+        {/* ========================================================================= */}
+        {/* 2. PROJECTS: COMPLETE 2,054-PROJECT PORTFOLIO DATABASE                   */}
+        {/* ========================================================================= */}
+        {activeView === 'projects' && (
           <div id="projects-section" className="space-y-4">
+            
+            {/* Projects Header */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                  National Project Portfolio Database
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Browse, search, and filter all 2,054 monitored infrastructure projects across sectors and states.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <span className="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200">
+                  Total Monitored: <strong className="text-slate-900">{allProjects.length || projects.length}</strong> Projects
+                  {projects.length !== (allProjects.length || projects.length) && (
+                    <span className="text-blue-600 font-medium ml-1">({projects.length} matching filters)</span>
+                  )}
+                </span>
+              </div>
+            </div>
+
             {/* Filter and Search Bar */}
             <FilterBar
               filters={filters}
@@ -270,24 +440,52 @@ export default function App() {
             <ProjectTable
               projects={projects}
               onSelectProject={(p) => setSelectedProject(p)}
+              queueMode={projectQueueMode}
+              onQueueModeChange={setProjectQueueMode}
             />
           </div>
         )}
 
+        {/* ========================================================================= */}
+        {/* 3. RISK MAP: GEOGRAPHIC SPATIAL VISUALIZATION                            */}
+        {/* ========================================================================= */}
         {activeView === 'gis' && (
-          <GISMap
-            projects={projects}
-            onSelectProject={(p) => setSelectedProject(p)}
-            selectedProjectId={selectedProject?.id}
-          />
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                National Infrastructure GIS Risk Map
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Geographic spatial visualization of monitored projects. Projects with field geo-coordinates are mapped; non-geocoded PAIMANA records are cataloged in the spatial registry.
+              </p>
+            </div>
+            <GISMap
+              projects={allProjects.length > 0 ? allProjects : projects}
+              onSelectProject={(p) => setSelectedProject(p)}
+              selectedProjectId={selectedProject?.id}
+            />
+          </div>
         )}
 
+        {/* ========================================================================= */}
+        {/* 4. ANALYTICS: DEEP PORTFOLIO & SECTOR ANALYSIS                           */}
+        {/* ========================================================================= */}
         {activeView === 'analytics' && (
-          <SectorAnalytics
-            projects={projects}
-            kpis={kpis}
-            onSelectProject={(p) => setSelectedProject(p)}
-          />
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                Portfolio Risk & Sector Analytics
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Deep diagnostic analysis into capital allocations, schedule slippage distributions, and multi-tier escalation metrics across all 2,054 projects.
+              </p>
+            </div>
+            <SectorAnalytics
+              projects={allProjects.length > 0 ? allProjects : projects}
+              kpis={portfolioKPIs}
+              onSelectProject={(p) => setSelectedProject(p)}
+            />
+          </div>
         )}
 
       </main>
@@ -318,15 +516,24 @@ export default function App() {
         onClose={() => setIsCopilotOpen(false)}
         activeProject={selectedProject}
         onSelectProject={(p) => setSelectedProject(p)}
-        allProjects={projects.length > 0 ? projects : (dataSource === 'DEMO' ? SEEDED_PROJECTS : [])}
+        allProjects={allProjects.length > 0 ? allProjects : projects}
       />
 
       {/* Executive Flash Report Modal */}
       <ExecutiveFlashReportModal
         isOpen={isReportOpen}
         onClose={() => setIsReportOpen(false)}
-        kpis={kpis}
+        kpis={portfolioKPIs}
         criticalProjects={criticalProjects}
+      />
+
+      {/* Early Warning Alerts Interactive Modal */}
+      <EarlyWarningAlertsModal
+        isOpen={isAlertsModalOpen}
+        onClose={() => setIsAlertsModalOpen(false)}
+        alerts={alerts}
+        onSelectProject={(p) => setSelectedProject(p)}
+        allProjects={allProjects.length > 0 ? allProjects : projects}
       />
 
     </div>

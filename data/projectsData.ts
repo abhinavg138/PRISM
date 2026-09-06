@@ -1424,15 +1424,27 @@ export function computePortfolioKPIs(projects: Project[]): PortfolioKPIs {
   let moderateRiskProjects = 0;
   let lowRiskProjects = 0;
   let unratedProjects = 0;
+  let p1Projects = 0;
+  let p2Projects = 0;
+  let p3Projects = 0;
   let totalBudgetCr = 0;
   let budgetAtRiskCr = 0;
   let totalDelayMonths = 0;
   let totalCostEscalationPercent = 0;
+  let totalRiskScore = 0;
+  let ratedRiskCount = 0;
+  let totalPhysicalProgress = 0;
 
   for (const p of projects) {
     totalBudgetCr += (p.revisedCostCr || 0);
     totalDelayMonths += (p.timeOverrunMonths || 0);
     totalCostEscalationPercent += (p.costOverrunPercent || 0);
+    totalPhysicalProgress += (p.physicalProgressPercent || 0);
+
+    if (p.riskScore != null) {
+      totalRiskScore += p.riskScore;
+      ratedRiskCount++;
+    }
 
     if (p.riskTier === 'CRITICAL') {
       criticalProjects++;
@@ -1449,6 +1461,14 @@ export function computePortfolioKPIs(projects: Project[]): PortfolioKPIs {
     } else {
       unratedProjects++;
     }
+
+    if (p.priorityTier === 'P1') {
+      p1Projects++;
+    } else if (p.priorityTier === 'P2') {
+      p2Projects++;
+    } else if (p.priorityTier === 'P3') {
+      p3Projects++;
+    }
   }
 
   return {
@@ -1458,10 +1478,15 @@ export function computePortfolioKPIs(projects: Project[]): PortfolioKPIs {
     moderateRiskProjects,
     lowRiskProjects,
     unratedProjects,
+    p1Projects,
+    p2Projects,
+    p3Projects,
     totalBudgetCr: Math.round(totalBudgetCr),
     budgetAtRiskCr: Math.round(budgetAtRiskCr),
     averageDelayMonths: totalProjects > 0 ? Math.round((totalDelayMonths / totalProjects) * 10) / 10 : 0,
     averageCostEscalationPercent: totalProjects > 0 ? Math.round((totalCostEscalationPercent / totalProjects) * 10) / 10 : 0,
-    activeEscalationsCount: criticalProjects + highRiskProjects
+    activeEscalationsCount: criticalProjects + highRiskProjects,
+    averageRiskScore: ratedRiskCount > 0 ? Math.round((totalRiskScore / ratedRiskCount) * 10) / 10 : 0,
+    averagePhysicalProgress: totalProjects > 0 ? Math.round((totalPhysicalProgress / totalProjects) * 10) / 10 : 0
   };
 }

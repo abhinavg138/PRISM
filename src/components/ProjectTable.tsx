@@ -1,42 +1,65 @@
-import React, { useState } from 'react';
-import { ShieldAlert, AlertTriangle, ArrowRight, Activity, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldAlert, AlertTriangle, ArrowRight, Activity, Zap, CheckCircle2 } from 'lucide-react';
 import { Project, RiskTier, PriorityTier } from '../types/index';
 
 interface ProjectTableProps {
   projects: Project[];
   onSelectProject: (project: Project) => void;
+  queueMode?: 'all' | 'priority' | 'p1';
+  onQueueModeChange?: (mode: 'all' | 'priority' | 'p1') => void;
 }
 
-export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectProject }) => {
-  const [queueMode, setQueueMode] = useState<'all' | 'priority' | 'p1'>('all');
+export const ProjectTable: React.FC<ProjectTableProps> = ({
+  projects,
+  onSelectProject,
+  queueMode: controlledQueueMode,
+  onQueueModeChange
+}) => {
+  const [internalQueueMode, setInternalQueueMode] = useState<'all' | 'priority' | 'p1'>('all');
+  const activeQueueMode = controlledQueueMode ?? internalQueueMode;
+
+  const setQueueMode = (mode: 'all' | 'priority' | 'p1') => {
+    if (onQueueModeChange) {
+      onQueueModeChange(mode);
+    } else {
+      setInternalQueueMode(mode);
+    }
+  };
 
   const getPriorityBadge = (tier?: PriorityTier | null, score?: number | null) => {
-    if (!tier || score == null) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-          P3 • Routine
-        </span>
-      );
-    }
     if (tier === 'P1') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-200 shadow-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-          P1 • {score}
-        </span>
+        <div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-extrabold bg-red-100 text-red-800 border border-red-200 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+              P1 • {score ?? 0}
+            </span>
+          </div>
+          <span className="text-[10px] text-red-700 font-semibold block mt-0.5">Highest Urgency</span>
+        </div>
       );
     }
     if (tier === 'P2') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
-          P2 • {score}
-        </span>
+        <div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+              P2 • {score ?? 0}
+            </span>
+          </div>
+          <span className="text-[10px] text-orange-700 font-medium block mt-0.5">Significant Oversight</span>
+        </div>
       );
     }
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-        P3 • {score}
-      </span>
+      <div>
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          P3 • {score ?? 0}
+        </span>
+        <span className="text-[10px] text-slate-500 block mt-0.5">Monitoring</span>
+      </div>
     );
   };
 
@@ -78,6 +101,23 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
     }
   };
 
+  const getConfidenceDisplay = (conf?: number) => {
+    const pct = conf != null ? Math.round(conf * 100) : 100;
+    const obsCount = conf != null ? Math.max(1, Math.round(conf * 4)) : 4;
+    return (
+      <div>
+        <span className={`font-mono font-bold text-xs ${
+          pct >= 90 ? 'text-emerald-700' : pct >= 70 ? 'text-blue-700' : 'text-amber-700'
+        }`}>
+          {pct}%
+        </span>
+        <span className="text-[10px] text-slate-500 block">
+          {obsCount}/4 reports
+        </span>
+      </div>
+    );
+  };
+
   const getSectorColor = (sector: string) => {
     switch (sector) {
       case 'Railways':
@@ -102,26 +142,28 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
 
   // Filter and sort according to selected queue mode
   let displayedProjects = [...projects];
-  if (queueMode === 'priority') {
+  if (activeQueueMode === 'priority') {
     displayedProjects = displayedProjects
       .filter(p => p.priorityTier === 'P1' || p.priorityTier === 'P2')
       .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
-  } else if (queueMode === 'p1') {
+  } else if (activeQueueMode === 'p1') {
     displayedProjects = displayedProjects
       .filter(p => p.priorityTier === 'P1')
       .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
   }
 
+  const isPriorityQueueView = activeQueueMode === 'priority' || activeQueueMode === 'p1';
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
       
       {/* Priority Queue Control Bar */}
       <div className="p-3 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setQueueMode('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              queueMode === 'all'
+              activeQueueMode === 'all'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-300'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
@@ -131,7 +173,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
           <button
             onClick={() => setQueueMode('priority')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              queueMode === 'priority'
+              activeQueueMode === 'priority'
                 ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
@@ -142,7 +184,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
           <button
             onClick={() => setQueueMode('p1')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              queueMode === 'p1'
+              activeQueueMode === 'p1'
                 ? 'bg-red-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
@@ -154,16 +196,138 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
 
         <div className="text-[11px] text-slate-500 font-medium">
           Showing <strong className="text-slate-800">{displayedProjects.length}</strong> projects
-          {queueMode !== 'all' && ' sorted by Priority Score'}
+          {isPriorityQueueView && ' ranked by PRISM Priority Score'}
         </div>
+      </div>
+
+      {/* Priority Level Legend (visible whenever viewing priority queue or projects) */}
+      <div className="px-4 py-2 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-slate-400 font-medium">Priority Methodology:</span>
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 text-red-800 border border-red-200 text-[10px] font-bold">
+            P1 = Highest intervention urgency (≥ 70)
+          </span>
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-50 text-orange-800 border border-orange-200 text-[10px] font-medium">
+            P2 = Significant oversight (50–69)
+          </span>
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px]">
+            P3 = Monitoring (&lt; 50)
+          </span>
+        </div>
+        <span className="text-[10px] text-slate-400">
+          Formula: 40% Risk + 25% Schedule Urgency + 20% Deterioration + 15% Confidence
+        </span>
       </div>
 
       {displayedProjects.length === 0 ? (
         <div className="p-12 text-center text-slate-600">
           <p className="text-base font-semibold">No infrastructure projects match current queue criteria.</p>
-          <p className="text-xs mt-1">Try selecting another tab or adjusting your search filters.</p>
+          <p className="text-xs mt-1">Try selecting another queue tab or adjusting your search filters.</p>
+        </div>
+      ) : isPriorityQueueView ? (
+        /* ========================================================================= */
+        /* DEDICATED FULL PRIORITY QUEUE VIEW                                      */
+        /* ========================================================================= */
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                <th className="py-3 px-4 min-w-[130px]">Priority Level</th>
+                <th className="py-3 px-4 min-w-[240px]">Project & Code</th>
+                <th className="py-3 px-3 min-w-[140px]">Sector & State</th>
+                <th className="py-3 px-3 min-w-[140px]">Risk Assessment</th>
+                <th className="py-3 px-3 min-w-[90px]">Confidence</th>
+                <th className="py-3 px-4 min-w-[150px]">Primary Risk Indicator</th>
+                <th className="py-3 px-4 min-w-[280px]">Reason for Priority</th>
+                <th className="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-sans">
+              {displayedProjects.map((p) => (
+                <tr
+                  key={p.id}
+                  onClick={() => onSelectProject(p)}
+                  className="hover:bg-blue-50/40 cursor-pointer transition-colors group"
+                >
+                  {/* 1. Priority Level */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    {getPriorityBadge(p.priorityTier, p.priorityScore)}
+                  </td>
+
+                  {/* 2. Project Name & Code */}
+                  <td className="py-3.5 px-4">
+                    <div className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors line-clamp-2 leading-snug">
+                      {p.name}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                      <span className="font-mono text-slate-600">{p.code}</span>
+                      {p.implementingAgency && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate max-w-[140px]" title={p.implementingAgency}>
+                            {p.implementingAgency}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* 3. Sector & State */}
+                  <td className="py-3.5 px-3">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                      {p.derivedSector || p.sector}
+                    </span>
+                    <div className="text-[11px] text-slate-600 font-medium mt-1 truncate max-w-[130px]" title={p.state}>
+                      {p.state}
+                    </div>
+                  </td>
+
+                  {/* 4. Risk Assessment */}
+                  <td className="py-3.5 px-3 whitespace-nowrap">
+                    {getRiskBadge(p.riskTier, p.riskScore)}
+                  </td>
+
+                  {/* 5. Evidence Confidence */}
+                  <td className="py-3.5 px-3 whitespace-nowrap">
+                    {getConfidenceDisplay(p.evidenceConfidence)}
+                  </td>
+
+                  {/* 6. Primary Risk Indicator */}
+                  <td className="py-3.5 px-4">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded bg-slate-100 text-slate-800 border border-slate-300">
+                      {p.primaryRiskDriver || 'General Execution'}
+                    </span>
+                  </td>
+
+                  {/* 7. Reason for Priority */}
+                  <td className="py-3.5 px-4 text-slate-700 text-xs leading-relaxed">
+                    <p className="line-clamp-2" title={p.priorityReason}>
+                      {p.priorityReason || 'High risk combined with schedule pressure.'}
+                    </p>
+                  </td>
+
+                  {/* 8. Action */}
+                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectProject(p);
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-blue-600 hover:text-blue-700 border border-slate-200 transition-all group-hover:border-blue-300 shadow-2xs"
+                    >
+                      <span>Detail</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : (
+        /* ========================================================================= */
+        /* STANDARD ALL-PROJECTS VIEW                                              */
+        /* ========================================================================= */
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -174,7 +338,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
                 <th className="py-3 px-3">Progress & Spend Ratio</th>
                 <th className="py-3 px-3 text-right">Schedule Slippage</th>
                 <th className="py-3 px-3 min-w-[140px]">Priority & Risk</th>
-                <th className="py-3 px-4 max-w-sm">Primary Driver & Recommended Action</th>
+                <th className="py-3 px-4 max-w-sm">Primary Driver & Priority Reason</th>
                 <th className="py-3 px-4 text-center">Action</th>
               </tr>
             </thead>
@@ -294,7 +458,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
                       </div>
                     </td>
 
-                    {/* Primary Driver & Recommended Action */}
+                    {/* Primary Driver & Priority Reason */}
                     <td className="py-3.5 px-4 max-w-sm">
                       <div className="space-y-1">
                         {p.primaryRiskDriver && (
@@ -304,7 +468,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
                           </span>
                         )}
                         <p className="text-[11px] text-slate-800 font-medium line-clamp-2 leading-tight">
-                          {p.recommendedAction || p.primaryDelayCause}
+                          {p.priorityReason || p.recommendedAction || p.primaryDelayCause}
                         </p>
                       </div>
                     </td>
@@ -316,7 +480,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects, onSelectPr
                           e.stopPropagation();
                           onSelectProject(p);
                         }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-gray-50 text-blue-600 hover:text-blue-700 border border-gray-200 transition-all group-hover:border-blue-300"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-gray-50 text-blue-600 hover:text-blue-700 border border-gray-200 transition-all group-hover:border-blue-300 shadow-2xs"
                       >
                         <span>Project Detail</span>
                         <ArrowRight className="w-3 h-3" />

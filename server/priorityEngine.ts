@@ -288,6 +288,7 @@ export function buildRecommendedAction(
 
 /**
  * Builds deterministic human-readable reason for priority assignment.
+ * Concise, indicator-grounded explanations answering "Which projects should decision-makers look at FIRST?"
  */
 export function buildPriorityReason(
   tier: PriorityTier,
@@ -297,26 +298,81 @@ export function buildPriorityReason(
   deterioration: number,
   confidence: number,
   consecutiveStagnantMonths: number,
-  topDrivers: string[]
+  topDrivers: string[],
+  costOverrunPercent: number = 0,
+  spendProgressGap: number = 0,
+  indicators?: { id: string; label: string; normalisedScore: number }[]
 ): string {
-  const confidencePercent = Math.round(confidence * 100);
+  const getIndScore = (id: string) => indicators?.find(i => i.id === id)?.normalisedScore ?? 0;
+  const stagnationScore = getIndScore('stagnation');
+  const velocityScore = getIndScore('velocity');
+  const scheduleScore = getIndScore('schedule');
+  const costScore = getIndScore('cost');
+  const divergenceScore = getIndScore('divergence');
 
+  // Priority 1: Highest Intervention Urgency
   if (tier === 'P1') {
-    const reasons: string[] = [];
-    if (urgency >= 75) reasons.push(`high schedule urgency (${urgency}/100)`);
-    if (consecutiveStagnantMonths >= 2) reasons.push(`${consecutiveStagnantMonths} consecutive months of stagnant progress`);
-    else if (deterioration >= 60) reasons.push(`acute recent progress deterioration (${deterioration}/100)`);
-    if (reasons.length === 0 && topDrivers.length > 0) reasons.push(`critical ${topDrivers[0].toLowerCase()}`);
+    // 1. Stagnant progress across recent observations
+    if (consecutiveStagnantMonths >= 2 || stagnationScore >= 75) {
+      if (urgency >= 70 || scheduleScore >= 70) {
+        return 'Progress has remained nearly stagnant across recent observations, compounded by schedule pressure.';
+      }
+      return 'Progress has remained nearly stagnant across recent observations.';
+    }
 
-    const driverDetail = reasons.length > 0 ? reasons.join(' and ') : 'compounded operational risk indicators';
-    return `P1 Immediate Intervention: High PRISM Risk Index (${riskScore}) confirmed with ${confidencePercent}% evidence confidence, compounded by ${driverDetail}.`;
+    // 2. Cost escalation combined with physical-financial divergence
+    if ((costOverrunPercent >= 20 || costScore >= 60) && (spendProgressGap >= 15 || divergenceScore >= 60)) {
+      return 'Cost escalation and physical-financial divergence increase intervention urgency.';
+    }
+
+    // 3. High risk combined with schedule pressure
+    if (riskScore >= 60 && (urgency >= 70 || scheduleScore >= 65)) {
+      return 'High risk combined with schedule pressure.';
+    }
+
+    // 4. Severe velocity deceleration / deterioration
+    if (deterioration >= 70 || velocityScore >= 75) {
+      return 'Recent progress velocity deterioration warrants immediate operational intervention.';
+    }
+
+    // 5. Significant cost escalation
+    if (costOverrunPercent >= 30 || costScore >= 75) {
+      return 'Significant cost escalation over original outlay warrants urgent financial review.';
+    }
+
+    // 6. High schedule urgency alone
+    if (urgency >= 80) {
+      return 'Approaching or past target deadline with substantial physical work remaining.';
+    }
+
+    // 7. Fallback based on top indicator
+    const primary = topDrivers[0] || 'Operational risk';
+    return `Critical ${primary.toLowerCase()} combined with deadline urgency requires intervention.`;
   }
 
+  // Priority 2: Significant Oversight
   if (tier === 'P2') {
-    return `P2 High-Priority Monitoring: Elevated composite score (${priorityScore}) with operational urgency (${urgency}/100); key indicators (${topDrivers.slice(0, 2).join(', ') || 'execution'}) warrant focused oversight.`;
+    if (consecutiveStagnantMonths >= 2 || stagnationScore >= 60) {
+      return 'Progress has remained nearly stagnant across recent observations.';
+    }
+    if ((costOverrunPercent >= 15 || costScore >= 50) && (spendProgressGap >= 10 || divergenceScore >= 50)) {
+      return 'Cost escalation and physical-financial divergence increase intervention urgency.';
+    }
+    if (riskScore >= 55 && urgency >= 60) {
+      return 'High risk combined with schedule pressure.';
+    }
+    if (deterioration >= 50 || velocityScore >= 60) {
+      return 'Sluggish monthly progress velocity requires contractor mobilization oversight.';
+    }
+    if (urgency >= 65 || scheduleScore >= 60) {
+      return 'Schedule slippage against target completion requires active timeline oversight.';
+    }
+    const primary = topDrivers[0] || 'Execution';
+    return `Moderate risk with notable ${primary.toLowerCase()} monitoring requirements.`;
   }
 
-  return `P3 Routine Monitoring: Project maintains manageable priority index (${priorityScore}) with risk index ${riskScore} and low immediate schedule pressure.`;
+  // Priority 3: Monitoring
+  return 'Routine monitoring: progress and expenditure remain within manageable variance thresholds.';
 }
 
 export class PRISMPriorityEngine {
@@ -422,7 +478,10 @@ export class PRISMPriorityEngine {
       recentDeterioration,
       evidenceConfidence,
       consecutiveStagnantMonths,
-      topRiskDrivers
+      topRiskDrivers,
+      costOverrunPercent,
+      spendProgressGap,
+      riskAssessment.indicators
     );
 
     return {

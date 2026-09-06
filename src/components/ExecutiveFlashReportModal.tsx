@@ -28,7 +28,7 @@ export const ExecutiveFlashReportModal: React.FC<ExecutiveFlashReportModalProps>
   const handleCopy = () => {
     const rosterText = criticalProjects.length > 0
       ? criticalProjects.map(p => `- ${p.name} (${p.code}): Risk ${p.riskScore}/100. Overrun: +${p.costOverrunPercent}%, Delay: +${p.timeOverrunMonths} mo. Primary Cause: ${p.primaryDelayCause}`).join('\n')
-      : '- No projects currently classified in Critical Tier (PAIMANA records are UNRATED pending Phase 2 ML model calibration)';
+      : '- No projects currently classified in Critical Tier (All monitored projects operating within acceptable or moderate deterministic thresholds)';
 
     const text = `PRISM EXECUTIVE FLASH REPORT - ${today}
 MoSPI / Prime Minister's Project Monitoring Group (PMG)
@@ -166,7 +166,7 @@ ${rosterText}
                       <span>Agency: <strong>{p.ministry || p.implementingAgency}</strong></span>
                       <span>State: <strong>{p.state}</strong></span>
                       <span>Cost Overrun: <strong className="text-red-700">+{p.costOverrunPercent}%</strong></span>
-                      <span>Anticipated Delay: <strong className="text-orange-700">+{p.predictedDelayMonths} mo</strong></span>
+                      <span>{p.predictedDelayMonths != null ? <>Anticipated Delay: <strong className="text-orange-700">+{p.predictedDelayMonths} mo</strong></> : <>Recorded Delay: <strong className="text-orange-700">+{p.timeOverrunMonths} mo</strong></>}</span>
                     </div>
                     <p className="mt-1.5 text-[11px] text-slate-700 bg-white p-2 rounded border border-slate-200">
                       <strong>Primary Bottleneck:</strong> {p.primaryDelayCause}

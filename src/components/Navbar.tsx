@@ -12,6 +12,7 @@ interface NavbarProps {
   isCopilotOpen: boolean;
   activeView: 'dashboard' | 'projects' | 'gis' | 'analytics';
   onChangeView: (view: 'dashboard' | 'projects' | 'gis' | 'analytics') => void;
+  dataSource?: 'PAIMANA' | 'DEMO';
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -21,14 +22,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetDemo,
   isCopilotOpen,
   activeView,
-  onChangeView
+  onChangeView,
+  dataSource = 'PAIMANA'
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200 text-slate-900 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* LEFT: PRISM logo + name + subtitle & STATUS: PAIMANA LIVE badge */}
+          {/* LEFT: PRISM logo + name + subtitle & STATUS badge */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 via-orange-500 to-emerald-600 flex items-center justify-center p-0.5 shadow-sm">
@@ -51,13 +53,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* STATUS: Small compact badge: PAIMANA LIVE */}
+            {/* STATUS: Badge */}
             <div className="flex items-center pl-1 sm:pl-2">
               <div className="h-4 w-px bg-slate-200 mr-2 sm:mr-3 hidden md:block"></div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold tracking-wide">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>PAIMANA LIVE</span>
-              </div>
+              {dataSource === 'DEMO' ? (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold tracking-wide">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span>DEMO SHOWCASE</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold tracking-wide">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>PAIMANA LIVE</span>
+                </div>
+              )}
             </div>
           </div>
 

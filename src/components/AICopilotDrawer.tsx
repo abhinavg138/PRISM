@@ -27,10 +27,11 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
       content: `### 🏛️ PRISM Infrastructure Intelligence Copilot Active\n\nWelcome to the AI-grounded monitoring assistant for the **Ministry of Statistics & Programme Implementation (MoSPI)** and **Cabinet PMG**.\n\nI monitor live PAIMANA monthly observations, schedule slippages, and capital expenditure across **${allProjects.length} mega-infrastructure projects**.\n\nClick any quick prompt below or ask any specific inquiry!`,
       timestamp: 'Just now',
       suggestedQuestions: [
-        '📊 Which projects have the highest schedule slippage?',
-        '💰 Compare physical progress vs expenditure across sectors',
-        '⚡ Which states have the largest committed capital outlay?',
-        '📄 Generate MoSPI Flash Report executive summary'
+        'Which projects have the highest risk?',
+        'Why is project 701396 high risk?',
+        'Which sectors have the highest average risk?',
+        'Which projects need intervention first?',
+        'Which projects show stagnant progress?'
       ]
     }
   ]);
@@ -54,8 +55,8 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
     if (activeProject && isOpen) {
       const isUnrated = activeProject.riskScore == null;
       const scoreText = !isUnrated
-        ? `Current Risk Score: **${activeProject.riskScore}/100** (${activeProject.riskTier})`
-        : `Risk Status: **UNRATED** (Phase 2 model calibration pending)`;
+        ? `PRISM Risk Index: **${activeProject.riskScore}/100** (${activeProject.riskTier})`
+        : `Risk Status: **UNRATED** (Insufficient longitudinal observations)`;
       
       const projectPrompt = `Focused on **${activeProject.name}** (\`${activeProject.code}\`, ${activeProject.sector}). ${scoreText}. You can ask about its monthly physical progress, capital expenditure, or timeline slippage.`;
       

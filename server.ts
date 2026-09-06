@@ -238,6 +238,40 @@ async function startServer() {
     });
   });
 
+  // PRISM Early Warning Alerts endpoint
+  app.get('/api/alerts', (req, res) => {
+    const { severity, alertType, sector, state, search, limit, offset } = req.query;
+    const parsedLimit = limit ? parseInt(limit as string, 10) : undefined;
+    const parsedOffset = offset ? parseInt(offset as string, 10) : undefined;
+
+    const result = paimanaRepository.getEarlyWarningAlerts({
+      severity: severity as string,
+      alertType: alertType as string,
+      sector: sector as string,
+      state: state as string,
+      search: search as string,
+      limit: parsedLimit,
+      offset: parsedOffset
+    });
+
+    res.json({
+      dataSource: currentDataSource,
+      ...result
+    });
+  });
+
+  // Single Project Active Early Warning Alert
+  app.get('/api/projects/:id/alert', (req, res) => {
+    const alert = paimanaRepository.getProjectAlert(req.params.id);
+    if (!alert) {
+      return res.status(404).json({ message: 'No active early warning alert for this project' });
+    }
+    res.json({
+      dataSource: currentDataSource,
+      alert
+    });
+  });
+
   // Infrastructure Sectors Intelligence endpoint
   app.get('/api/sectors', (req, res) => {
     if (currentDataSource === 'PAIMANA') {
@@ -259,6 +293,24 @@ async function startServer() {
       note: 'Sector classifications are derived from implementing agencies.'
     });
   });
+
+  // Portfolio Multi-Dimensional Analytics endpoint
+  app.get('/api/analytics', (req, res) => {
+    if (currentDataSource === 'PAIMANA') {
+      const analytics = paimanaRepository.getFullAnalytics();
+      return res.json({
+        dataSource: 'PAIMANA',
+        ...analytics
+      });
+    }
+
+    const analytics = paimanaRepository.getFullAnalytics(currentDemoProjects);
+    res.json({
+      dataSource: 'DEMO',
+      ...analytics
+    });
+  });
+
 
 
   // Alias for observations history
@@ -294,9 +346,14 @@ async function startServer() {
     res.json(demo);
   });
 
-  // What-If Simulation Endpoint
+  // Rule-based What-If Scenario Simulation Endpoint
+  // Performs exploratory sensitivity simulation on top of PRISM risk indicators
   app.post('/api/simulate', (req, res) => {
     const { projectId, params } = req.body;
+    if (!projectId) {
+      return res.status(400).json({ error: 'Missing projectId' });
+    }
+
     let project: Project | undefined;
 
     if (currentDataSource === 'PAIMANA') {
@@ -310,7 +367,7 @@ async function startServer() {
     }
 
     // Safety guard: PAIMANA projects with null riskScore are unrated; return null / UNRATED
-    // Note: PAIMANA projects now receive a computed riskScore from PRISMRiskEngine
+    // Note: PAIMANA projects receive a computed riskScore from PRISMRiskEngine
     if (project.riskScore == null) {
       return res.json({
         projectId: project.id,
@@ -343,30 +400,6 @@ async function startServer() {
     res.json(simResult);
   });
 
-  // ML Risk Scoring Prediction
-  app.post('/api/predict', (req, res) => {
-    const { projectData, simParams } = req.body;
-    if (!projectData) {
-      return res.status(400).json({ error: 'Missing projectData' });
-    }
-
-    // Safety guard: projects with null riskScore return null / UNRATED
-    // PAIMANA projects now have computed risk scores from PRISMRiskEngine
-    if (projectData.riskScore == null) {
-      return res.json({
-        riskScore: null,
-        riskTier: 'UNRATED',
-        predictedDelayMonths: null,
-        predictedCostEscalationCr: null,
-        confidenceScore: null,
-        shapDrivers: []
-      });
-    }
-
-    const scored = MLRiskEngine.calculateProjectRisk(projectData, simParams);
-    res.json(scored);
-  });
-
   // Grounded AI Copilot Chat Endpoint
   app.post('/api/copilot/chat', async (req, res) => {
     const { message, activeProjectId } = req.body;
@@ -391,62 +424,6 @@ async function startServer() {
     }
   });
 
-  // Portfolio Analytics Aggregation
-  app.get('/api/analytics', (req, res) => {
-    const activeProjects = currentDataSource === 'PAIMANA'
-      ? paimanaRepository.listProjects().projects
-      : currentDemoProjects;
-
-    const kpis = currentDataSource === 'PAIMANA'
-      ? paimanaRepository.computeKPIs(activeProjects)
-      : computePortfolioKPIs(activeProjects);
-
-    // Sector breakdown
-    const sectorMap: Record<string, { count: number; totalCost: number; criticalCount: number; avgDelay: number }> = {};
-    for (const p of activeProjects) {
-      const sec = (p.sector as string) || 'Other';
-      if (!sectorMap[sec]) {
-        sectorMap[sec] = { count: 0, totalCost: 0, criticalCount: 0, avgDelay: 0 };
-      }
-      sectorMap[sec].count += 1;
-      sectorMap[sec].totalCost += (p.revisedCostCr || 0);
-      if (p.riskTier === 'CRITICAL') sectorMap[sec].criticalCount += 1;
-      sectorMap[sec].avgDelay += (p.timeOverrunMonths || 0);
-    }
-
-    const sectorBreakdown = Object.entries(sectorMap).map(([sector, stats]) => ({
-      sector,
-      count: stats.count,
-      totalCostCr: Math.round(stats.totalCost),
-      criticalCount: stats.criticalCount,
-      avgDelayMonths: Math.round(stats.avgDelay / (stats.count || 1))
-    }));
-
-    // Risk Tier Distribution — PRISM bands: CRITICAL ≥80, HIGH ≥60, MODERATE ≥40, LOW <40
-    const riskDistribution = [
-      { name: 'Critical (≥80)', count: kpis.criticalProjects, color: '#ef4444' },
-      { name: 'High (60–79)', count: kpis.highRiskProjects, color: '#f97316' },
-      { name: 'Moderate (40–59)', count: kpis.moderateRiskProjects, color: '#eab308' },
-      { name: 'Low (<40)', count: kpis.lowRiskProjects, color: '#10b981' },
-      { name: 'Unrated', count: kpis.unratedProjects || 0, color: '#94a3b8' }
-    ];
-
-    // Priority Tier Distribution (Phase 3A) — P1: Immediate, P2: High-priority, P3: Routine
-    const priorityDistribution = [
-      { name: 'P1 Immediate Intervention (≥70)', count: kpis.p1Projects || 0, color: '#ef4444', tier: 'P1' },
-      { name: 'P2 High-Priority Monitoring (50–69)', count: kpis.p2Projects || 0, color: '#f97316', tier: 'P2' },
-      { name: 'P3 Routine Monitoring (<50)', count: kpis.p3Projects || 0, color: '#10b981', tier: 'P3' }
-    ];
-
-    res.json({
-      dataSource: currentDataSource,
-      kpis,
-      sectorBreakdown,
-      riskDistribution,
-      priorityDistribution,
-      topCritical: activeProjects.filter(p => p.riskTier === 'CRITICAL').sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0))
-    });
-  });
 
   // Data Source Toggle & Demo Reset
   app.post('/api/demo/reset', (req, res) => {

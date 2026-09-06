@@ -101,7 +101,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const driversToRender = simResult?.updatedDrivers || project.topRiskDrivers || [];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-50/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
       <div className="bg-white border border-slate-300 w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header Bar */}
@@ -204,10 +204,12 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
               <span className="text-xl font-bold text-orange-600">+{project.timeOverrunMonths}</span>
               <span className="text-xs text-slate-600">Months</span>
             </div>
-            <div className="mt-1 flex items-center justify-between text-[11px]">
-              <span className="text-slate-600">Pred. Future:</span>
-              <span className="font-semibold text-orange-600">{currentDelay != null ? `+${currentDelay} mo` : 'UNRATED'}</span>
-            </div>
+            {currentDelay != null && (
+              <div className="mt-1 flex items-center justify-between text-[11px]">
+                <span className="text-slate-600">Scenario Target:</span>
+                <span className="font-semibold text-orange-600">+{currentDelay} mo</span>
+              </div>
+            )}
           </div>
 
           {/* Progress & Spend Metric */}
@@ -252,14 +254,14 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                       : 'bg-emerald-600 text-white border-emerald-600'
                   }`}>
                     {priorityTier} — {
-                      priorityTier === 'P1' ? 'Immediate Intervention' :
-                      priorityTier === 'P2' ? 'High-Priority Monitoring' :
-                      'Routine Monitoring'
+                      priorityTier === 'P1' ? 'Highest Intervention Urgency' :
+                      priorityTier === 'P2' ? 'Significant Oversight' :
+                      'Monitoring'
                     }
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-0.5">
-                  Evidence-based prioritization (PRISM Risk Index + Schedule Urgency + Longitudinal Deterioration).
+                  Deterministic Priority Engine ranking: 40% Risk + 25% Schedule Urgency + 20% Deterioration + 15% Evidence Confidence.
                 </p>
               </div>
             </div>
@@ -284,26 +286,97 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-xs">
-            <div className="bg-white/95 p-3 rounded-lg border border-slate-200">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                Why This Project Is Prioritized
-              </span>
-              <p className="text-slate-800 leading-relaxed text-[11px]">
-                {priorityReason || 'Assessed under PRISM Intervention Priority Queue framework.'}
+          {/* Detailed Attention Explanation & Actual Evidence */}
+          <div className="mt-3 space-y-3">
+            <div className="bg-white/95 p-3.5 rounded-lg border border-red-200/80">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[11px] font-bold text-red-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                  WHY THIS PROJECT NEEDS ATTENTION
+                </span>
+                <span className="text-[10px] font-mono text-slate-500">
+                  Confidence: {Math.round((project.evidenceConfidence ?? 1) * 100)}% ({project.monthlyTrend?.length || 4}/4 monthly observations)
+                </span>
+              </div>
+              <p className="text-slate-900 font-medium leading-relaxed text-xs">
+                {priorityReason || 'High risk combined with schedule pressure.'}
               </p>
             </div>
 
-            <div className="bg-white/95 p-3 rounded-lg border border-blue-200">
-              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block mb-1">
-                Deterministic Recommended Action
-              </span>
-              <p className="text-blue-900 font-semibold leading-relaxed text-[11px]">
-                {recommendedAction || 'Maintain routine milestone & expenditure monitoring'}
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+              <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Primary Risk Indicator
+                </span>
+                <span className="font-semibold text-slate-900 mt-0.5 block">
+                  {project.primaryRiskDriver || 'General Execution'}
+                </span>
+              </div>
+
+              <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Schedule Urgency Index
+                </span>
+                <span className="font-semibold text-orange-700 mt-0.5 block">
+                  {project.urgency ?? 40}/100 • Target: {project.revisedCompletionDate || project.originalCompletionDate || 'Not specified'}
+                </span>
+              </div>
+
+              <div className="bg-white/90 p-2.5 rounded-lg border border-blue-200">
+                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
+                  Deterministic Recommended Action
+                </span>
+                <span className="font-semibold text-blue-900 mt-0.5 block truncate" title={recommendedAction}>
+                  {recommendedAction || 'Maintain routine milestone & expenditure monitoring'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Active Early Warning Alert (if triggered by empirical observation) */}
+        {project.alert && (
+          <div className="mx-5 mb-3 p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-amber-200/60">
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold inline-flex items-center gap-1 ${
+                  project.alert.severity === 'CRITICAL' ? 'bg-red-100 text-red-800 border border-red-200' :
+                  project.alert.severity === 'HIGH' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                  'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${project.alert.severity === 'CRITICAL' ? 'bg-red-600 animate-pulse' : 'bg-orange-500'}`}></span>
+                  {project.alert.severity} EARLY WARNING
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-slate-800 border border-slate-200">
+                  {project.alert.alertType}
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium">
+                Detected: {project.alert.detectedPeriod}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 text-xs">
+              <div className="bg-white/80 p-2.5 rounded-lg border border-amber-200/70">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+                  Observed Evidence
+                </span>
+                <p className="text-slate-800 text-[11px] font-medium leading-relaxed">
+                  "{project.alert.evidence}"
+                </p>
+              </div>
+
+              <div className="bg-white/80 p-2.5 rounded-lg border border-blue-200/70">
+                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block mb-0.5">
+                  Recommended Attention
+                </span>
+                <p className="text-blue-900 text-[11px] font-medium leading-relaxed">
+                  {project.alert.recommendedAttention}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="px-5 border-b border-slate-200 bg-slate-50 flex gap-4">
@@ -353,7 +426,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
         {/* Body Content Area */}
         <div className="p-5 overflow-y-auto flex-1 space-y-6">
           
-          {/* TAB 1: SHAP EXPLAINABILITY */}
+          {/* TAB 1: RISK INDICATOR ATTRIBUTION */}
           {activeTab === 'explainability' && (
             <div className="space-y-5">
               
@@ -416,7 +489,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-bold text-slate-800">{driver.label}</span>
                             <span className={`font-mono font-bold ${isPositive ? 'text-red-600' : 'text-emerald-600'}`}>
-                              {driver.shapValue} wt
+                              {isPositive ? `+${driver.shapValue}` : driver.shapValue} pts
                             </span>
                           </div>
 
@@ -576,7 +649,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
                       <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Predicted Policy Intervention Outcomes</span>
+                        <span>Scenario Simulation Outcomes</span>
                       </h4>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -597,29 +670,55 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                         </div>
 
                         <div className="bg-white p-3 rounded-lg border border-slate-200">
-                          <span className="text-[10px] font-medium text-slate-600">Schedule Delay Saved</span>
-                          <div className="flex items-baseline gap-2 mt-1">
-                            <span className="text-xl font-bold text-orange-600">
-                              +{simResult.delaySavedMonths}
-                            </span>
-                            <span className="text-xs text-slate-600">Months Recovered</span>
-                          </div>
-                          <span className="text-[10px] text-slate-600 mt-0.5 block">
-                            New predicted delay: +{simResult.predictedDelayMonthsSimulated} mo
-                          </span>
+                          <span className="text-[10px] font-medium text-slate-600">Schedule Sensitivity</span>
+                          {simResult.predictedDelayMonthsSimulated != null ? (
+                            <>
+                              <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-xl font-bold text-orange-600">
+                                  +{simResult.delaySavedMonths}
+                                </span>
+                                <span className="text-xs text-slate-600">Months Recovered</span>
+                              </div>
+                              <span className="text-[10px] text-slate-600 mt-0.5 block">
+                                Target delay: +{simResult.predictedDelayMonthsSimulated} mo
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="mt-1">
+                                <span className="text-sm font-semibold text-slate-700">Deterministic Mode</span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                                Baseline delay target not modeled
+                              </span>
+                            </>
+                          )}
                         </div>
 
                         <div className="bg-white p-3 rounded-lg border border-slate-200">
-                          <span className="text-[10px] font-medium text-slate-600">Cost Escalation Prevented</span>
-                          <div className="flex items-baseline gap-2 mt-1">
-                            <span className="text-xl font-bold text-emerald-600">
-                              ₹{simResult.costSavedCr?.toLocaleString()}
-                            </span>
-                            <span className="text-xs text-slate-600">Cr Saved</span>
-                          </div>
-                          <span className="text-[10px] text-slate-600 mt-0.5 block">
-                            Escalation curtailed to ₹{simResult.predictedCostEscalationCrSimulated} Cr
-                          </span>
+                          <span className="text-[10px] font-medium text-slate-600">Cost Escalation Sensitivity</span>
+                          {simResult.predictedCostEscalationCrSimulated != null ? (
+                            <>
+                              <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-xl font-bold text-emerald-600">
+                                  ₹{simResult.costSavedCr?.toLocaleString()}
+                                </span>
+                                <span className="text-xs text-slate-600">Cr Saved</span>
+                              </div>
+                              <span className="text-[10px] text-slate-600 mt-0.5 block">
+                                Escalation curtailed to ₹{simResult.predictedCostEscalationCrSimulated} Cr
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="mt-1">
+                                <span className="text-sm font-semibold text-slate-700">Deterministic Mode</span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                                Baseline cost escalation not modeled
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -689,9 +788,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 <div className="space-y-3">
                   {project.mitigationRoadmap.length === 0 ? (
                     <div className="bg-white border border-slate-200 rounded-lg p-6 text-center text-slate-600">
-                      <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Mitigation Roadmap Pending Risk Calibration</p>
+                      <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Standard Project Monitoring Cadence</p>
                       <p className="text-[11px] text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
-                        In accordance with PAIMANA data integrity standards, mitigation interventions are mapped directly to verified risk drivers and will be generated upon Phase 2 model training.
+                        In accordance with PAIMANA operational monitoring standards, specialized mitigation roadmaps are prioritized for projects with elevated risk indicators or cabinet-level escalations.
                       </p>
                     </div>
                   ) : (
