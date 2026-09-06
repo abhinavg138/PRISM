@@ -39,6 +39,16 @@ export interface ProjectPriority {
   assessedAt?: string;
 }
 
+export interface SectorStat {
+  sector: string;
+  totalProjects: number;
+  avgPhysicalProgress: number;
+  highRiskProjects: number;
+  criticalProjects: number;
+  avgRiskScore: number;
+  totalBudgetCr: number;
+}
+
 export type SectorType = 
   | 'Railways' 
   | 'Road Transport & Highways' 

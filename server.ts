@@ -238,6 +238,28 @@ async function startServer() {
     });
   });
 
+  // Infrastructure Sectors Intelligence endpoint
+  app.get('/api/sectors', (req, res) => {
+    if (currentDataSource === 'PAIMANA') {
+      const sectors = paimanaRepository.getSectorStats();
+      return res.json({
+        dataSource: 'PAIMANA',
+        sectors,
+        totalProjects: sectors.reduce((acc, s) => acc + s.totalProjects, 0),
+        note: 'Sector classifications are derived from implementing agencies.'
+      });
+    }
+
+    // DEMO mode fallback
+    const sectors = paimanaRepository.getSectorStats(currentDemoProjects);
+    res.json({
+      dataSource: 'DEMO',
+      sectors,
+      totalProjects: currentDemoProjects.length,
+      note: 'Sector classifications are derived from implementing agencies.'
+    });
+  });
+
 
   // Alias for observations history
   app.get('/api/projects/:id/observations', (req, res) => {

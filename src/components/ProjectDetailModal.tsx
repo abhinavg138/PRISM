@@ -326,7 +326,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Interactive "What-If" Policy Simulator</span>
+            <span>Scenario Policy Simulation</span>
           </button>
           <button
             onClick={() => setActiveTab('scurve')}
@@ -452,14 +452,14 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     <Sliders className="w-6 h-6" />
                   </div>
                   <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                    What-If Policy Simulation Scheduled for Phase 2
+                    Policy Scenario Simulation
                   </h4>
                   <p className="text-xs text-slate-600 mt-2 max-w-lg mx-auto leading-relaxed">
-                    Interactive policy intervention simulation requires calibrated risk feature weights and trained counterfactual regression models. In accordance with strict data integrity standards, simulation metrics are not fabricated for unrated PAIMANA records.
+                    Interactive policy intervention simulation models counterfactual adjustments to project constraints. In accordance with strict data integrity standards, simulation metrics are not fabricated for unrated PAIMANA records.
                   </p>
                   <div className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-700 shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    <span>To experience calibrated policy simulation on USBRL, launch the <strong>Judge Walkthrough</strong> in DEMO mode.</span>
+                    <span>To experience policy scenario simulation on USBRL, launch <strong>Judge Demo Mode</strong>.</span>
                   </div>
                 </div>
               ) : (
@@ -469,11 +469,11 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     <div className="flex items-center gap-2">
                       <Sliders className="w-4 h-4 text-blue-600" />
                       <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                        Interactive What-If Scenario Modeling (SIH 2026 Engine)
+                        Interactive What-If Scenario Simulation (Exploratory Policy Modeling)
                       </h3>
                     </div>
                     <p className="text-xs text-slate-700 mt-1">
-                      Simulate policy interventions in statutory clearances, contractor liquidity, and engineering buffers to predict resulting reductions in project risk, delay, and financial overrun.
+                      Simulate policy interventions in statutory clearances, contractor liquidity, and engineering buffers to observe hypothetical impacts on project risk indicators. Note: This tool performs rule-based exploratory scenario simulation rather than a validated predictive model.
                     </p>
                   </div>
 

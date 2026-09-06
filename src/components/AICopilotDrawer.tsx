@@ -60,7 +60,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
       const projectPrompt = `Focused on **${activeProject.name}** (\`${activeProject.code}\`, ${activeProject.sector}). ${scoreText}. You can ask about its monthly physical progress, capital expenditure, or timeline slippage.`;
       
       const suggestedQuestions = !isUnrated ? [
-        `What are the top SHAP drivers for ${activeProject.name.split('(')[0]}?`,
+        `What are the top risk drivers for ${activeProject.name.split('(')[0]}?`,
         `How can we simulate 12-week clearance speedup on ${activeProject.id}?`,
         `What is the primary delay cause for this project?`
       ] : [
@@ -253,7 +253,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
         {isLoading && (
           <div className="flex items-center gap-2 text-slate-600 p-3 bg-slate-50 rounded-xl border border-slate-200 w-fit">
             <Sparkles className="w-4 h-4 text-blue-600 animate-spin" />
-            <span className="text-xs">Reasoning with PAIMANA indicators & TreeSHAP attributions...</span>
+            <span className="text-xs">Reasoning with PAIMANA indicators & evidence-based risk factors...</span>
           </div>
         )}
 

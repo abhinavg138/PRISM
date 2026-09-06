@@ -115,7 +115,7 @@ ${rosterText}
               1. Executive Overview & Portfolio Exposure
             </h4>
             <p className="text-xs text-slate-700 mt-2 leading-relaxed font-sans">
-              Under the automated predictive risk intelligence pipeline (PRISM), <strong>{kpis.totalProjects} national priority infrastructure projects</strong> representing a cumulative revised capital allocation of <strong>₹{kpis.totalBudgetCr.toLocaleString()} Crores</strong> have been audited against calibrated PAIMANA operational features.
+              Under the automated risk intelligence pipeline (PRISM), <strong>{kpis.totalProjects} national priority infrastructure projects</strong> representing a cumulative revised capital allocation of <strong>₹{kpis.totalBudgetCr.toLocaleString()} Crores</strong> have been assessed against PAIMANA operational features using the PRISM evidence-based risk engine.
             </p>
 
             <div className="grid grid-cols-4 gap-3 mt-3 font-sans">
@@ -148,7 +148,7 @@ ${rosterText}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center text-slate-600">
                   <p className="font-bold text-slate-800 uppercase tracking-wider">No Projects Currently Classified in Critical Risk Tier</p>
                   <p className="text-[11px] text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
-                    Under the primary PAIMANA runtime dataset, project records are unrated pending Phase 2 ML model calibration. For a demonstration of the calibrated critical escalation roster, activate DEMO mode.
+                    Under the live PAIMANA dataset, zero projects currently meet the deterministic critical threshold (80-100). For a demonstration of the critical escalation roster, activate Judge Demo Mode.
                   </p>
                 </div>
               ) : (

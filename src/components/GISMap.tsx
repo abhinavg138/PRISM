@@ -229,7 +229,7 @@ export const GISMap: React.FC<GISMapProps> = ({ projects, onSelectProject, selec
               onClick={() => onSelectProject(hoveredProject)}
               className="mt-3 w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm"
             >
-              <span>Inspect Project & SHAP Attributions</span>
+              <span>Inspect Project & Risk Evidence</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -237,7 +237,7 @@ export const GISMap: React.FC<GISMapProps> = ({ projects, onSelectProject, selec
 
         {/* Static Map Hint */}
         <div className="absolute top-3 right-3 bg-slate-50 border border-slate-200 text-slate-600 text-[11px] px-2.5 py-1 rounded-md backdrop-blur">
-          Click any pin for full explainability & what-if simulation
+          Click any pin for full risk assessment & priority evidence
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import XLSX from 'xlsx';
-import { Project, PaimanaObservation, PortfolioKPIs, RiskTier, PriorityTier } from '../src/types/index';
+import { Project, PaimanaObservation, PortfolioKPIs, RiskTier, PriorityTier, SectorStat } from '../src/types/index';
 import { PRISMRiskEngine, RiskAssessment } from './riskEngine';
 import { PRISMPriorityEngine, PriorityAssessment } from './priorityEngine';
 
@@ -499,6 +499,66 @@ export class PaimanaRepository {
   public getSectors(): string[] {
     this.ensureLoaded();
     return Array.from(this.sectorsSet).filter(Boolean).sort();
+  }
+
+  /**
+   * Dynamically calculates sector intelligence metrics across all loaded projects.
+   * Sector classifications are derived from implementing agencies.
+   */
+  public getSectorStats(projects?: Project[]): SectorStat[] {
+    this.ensureLoaded();
+    const targetProjects = projects || Array.from(this.projectsMap.values());
+    const map = new Map<string, {
+      totalProjects: number;
+      totalProgress: number;
+      highRiskProjects: number;
+      criticalProjects: number;
+      totalRisk: number;
+      ratedCount: number;
+      totalBudgetCr: number;
+    }>();
+
+    for (const p of targetProjects) {
+      const sec = (p.sector as string) || 'Other Infrastructure';
+      if (!map.has(sec)) {
+        map.set(sec, {
+          totalProjects: 0,
+          totalProgress: 0,
+          highRiskProjects: 0,
+          criticalProjects: 0,
+          totalRisk: 0,
+          ratedCount: 0,
+          totalBudgetCr: 0
+        });
+      }
+      const entry = map.get(sec)!;
+      entry.totalProjects += 1;
+      entry.totalProgress += (p.physicalProgressPercent || 0);
+      entry.totalBudgetCr += (p.revisedCostCr || 0);
+      if (p.riskTier === 'CRITICAL') entry.criticalProjects += 1;
+      if (p.riskTier === 'HIGH') entry.highRiskProjects += 1;
+      if (p.riskScore != null) {
+        entry.totalRisk += p.riskScore;
+        entry.ratedCount += 1;
+      }
+    }
+
+    const result: SectorStat[] = [];
+    for (const [sec, stats] of map.entries()) {
+      result.push({
+        sector: sec,
+        totalProjects: stats.totalProjects,
+        avgPhysicalProgress: stats.totalProjects > 0 ? parseFloat((stats.totalProgress / stats.totalProjects).toFixed(1)) : 0,
+        criticalProjects: stats.criticalProjects,
+        highRiskProjects: stats.highRiskProjects,
+        avgRiskScore: stats.ratedCount > 0 ? parseFloat((stats.totalRisk / stats.ratedCount).toFixed(1)) : 0,
+        totalBudgetCr: Math.round(stats.totalBudgetCr)
+      });
+    }
+
+    // Sort by project count descending
+    result.sort((a, b) => b.totalProjects - a.totalProjects);
+    return result;
   }
 
   public computeKPIs(projects?: Project[]): PortfolioKPIs {
