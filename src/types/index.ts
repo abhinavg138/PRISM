@@ -1,4 +1,43 @@
-export type RiskTier = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+export type RiskTier = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'UNRATED';
+
+export type PriorityTier = 'P1' | 'P2' | 'P3';
+
+export interface PriorityEvidence {
+  physicalProgressPercent: number;
+  cumulativeExpenditureCr: number;
+  revisedCostCr: number;
+  originalCostCr: number;
+  costOverrunPercent: number;
+  expenditurePctOfRevisedCost: number;
+  timeOverrunMonths: number;
+  targetCompletionDate: string;
+  originalCompletionDate: string;
+  consecutiveStagnantMonths: number;
+  recentProgressDelta: number | null;
+  observationCount: number;
+}
+
+export interface ProjectPriority {
+  projectId: string;
+  projectName: string;
+  code: string;
+  sector: string;
+  state: string;
+  implementingAgency: string;
+  priorityScore: number;
+  priorityTier: PriorityTier;
+  riskScore: number;
+  riskTier: RiskTier;
+  evidenceConfidence: number;
+  urgency: number;
+  recentDeterioration: number;
+  primaryRiskDriver: string;
+  topRiskDrivers: string[];
+  priorityReason: string;
+  recommendedAction: string;
+  evidence?: PriorityEvidence;
+  assessedAt?: string;
+}
 
 export type SectorType = 
   | 'Railways' 
@@ -6,11 +45,18 @@ export type SectorType =
   | 'Power & Energy' 
   | 'Petroleum & Gas' 
   | 'Urban Affairs & Metro' 
-  | 'Ports & Shipping';
+  | 'Ports & Shipping'
+  | 'Telecommunications'
+  | 'Coal & Mining'
+  | 'Civil Aviation'
+  | 'Water Resources'
+  | 'Steel & Heavy Industry'
+  | 'Other Infrastructure'
+  | string;
 
 export interface LocationGeo {
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   city: string;
   state: string;
 }
@@ -37,9 +83,11 @@ export interface MitigationStep {
 
 export interface ProgressHistoryPoint {
   month: string;
-  plannedPercent: number;
+  reportMonth?: string;
+  plannedPercent?: number | null;
   actualPercent: number;
   financialExpenditureCr: number;
+  expenditurePctOfRevisedCost?: number | null;
 }
 
 export interface AuditEvent {
@@ -50,12 +98,45 @@ export interface AuditEvent {
   type: 'warning' | 'milestone' | 'audit' | 'delay';
 }
 
+export interface PaimanaObservation {
+  report_month: string;
+  report_page?: number | string;
+  row_no?: number | string;
+  project_id: string;
+  project_name: string;
+  agency: string;
+  legacy_ocms_code?: string;
+  pmgid?: string;
+  state: string;
+  approval_start_mm_yyyy?: string;
+  revised_start_mm_yyyy?: string;
+  original_target_completion_mm_yyyy?: string;
+  revised_target_completion_mm_yyyy?: string;
+  original_cost_cr: number;
+  revised_cost_cr: number;
+  cumulative_expenditure_cr: number;
+  physical_progress_pct: number;
+  source?: string;
+  source_file?: string;
+  expenditure_pct_of_revised_cost?: number;
+  cost_revision_pct?: number;
+  physical_progress_change_mom_pct_points?: number;
+  expenditure_change_mom_cr?: number;
+  revised_cost_change_mom_cr?: number;
+  progress_change?: number;
+  expenditure_change?: number;
+  expenditure_pct?: number;
+  progress_expenditure_gap?: number;
+}
+
 export interface Project {
   id: string;
   name: string;
   code: string;
   sector: SectorType;
-  ministry: string;
+  /** Internal classification derived from agency. Not an official PAIMANA field. */
+  derivedSector?: string;
+  ministry?: string;
   state: string;
   implementingAgency: string;
   location: LocationGeo;
@@ -63,23 +144,38 @@ export interface Project {
   revisedCostCr: number;
   cumulativeExpenditureCr: number;
   costOverrunPercent: number;
+  /** Actual PAIMANA field: spending as % of revised cost */
+  expenditurePctOfRevisedCost?: number | null;
   originalStartDate: string;
   originalCompletionDate: string;
   revisedCompletionDate: string;
   timeOverrunMonths: number;
   physicalProgressPercent: number;
-  financialProgressPercent: number;
-  riskScore: number; // 0 - 100
+  /** Optional/nullable. Keep physical progress and expenditure clearly separate. */
+  financialProgressPercent?: number | null;
+  /** null for unrated PAIMANA projects where risk has not been calculated yet */
+  riskScore: number | null;
   riskTier: RiskTier;
-  predictedDelayMonths: number;
-  predictedCostEscalationCr: number;
-  confidenceScore: number; // 0.0 - 1.0
-  primaryDelayCause: string;
+  predictedDelayMonths?: number | null;
+  predictedCostEscalationCr?: number | null;
+  confidenceScore?: number | null;
+  primaryDelayCause?: string;
   lastUpdated: string;
   topRiskDrivers: RiskDriver[];
   mitigationRoadmap: MitigationStep[];
   monthlyTrend: ProgressHistoryPoint[];
   auditTrail: AuditEvent[];
+  /** Intervention Priority Queue fields (Phase 3A) */
+  priorityScore?: number | null;
+  priorityTier?: PriorityTier | null;
+  priorityReason?: string;
+  recommendedAction?: string;
+  primaryRiskDriver?: string;
+  urgency?: number;
+  evidenceConfidence?: number;
+  dataSource?: 'PAIMANA' | 'DEMO';
+  /** Full raw PAIMANA record for complete source transparency */
+  rawPaimana?: PaimanaObservation;
   // Simulation baseline overrides
   simulationFactors?: {
     landAcquisitionBoostMonths?: number;
@@ -95,6 +191,10 @@ export interface PortfolioKPIs {
   highRiskProjects: number;
   moderateRiskProjects: number;
   lowRiskProjects: number;
+  unratedProjects?: number;
+  p1Projects?: number;
+  p2Projects?: number;
+  p3Projects?: number;
   totalBudgetCr: number;
   budgetAtRiskCr: number;
   averageDelayMonths: number;

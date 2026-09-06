@@ -35,14 +35,22 @@ export const GISMap: React.FC<GISMapProps> = ({ projects, onSelectProject, selec
         return { bg: 'bg-orange-500', border: 'border-orange-300', text: 'text-orange-600', ring: 'border-orange-500/40' };
       case 'MODERATE':
         return { bg: 'bg-yellow-500', border: 'border-yellow-300', text: 'text-amber-600', ring: 'border-yellow-500/40' };
-      default:
+      case 'LOW':
         return { bg: 'bg-emerald-500', border: 'border-emerald-300', text: 'text-emerald-600', ring: 'border-emerald-500/40' };
+      case 'UNRATED':
+      default:
+        return { bg: 'bg-slate-500', border: 'border-slate-300', text: 'text-slate-600', ring: 'border-slate-500/40' };
     }
   };
 
   const displayedProjects = sectorFilter === 'ALL' 
     ? projects 
     : projects.filter(p => p.sector === sectorFilter);
+
+  // Strictly omit projects without valid geocoordinates (zero coordinate fabrication)
+  const geolocatedProjects = displayedProjects.filter(
+    p => p.location?.lat != null && p.location?.lng != null && p.location.lat > 0 && p.location.lng > 0
+  );
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
@@ -117,9 +125,26 @@ export const GISMap: React.FC<GISMapProps> = ({ projects, onSelectProject, selec
           <text x="7" y="46" fill="#64748b" fontSize="2.2" fontStyle="italic">23.5° N Tropic of Cancer</text>
         </svg>
 
-        {/* Project Geo Pins */}
-        {displayedProjects.map((p) => {
-          const coords = projectToCoords(p.location.lat, p.location.lng);
+        {/* Notice when viewing PAIMANA projects with no coordinates */}
+        {geolocatedProjects.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6">
+            <div className="bg-white/95 backdrop-blur border border-slate-300 rounded-xl p-5 text-center max-w-md shadow-lg pointer-events-auto">
+              <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto mb-2.5 text-blue-600">
+                <Compass className="w-5 h-5" />
+              </div>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Geospatial Coordinates Not In Dataset
+              </h4>
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                The official MoSPI PAIMANA dataset does not include GIS coordinates. To preserve data integrity, coordinates are not fabricated. Projects without verified coordinates are omitted from the map.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Project Geo Pins for geocoded projects */}
+        {geolocatedProjects.map((p) => {
+          const coords = projectToCoords(p.location.lat!, p.location.lng!);
           const colors = getPinColor(p.riskTier);
           const isSelected = p.id === selectedProjectId;
 
@@ -143,13 +168,13 @@ export const GISMap: React.FC<GISMapProps> = ({ projects, onSelectProject, selec
                   isSelected ? 'ring-4 ring-amber-400 scale-125' : ''
                 }`}
               >
-                {p.riskScore}
+                {p.riskScore != null ? p.riskScore : '—'}
               </div>
 
               {/* Label Pill on Hover or Selected */}
               <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-50 border border-slate-300 text-slate-900 text-[11px] font-medium px-2 py-1 rounded shadow-xl pointer-events-none z-30">
                 {p.name.split('(')[0]}
-                <span className="ml-1 text-slate-600">({p.location.city})</span>
+                <span className="ml-1 text-slate-600">({p.location.city || p.state})</span>
               </div>
             </div>
           );

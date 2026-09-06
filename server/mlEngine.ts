@@ -10,17 +10,17 @@ export interface SimulationParams {
 
 export interface SimulationResult {
   projectId: string;
-  originalRiskScore: number;
+  originalRiskScore: number | null;
   originalRiskTier: RiskTier;
-  simulatedRiskScore: number;
+  simulatedRiskScore: number | null;
   simulatedRiskTier: RiskTier;
-  riskScoreDelta: number; // negative is improvement
-  predictedDelayMonthsOriginal: number;
-  predictedDelayMonthsSimulated: number;
-  delaySavedMonths: number;
-  predictedCostEscalationCrOriginal: number;
-  predictedCostEscalationCrSimulated: number;
-  costSavedCr: number;
+  riskScoreDelta: number | null;
+  predictedDelayMonthsOriginal: number | null;
+  predictedDelayMonthsSimulated: number | null;
+  delaySavedMonths: number | null;
+  predictedCostEscalationCrOriginal: number | null;
+  predictedCostEscalationCrSimulated: number | null;
+  costSavedCr: number | null;
   updatedDrivers: RiskDriver[];
   actionableInsights: string[];
 }
@@ -29,21 +29,35 @@ export class MLRiskEngine {
   /**
    * Calibrated XGBoost/GBDT scoring formula for Indian infrastructure projects
    * incorporating PAIMANA / MoSPI indicators.
+   * Only applicable to DEMO mode with seeded baselines.
    */
   public static calculateProjectRisk(
     p: Project,
     simParams?: Partial<SimulationParams>
   ): {
-    riskScore: number;
+    riskScore: number | null;
     riskTier: RiskTier;
-    predictedDelayMonths: number;
-    predictedCostEscalationCr: number;
+    predictedDelayMonths: number | null;
+    predictedCostEscalationCr: number | null;
+    confidenceScore: number | null;
     shapDrivers: RiskDriver[];
   } {
+    // Return null / UNRATED only for projects without a computed risk score.
+    // PAIMANA projects now receive a deterministic score from PRISMRiskEngine.
+    if (p.riskScore == null) {
+      return {
+        riskScore: null,
+        riskTier: 'UNRATED',
+        predictedDelayMonths: null,
+        predictedCostEscalationCr: null,
+        confidenceScore: null,
+        shapDrivers: []
+      };
+    }
+
     // Baseline features
     const physical = p.physicalProgressPercent;
-    const financial = p.financialProgressPercent;
-    const divergence = physical > 0 ? financial / physical : 1.0;
+    const financial = p.financialProgressPercent || 0;
     const timeOverrun = p.timeOverrunMonths;
     const costOverrun = p.costOverrunPercent;
     const budgetCr = p.revisedCostCr;
@@ -54,7 +68,6 @@ export class MLRiskEngine {
     const geoMitigation = simParams?.weatherGeologicalMitigationLevel || 0;
     const hpc = simParams?.fastTrackHighPowerCommittee ? 1 : 0;
 
-    // Base score calculation with interaction terms
     let rawScore = p.riskScore;
 
     // Factor in simulation improvements
@@ -78,11 +91,11 @@ export class MLRiskEngine {
 
     // Proportional delay and cost escalation impact
     const scoreRatio = simulatedScore / (rawScore || 1);
-    const predictedDelay = Math.max(0.2, Math.round(p.predictedDelayMonths * scoreRatio * 10) / 10);
-    const predictedCostEscalation = Math.max(0, Math.round(p.predictedCostEscalationCr * scoreRatio));
+    const predictedDelay = p.predictedDelayMonths != null ? Math.max(0.2, Math.round(p.predictedDelayMonths * scoreRatio * 10) / 10) : null;
+    const predictedCostEscalation = p.predictedCostEscalationCr != null ? Math.max(0, Math.round(p.predictedCostEscalationCr * scoreRatio)) : null;
 
     // Dynamic SHAP attribution adjustment
-    const updatedDrivers: RiskDriver[] = p.topRiskDrivers.map((driver) => {
+    const updatedDrivers: RiskDriver[] = (p.topRiskDrivers || []).map((driver) => {
       let adjShap = driver.shapValue;
       if (driver.category === 'Land Acquisition' || driver.category === 'Clearances & Approvals') {
         adjShap = Math.round((adjShap - (landBoost * 0.4 + hpc * 3.0)) * 10) / 10;
@@ -104,6 +117,7 @@ export class MLRiskEngine {
       riskTier: simulatedTier,
       predictedDelayMonths: predictedDelay,
       predictedCostEscalationCr: predictedCostEscalation,
+      confidenceScore: p.confidenceScore ?? null,
       shapDrivers: updatedDrivers
     };
   }
@@ -112,15 +126,36 @@ export class MLRiskEngine {
    * Runs What-If Simulation and generates actionable insights
    */
   public static simulate(p: Project, params: SimulationParams): SimulationResult {
+    if (p.riskScore == null) {
+      return {
+        projectId: p.id,
+        originalRiskScore: null,
+        originalRiskTier: 'UNRATED',
+        simulatedRiskScore: null,
+        simulatedRiskTier: 'UNRATED',
+        riskScoreDelta: null,
+        predictedDelayMonthsOriginal: null,
+        predictedDelayMonthsSimulated: null,
+        delaySavedMonths: null,
+        predictedCostEscalationCrOriginal: null,
+        predictedCostEscalationCrSimulated: null,
+        costSavedCr: null,
+        updatedDrivers: [],
+        actionableInsights: [
+          'Risk score unavailable. What-If simulation requires a computed PRISM Risk Index.'
+        ]
+      };
+    }
+
     const originalScore = p.riskScore;
     const originalTier = p.riskTier;
-    const originalDelay = p.predictedDelayMonths;
-    const originalCost = p.predictedCostEscalationCr;
+    const originalDelay = p.predictedDelayMonths ?? 0;
+    const originalCost = p.predictedCostEscalationCr ?? 0;
 
     const result = this.calculateProjectRisk(p, params);
-    const riskScoreDelta = Math.round((result.riskScore - originalScore) * 10) / 10;
-    const delaySaved = Math.max(0, Math.round((originalDelay - result.predictedDelayMonths) * 10) / 10);
-    const costSaved = Math.max(0, Math.round(originalCost - result.predictedCostEscalationCr));
+    const riskScoreDelta = result.riskScore != null ? Math.round((result.riskScore - originalScore) * 10) / 10 : 0;
+    const delaySaved = result.predictedDelayMonths != null ? Math.max(0, Math.round((originalDelay - result.predictedDelayMonths) * 10) / 10) : 0;
+    const costSaved = result.predictedCostEscalationCr != null ? Math.max(0, Math.round(originalCost - result.predictedCostEscalationCr)) : 0;
 
     const insights: string[] = [];
     if (params.landClearanceAccelerationWeeks > 8) {

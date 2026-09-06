@@ -13,13 +13,16 @@ import { Project, FilterState, UserRole, PortfolioKPIs } from './types/index';
 import { Sparkles, ShieldAlert, ArrowRight, Zap, PlayCircle, Info } from 'lucide-react';
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>(SEEDED_PROJECTS);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [currentRole, setCurrentRole] = useState<UserRole>(DEMO_USER_ROLES[3]); // Default to SIH 2026 Jury Demo
   const [activeView, setActiveView] = useState<'dashboard' | 'gis' | 'analytics'>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [dataSource, setDataSource] = useState<'PAIMANA' | 'DEMO'>('PAIMANA');
 
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -28,9 +31,21 @@ export default function App() {
     riskTier: 'ALL',
     minCost: 0,
     maxCost: 200000,
-    sortBy: 'riskScore',
-    sortDirection: 'desc'
+    sortBy: 'id' as any,
+    sortDirection: 'asc'
   });
+
+  // Fetch metadata on mount to populate state and sector filters
+  useEffect(() => {
+    fetch('/api/metadata')
+      .then(res => res.json())
+      .then(data => {
+        if (data.states && data.states.length > 0) setAvailableStates(data.states);
+        if (data.sectors && data.sectors.length > 0) setAvailableSectors(data.sectors);
+        if (data.dataSource) setDataSource(data.dataSource);
+      })
+      .catch(err => console.warn('Could not load metadata:', err));
+  }, []);
 
   // Fetch projects from backend API
   const fetchProjects = async () => {
@@ -48,9 +63,10 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setProjects(data.projects);
+        if (data.dataSource) setDataSource(data.dataSource);
       }
     } catch (err) {
-      console.warn('Backend fetch failed, using local state:', err);
+      console.warn('Backend fetch failed:', err);
     } finally {
       setIsLoading(false);
     }
@@ -60,17 +76,6 @@ export default function App() {
     fetchProjects();
   }, [filters]);
 
-  // Derive unique sectors and states
-  const availableSectors = useMemo(() => {
-    const s = new Set(SEEDED_PROJECTS.map(p => p.sector));
-    return Array.from(s).sort();
-  }, []);
-
-  const availableStates = useMemo(() => {
-    const st = new Set(SEEDED_PROJECTS.map(p => p.state));
-    return Array.from(st).sort();
-  }, []);
-
   // Compute live KPIs
   const kpis: PortfolioKPIs = useMemo(() => {
     return computePortfolioKPIs(projects);
@@ -78,7 +83,7 @@ export default function App() {
 
   // Critical projects list for report
   const criticalProjects = useMemo(() => {
-    return projects.filter(p => p.riskTier === 'CRITICAL').sort((a, b) => b.riskScore - a.riskScore);
+    return projects.filter(p => p.riskTier === 'CRITICAL').sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
   }, [projects]);
 
   const handleFilterUpdate = (updates: Partial<FilterState>) => {
@@ -90,8 +95,9 @@ export default function App() {
       await fetch('/api/demo/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preset: 'default' })
+        body: JSON.stringify({ preset: 'paimana' })
       });
+      setDataSource('PAIMANA');
       setFilters({
         search: '',
         sector: 'ALL',
@@ -99,8 +105,8 @@ export default function App() {
         riskTier: 'ALL',
         minCost: 0,
         maxCost: 200000,
-        sortBy: 'riskScore',
-        sortDirection: 'desc'
+        sortBy: 'id' as any,
+        sortDirection: 'asc'
       });
       fetchProjects();
     } catch (e) {
@@ -108,11 +114,24 @@ export default function App() {
     }
   };
 
-  // Quick Judge Flow Demonstration Trigger
-  const triggerJudgeFlow = () => {
-    // 1. Select the top critical project: USBRL
-    const usbrl = projects.find(p => p.id === 'PRJ-IN-001') || projects[0];
-    setSelectedProject(usbrl);
+  // Quick Judge Flow Demonstration Trigger (switches explicitly to DEMO mode for evaluator walkthrough)
+  const triggerJudgeFlow = async () => {
+    try {
+      await fetch('/api/demo/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preset: 'demo' })
+      });
+      setDataSource('DEMO');
+      await fetchProjects();
+      const res = await fetch('/api/projects/PRJ-IN-001');
+      if (res.ok) {
+        const usbrl = await res.json();
+        setSelectedProject(usbrl);
+      }
+    } catch (err) {
+      console.error('Judge flow error:', err);
+    }
   };
 
   return (
@@ -144,8 +163,8 @@ export default function App() {
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   SIH 2026 Judge Evaluation Stream
                 </h3>
-                <span className="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.2 rounded font-mono">
-                  LIVE MVP
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded font-mono ${dataSource === 'PAIMANA' ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white'}`}>
+                  {dataSource} ACTIVE
                 </span>
               </div>
               <p className="text-xs text-slate-700 mt-0.5">
@@ -236,7 +255,7 @@ export default function App() {
         onClose={() => setIsCopilotOpen(false)}
         activeProject={selectedProject}
         onSelectProject={(p) => setSelectedProject(p)}
-        allProjects={SEEDED_PROJECTS}
+        allProjects={projects.length > 0 ? projects : (dataSource === 'DEMO' ? SEEDED_PROJECTS : [])}
       />
 
       {/* Executive Flash Report Modal */}

@@ -26,17 +26,21 @@ export const ExecutiveFlashReportModal: React.FC<ExecutiveFlashReportModalProps>
   });
 
   const handleCopy = () => {
+    const rosterText = criticalProjects.length > 0
+      ? criticalProjects.map(p => `- ${p.name} (${p.code}): Risk ${p.riskScore}/100. Overrun: +${p.costOverrunPercent}%, Delay: +${p.timeOverrunMonths} mo. Primary Cause: ${p.primaryDelayCause}`).join('\n')
+      : '- No projects currently classified in Critical Tier (PAIMANA records are UNRATED pending Phase 2 ML model calibration)';
+
     const text = `PRISM EXECUTIVE FLASH REPORT - ${today}
 MoSPI / Prime Minister's Project Monitoring Group (PMG)
 Total Monitored Projects: ${kpis.totalProjects}
 Committed Capital Outlay: ₹${kpis.totalBudgetCr.toLocaleString()} Cr
-Budget at Risk: ₹${kpis.budgetAtRiskCr.toLocaleString()} Cr (${Math.round((kpis.budgetAtRiskCr/kpis.totalBudgetCr)*100)}%)
+Budget at Risk: ₹${kpis.budgetAtRiskCr.toLocaleString()} Cr (${kpis.totalBudgetCr > 0 ? Math.round((kpis.budgetAtRiskCr/kpis.totalBudgetCr)*100) : 0}%)
 Critical Risk Projects: ${kpis.criticalProjects}
 Average Schedule Overrun: ${kpis.averageDelayMonths} Months
 Average Cost Escalation: +${kpis.averageCostEscalationPercent}%
 
 CRITICAL ESCALATION ROSTER:
-${criticalProjects.map(p => `- ${p.name} (${p.code}): Risk ${p.riskScore}/100. Overrun: +${p.costOverrunPercent}%, Delay: +${p.timeOverrunMonths} mo. Primary Cause: ${p.primaryDelayCause}`).join('\n')}
+${rosterText}
 `;
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -140,30 +144,39 @@ ${criticalProjects.map(p => `- ${p.name} (${p.code}): Risk ${p.riskScore}/100. O
               2. Priority Escalation Projects Requiring Cabinet Inter-Ministerial Orders
             </h4>
             <div className="mt-3 space-y-3 font-sans">
-              {criticalProjects.map((p, idx) => (
-                <div key={p.id} className="p-3 bg-slate-50 border border-slate-300 rounded text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">
-                      {idx + 1}. {p.name} ({p.code})
-                    </span>
-                    <span className="font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded text-[10px]">
-                      RISK SCORE: {p.riskScore} (CRITICAL)
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[11px] text-slate-600 flex gap-4">
-                    <span>Ministry: <strong>{p.ministry}</strong></span>
-                    <span>State: <strong>{p.state}</strong></span>
-                    <span>Cost Overrun: <strong className="text-red-700">+{p.costOverrunPercent}%</strong></span>
-                    <span>Anticipated Delay: <strong className="text-orange-700">+{p.predictedDelayMonths} mo</strong></span>
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-slate-700 bg-white p-2 rounded border border-slate-200">
-                    <strong>Primary Bottleneck:</strong> {p.primaryDelayCause}
-                  </p>
-                  <p className="mt-1 text-[10px] text-slate-500">
-                    <strong>Recommended Cabinet Action:</strong> {p.mitigationRoadmap[0]?.action} [Lead: {p.mitigationRoadmap[0]?.responsibleParty}]
+              {criticalProjects.length === 0 ? (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center text-slate-600">
+                  <p className="font-bold text-slate-800 uppercase tracking-wider">No Projects Currently Classified in Critical Risk Tier</p>
+                  <p className="text-[11px] text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
+                    Under the primary PAIMANA runtime dataset, project records are unrated pending Phase 2 ML model calibration. For a demonstration of the calibrated critical escalation roster, activate DEMO mode.
                   </p>
                 </div>
-              ))}
+              ) : (
+                criticalProjects.map((p, idx) => (
+                  <div key={p.id} className="p-3 bg-slate-50 border border-slate-300 rounded text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">
+                        {idx + 1}. {p.name} ({p.code})
+                      </span>
+                      <span className="font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded text-[10px]">
+                        RISK SCORE: {p.riskScore} (CRITICAL)
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-600 flex gap-4">
+                      <span>Agency: <strong>{p.ministry || p.implementingAgency}</strong></span>
+                      <span>State: <strong>{p.state}</strong></span>
+                      <span>Cost Overrun: <strong className="text-red-700">+{p.costOverrunPercent}%</strong></span>
+                      <span>Anticipated Delay: <strong className="text-orange-700">+{p.predictedDelayMonths} mo</strong></span>
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-slate-700 bg-white p-2 rounded border border-slate-200">
+                      <strong>Primary Bottleneck:</strong> {p.primaryDelayCause}
+                    </p>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      <strong>Recommended Cabinet Action:</strong> {p.mitigationRoadmap[0]?.action || 'Cabinet inter-ministerial review'} [Lead: {p.mitigationRoadmap[0]?.responsibleParty || p.implementingAgency}]
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

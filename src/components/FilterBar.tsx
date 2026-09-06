@@ -76,7 +76,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           {/* Risk Tier Quick Tabs */}
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
-            {['ALL', 'CRITICAL', 'HIGH', 'MODERATE', 'LOW'].map(tier => (
+            {['ALL', 'CRITICAL', 'HIGH', 'MODERATE', 'LOW', 'UNRATED'].map(tier => (
               <button
                 key={tier}
                 onClick={() => onFilterChange({ riskTier: tier })}
@@ -90,11 +90,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       ? 'bg-yellow-500 text-white'
                       : tier === 'LOW'
                       ? 'bg-emerald-500 text-slate-900'
+                      : tier === 'UNRATED'
+                      ? 'bg-slate-300 text-slate-900 border border-slate-400'
                       : 'bg-gray-100 text-gray-800 border border-gray-200'
                     : 'text-slate-600 hover:text-slate-800'
                 }`}
               >
-                {tier === 'ALL' ? 'All' : tier}
+                {tier === 'ALL' ? 'All' : tier === 'UNRATED' ? 'Unrated' : tier}
               </button>
             ))}
           </div>

@@ -1,6 +1,6 @@
 import { Project, PortfolioKPIs } from '../src/types/index';
 
-export const SEEDED_PROJECTS: Project[] = [
+const RAW_SEEDED_PROJECTS: Project[] = [
   {
     id: 'PRJ-IN-001',
     name: 'Udhampur-Srinagar-Baramulla Rail Link (USBRL)',
@@ -1381,6 +1381,11 @@ export const SEEDED_PROJECTS: Project[] = [
   }
 ];
 
+export const SEEDED_PROJECTS: Project[] = RAW_SEEDED_PROJECTS.map(p => ({
+  ...p,
+  dataSource: 'DEMO' as const
+}));
+
 export const DEMO_USER_ROLES = [
   {
     id: 'role-mospi',
@@ -1418,28 +1423,31 @@ export function computePortfolioKPIs(projects: Project[]): PortfolioKPIs {
   let highRiskProjects = 0;
   let moderateRiskProjects = 0;
   let lowRiskProjects = 0;
+  let unratedProjects = 0;
   let totalBudgetCr = 0;
   let budgetAtRiskCr = 0;
   let totalDelayMonths = 0;
   let totalCostEscalationPercent = 0;
 
   for (const p of projects) {
-    totalBudgetCr += p.revisedCostCr;
-    totalDelayMonths += p.timeOverrunMonths;
-    totalCostEscalationPercent += p.costOverrunPercent;
+    totalBudgetCr += (p.revisedCostCr || 0);
+    totalDelayMonths += (p.timeOverrunMonths || 0);
+    totalCostEscalationPercent += (p.costOverrunPercent || 0);
 
     if (p.riskTier === 'CRITICAL') {
       criticalProjects++;
-      budgetAtRiskCr += p.revisedCostCr;
+      budgetAtRiskCr += (p.revisedCostCr || 0);
     } else if (p.riskTier === 'HIGH') {
       highRiskProjects++;
-      budgetAtRiskCr += p.revisedCostCr * 0.65;
+      budgetAtRiskCr += (p.revisedCostCr || 0) * 0.65;
     } else if (p.riskTier === 'MODERATE') {
       moderateRiskProjects++;
-      budgetAtRiskCr += p.revisedCostCr * 0.25;
-    } else {
+      budgetAtRiskCr += (p.revisedCostCr || 0) * 0.25;
+    } else if (p.riskTier === 'LOW') {
       lowRiskProjects++;
-      budgetAtRiskCr += p.revisedCostCr * 0.05;
+      budgetAtRiskCr += (p.revisedCostCr || 0) * 0.05;
+    } else {
+      unratedProjects++;
     }
   }
 
@@ -1449,6 +1457,7 @@ export function computePortfolioKPIs(projects: Project[]): PortfolioKPIs {
     highRiskProjects,
     moderateRiskProjects,
     lowRiskProjects,
+    unratedProjects,
     totalBudgetCr: Math.round(totalBudgetCr),
     budgetAtRiskCr: Math.round(budgetAtRiskCr),
     averageDelayMonths: totalProjects > 0 ? Math.round((totalDelayMonths / totalProjects) * 10) / 10 : 0,

@@ -24,12 +24,12 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
     {
       id: 'msg-welcome',
       role: 'assistant',
-      content: `### 🏛️ PRISM Risk Intelligence Copilot Active\n\nWelcome to the AI-grounded infrastructure monitoring assistant for the **Ministry of Statistics & Programme Implementation (MoSPI)** and **Cabinet PMG**.\n\nI analyze live PAIMANA features, TreeSHAP attributions, delay regressions, and policy simulations across **${allProjects.length} mega-infrastructure projects**.\n\nClick any quick prompt below or ask any specific inquiry!`,
+      content: `### 🏛️ PRISM Infrastructure Intelligence Copilot Active\n\nWelcome to the AI-grounded monitoring assistant for the **Ministry of Statistics & Programme Implementation (MoSPI)** and **Cabinet PMG**.\n\nI monitor live PAIMANA monthly observations, schedule slippages, and capital expenditure across **${allProjects.length} mega-infrastructure projects**.\n\nClick any quick prompt below or ask any specific inquiry!`,
       timestamp: 'Just now',
       suggestedQuestions: [
-        '🚨 Identify Top 3 Critical Projects for Cabinet escalation',
-        '🌲 Why is the USBRL Rail Link in Kashmir marked Critical?',
-        '⚡ How much budget is at risk across all transport corridors?',
+        '📊 Which projects have the highest schedule slippage?',
+        '💰 Compare physical progress vs expenditure across sectors',
+        '⚡ Which states have the largest committed capital outlay?',
         '📄 Generate MoSPI Flash Report executive summary'
       ]
     }
@@ -52,9 +52,23 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
   // When an active project is opened in the app, add a context notice
   useEffect(() => {
     if (activeProject && isOpen) {
-      // Check if already focused
-      const projectPrompt = `Focused on **${activeProject.name}** (\`${activeProject.code}\`, ${activeProject.sector}). Current Risk Score: **${activeProject.riskScore}/100** (${activeProject.riskTier}). Ask me about its TreeSHAP drivers, contractor stress, or What-If mitigations.`;
+      const isUnrated = activeProject.riskScore == null;
+      const scoreText = !isUnrated
+        ? `Current Risk Score: **${activeProject.riskScore}/100** (${activeProject.riskTier})`
+        : `Risk Status: **UNRATED** (Phase 2 model calibration pending)`;
       
+      const projectPrompt = `Focused on **${activeProject.name}** (\`${activeProject.code}\`, ${activeProject.sector}). ${scoreText}. You can ask about its monthly physical progress, capital expenditure, or timeline slippage.`;
+      
+      const suggestedQuestions = !isUnrated ? [
+        `What are the top SHAP drivers for ${activeProject.name.split('(')[0]}?`,
+        `How can we simulate 12-week clearance speedup on ${activeProject.id}?`,
+        `What is the primary delay cause for this project?`
+      ] : [
+        `What is the physical progress vs spend ratio for ${activeProject.name.split('(')[0]}?`,
+        `What is the recorded schedule slippage for ${activeProject.id}?`,
+        `Show monthly snapshot history for this project.`
+      ];
+
       const lastMsg = messages[messages.length - 1];
       if (lastMsg && !lastMsg.content.includes(activeProject.name)) {
         setMessages(prev => [
@@ -64,11 +78,7 @@ export const AICopilotDrawer: React.FC<AICopilotDrawerProps> = ({
             role: 'assistant',
             content: projectPrompt,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            suggestedQuestions: [
-              `What are the top SHAP drivers for ${activeProject.name.split('(')[0]}?`,
-              `How can we simulate 12-week clearance speedup on ${activeProject.id}?`,
-              `What is the primary delay cause for this project?`
-            ]
+            suggestedQuestions
           }
         ]);
       }

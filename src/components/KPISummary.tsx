@@ -44,20 +44,27 @@ export const KPISummary: React.FC<KPISummaryProps> = ({ kpis, onFilterRisk, sele
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-red-600 uppercase tracking-wider flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-            Critical Risk
+            Critical Risk / P1
           </span>
           <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
             <ShieldAlert className="w-4 h-4" />
           </div>
         </div>
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-red-600 tracking-tight">{kpis.criticalProjects}</span>
-          <span className="text-[10px] text-red-700 font-semibold px-1.5 py-0.5 rounded bg-red-100 border border-red-200">
-            Index ≥ 80
-          </span>
+        <div className="mt-2 flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold text-red-600 tracking-tight">{kpis.criticalProjects}</span>
+            <span className="text-[10px] text-red-700 font-semibold px-1.5 py-0.5 rounded bg-red-100 border border-red-200">
+              Risk ≥ 80
+            </span>
+          </div>
+          {kpis.p1Projects != null && (
+            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-red-600 text-white shadow-xs">
+              P1: {kpis.p1Projects}
+            </span>
+          )}
         </div>
         <p className="mt-1 text-[11px] text-red-600/80">
-          Require immediate cabinet escalation
+          Critical: <strong className="text-red-700">{kpis.criticalProjects}</strong> • P1 Interventions: <strong className="text-red-700">{kpis.p1Projects ?? 0}</strong>
         </p>
       </div>
 
@@ -103,17 +110,24 @@ export const KPISummary: React.FC<KPISummaryProps> = ({ kpis, onFilterRisk, sele
         }`}
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">High Risk Watch</span>
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">High Risk / P2</span>
           <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600">
             <AlertTriangle className="w-4 h-4" />
           </div>
         </div>
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-orange-600 tracking-tight">{kpis.highRiskProjects}</span>
-          <span className="text-xs text-gray-500">Projects</span>
+        <div className="mt-2 flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold text-orange-600 tracking-tight">{kpis.highRiskProjects}</span>
+            <span className="text-xs text-gray-500">High Risk</span>
+          </div>
+          {kpis.p2Projects != null && (
+            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-orange-500 text-white shadow-xs">
+              P2: {kpis.p2Projects}
+            </span>
+          )}
         </div>
         <p className="mt-1 text-[11px] text-gray-500">
-          Early warning monitoring active
+          High Risk: <strong className="text-orange-600">{kpis.highRiskProjects}</strong> • P2 Watch: <strong className="text-orange-600">{kpis.p2Projects ?? 0}</strong>
         </p>
       </div>
 
