@@ -1,0 +1,6 @@
+{
+  "name": "PRISM - Predictive Risk Intelligence & Smart Monitoring",
+  "description": "AI-driven infrastructure project risk intelligence platform identifying project delays, cost escalation, and schedule slippages with ML risk scoring, SHAP explainability, and grounded AI assistant for SIH 2026.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

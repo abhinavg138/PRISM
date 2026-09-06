@@ -1,0 +1,19 @@
+{
+  "model_name": "PRISM-GBDT-RiskRegressor-v2.1",
+  "training_samples": 600,
+  "validation_metrics": {
+    "mae": 3.42,
+    "rmse": 4.88,
+    "r2": 0.894,
+    "roc_auc": 0.941
+  },
+  "feature_importances": {
+    "land_acquisition_backlog": 0.284,
+    "geological_complexity_index": 0.231,
+    "statutory_clearance_delay_days": 0.187,
+    "contractor_liquidity_stress": 0.142,
+    "financial_physical_divergence": 0.098,
+    "utility_shifting_dependencies": 0.058
+  },
+  "shap_summary_available": true
+}
