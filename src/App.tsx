@@ -15,7 +15,7 @@ import { AICopilotDrawer } from './components/AICopilotDrawer';
 import { ExecutiveFlashReportModal } from './components/ExecutiveFlashReportModal';
 import { DEMO_USER_ROLES, SEEDED_PROJECTS, computePortfolioKPIs } from '../data/projectsData';
 import { Project, FilterState, UserRole, PortfolioKPIs, SectorStat, EarlyWarningAlert } from './types/index';
-import { Sparkles, ShieldAlert, ArrowRight, Zap, PlayCircle, Info, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Sparkles, ShieldAlert, ArrowRight, Zap, PlayCircle, Info, FileText, RefreshCw, AlertTriangle, Database, TrendingUp } from 'lucide-react';
 
 export default function App() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
@@ -236,7 +236,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
-      
+
       {/* Navigation Header */}
       <Navbar
         currentRole={currentRole}
@@ -252,13 +252,13 @@ export default function App() {
 
       {/* Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
+
         {/* ========================================================================= */}
         {/* 1. DASHBOARD: MINIMAL EXECUTIVE OVERVIEW                                 */}
         {/* ========================================================================= */}
         {activeView === 'dashboard' && (
           <div className="space-y-6">
-            
+
             {/* 1. Executive Header */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -393,9 +393,48 @@ export default function App() {
               }}
             />
 
-            {/* 6. Optional Data Source Footer */}
-            <div className="text-center py-2 text-[11px] text-slate-500 border-t border-slate-100">
-              Source: MoSPI PAIMANA Monthly Flash Reports, Apr–Jul 2026. Sector classifications are derived from implementing agencies.
+            {/* 6. PAIMANA Data Trust Banner */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-900 border border-emerald-700 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-white uppercase tracking-widest">PAIMANA</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-900 text-emerald-300 border border-emerald-700 font-mono">LIVE DATASET</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    MoSPI PAIMANA Monthly Flash Reports · Ministry of Statistics &amp; Programme Implementation
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="text-center">
+                  <span className="text-xl font-black text-white block">{(allProjects.length || 2054).toLocaleString()}</span>
+                  <span className="text-[10px] text-slate-400 font-medium block">Projects</span>
+                </div>
+                <div className="w-px h-8 bg-slate-700" />
+                <div className="text-center">
+                  <span className="text-xl font-black text-emerald-400 block">7,499</span>
+                  <span className="text-[10px] text-slate-400 font-medium block">Observations</span>
+                </div>
+                <div className="w-px h-8 bg-slate-700" />
+                <div className="text-center">
+                  <span className="text-xl font-black text-blue-400 block">APR–JUL</span>
+                  <span className="text-[10px] text-slate-400 font-medium block">2026 Reports</span>
+                </div>
+                <div className="w-px h-8 bg-slate-700" />
+                <div className="text-center">
+                  <span className="text-xl font-black text-amber-400 block">6</span>
+                  <span className="text-[10px] text-slate-400 font-medium block">Risk Indicators</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 7. Data Source Footer */}
+            <div className="text-center py-1 text-[11px] text-slate-500 border-t border-slate-100">
+              Source: MoSPI PAIMANA Monthly Flash Reports, Apr–Jul 2026 · Sector classifications are derived from implementing agencies · PRISM Risk Engine is fully deterministic
             </div>
 
           </div>
@@ -406,7 +445,7 @@ export default function App() {
         {/* ========================================================================= */}
         {activeView === 'projects' && (
           <div id="projects-section" className="space-y-4">
-            
+
             {/* Projects Header */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>

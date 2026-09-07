@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import dotenv from 'dotenv';
 import { Project } from '../src/types/index';
 import { RiskAssessment } from './riskEngine';
 import { PriorityAssessment } from './priorityEngine';
@@ -7,6 +8,9 @@ import { paimanaRepository } from './paimanaRepository';
 let aiClient: GoogleGenAI | null = null;
 
 function getGeminiClient(): GoogleGenAI | null {
+  if (!process.env.GEMINI_API_KEY) {
+    dotenv.config();
+  }
   if (!aiClient && process.env.GEMINI_API_KEY) {
     try {
       aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -665,7 +669,7 @@ Synthesize and explain this verified PAIMANA data directly in response to the us
 `;
 
       const response = await client.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: prompt,
         config: {
           systemInstruction,

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -27,10 +28,24 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Enable CORS for local development across multiple dev ports (e.g. 5173, 3000)
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   // --- API ROUTES ---
 
   // Health & Data Source Status Check
   app.get('/api/health', (req, res) => {
+    if (!process.env.GEMINI_API_KEY) {
+      dotenv.config();
+    }
     const stats = paimanaRepository.getStats();
     res.json({
       status: 'operational',
@@ -402,22 +417,23 @@ async function startServer() {
 
   // Grounded AI Copilot Chat Endpoint
   app.post('/api/copilot/chat', async (req, res) => {
-    const { message, activeProjectId } = req.body;
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    const activeList = currentDataSource === 'PAIMANA'
-      ? paimanaRepository.listProjects().projects
-      : currentDemoProjects;
-
     try {
+      const { message, activeProjectId } = req.body || {};
+      if (!message) {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+
+      const activeList = currentDataSource === 'PAIMANA'
+        ? paimanaRepository.listProjects().projects
+        : currentDemoProjects;
+
       const response = await askPRISMCopilot(message, activeList, activeProjectId);
       res.json(response);
     } catch (err: any) {
       console.error('Copilot Chat Error:', err);
       res.status(500).json({
         answer: 'PRISM AI engine encountered an internal processing event. Please re-try.',
+        error: err?.message || 'Internal processing error',
         groundedProjects: [],
         suggestedQuestions: ['Show top critical projects', 'Explain land acquisition bottlenecks']
       });
