@@ -366,7 +366,7 @@ export class PaimanaRepository {
   /**
    * Returns list of projects matching search, state, agency, sector, and riskTier filters.
    */
-  public listProjects(options: PaimanaFilterOptions = {}): { projects: Project[]; totalCount: number } {
+  public listProjects(options: PaimanaFilterOptions = {}): { projects: Project[]; allMatching: Project[]; totalCount: number } {
     this.ensureLoaded();
 
     let list = Array.from(this.projectsMap.values());
@@ -433,15 +433,17 @@ export class PaimanaRepository {
     });
 
     const totalCount = list.length;
+    const allMatching = list;
 
-    // Optional slicing / pagination
+    // Optional slicing / pagination (sanitized against negative numbers)
+    let paginatedList = list;
     if (options.offset != null || options.limit != null) {
-      const offset = options.offset || 0;
-      const limit = options.limit || list.length;
-      list = list.slice(offset, offset + limit);
+      const offset = Math.max(0, options.offset || 0);
+      const limit = Math.max(0, options.limit ?? list.length);
+      paginatedList = list.slice(offset, offset + limit);
     }
 
-    return { projects: list, totalCount };
+    return { projects: paginatedList, allMatching, totalCount };
   }
 
   /**

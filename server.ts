@@ -25,8 +25,15 @@ try {
 async function startServer() {
   const app = express();
   const PORT = 3000;
-
   app.use(express.json());
+
+  // Gracefully handle malformed JSON syntax errors without leaking server stack traces
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+      return res.status(400).json({ error: 'Malformed JSON payload' });
+    }
+    next(err);
+  });
 
   // Enable CORS for local development across multiple dev ports (e.g. 5173, 3000)
   app.use((req, res, next) => {
@@ -101,7 +108,7 @@ async function startServer() {
     } = req.query;
 
     if (currentDataSource === 'PAIMANA') {
-      const { projects: filtered, totalCount } = paimanaRepository.listProjects({
+      const { projects: filtered, allMatching, totalCount } = paimanaRepository.listProjects({
         search: search as string,
         state: state as string,
         agency: agency as string,
@@ -113,7 +120,8 @@ async function startServer() {
         offset: offset ? parseInt(offset as string, 10) : undefined
       });
 
-      const kpis = paimanaRepository.computeKPIs(filtered);
+      // Compute KPIs on the full matching dataset, NOT just the paginated slice
+      const kpis = paimanaRepository.computeKPIs(allMatching || filtered);
 
       return res.json({
         dataSource: 'PAIMANA',
@@ -404,11 +412,17 @@ async function startServer() {
       });
     }
 
+    const sanitizeNum = (val: any, min: number, max: number, def: number = 0): number => {
+      const n = Number(val);
+      if (isNaN(n) || !isFinite(n)) return def;
+      return Math.max(min, Math.min(max, n));
+    };
+
     const simResult = MLRiskEngine.simulate(project, {
       projectId,
-      landClearanceAccelerationWeeks: Number(params?.landClearanceAccelerationWeeks || 0),
-      contractorLiquidityInjectionPercent: Number(params?.contractorLiquidityInjectionPercent || 0),
-      weatherGeologicalMitigationLevel: Number(params?.weatherGeologicalMitigationLevel || 0),
+      landClearanceAccelerationWeeks: sanitizeNum(params?.landClearanceAccelerationWeeks, 0, 52, 0),
+      contractorLiquidityInjectionPercent: sanitizeNum(params?.contractorLiquidityInjectionPercent, 0, 100, 0),
+      weatherGeologicalMitigationLevel: sanitizeNum(params?.weatherGeologicalMitigationLevel, 0, 100, 0),
       fastTrackHighPowerCommittee: Boolean(params?.fastTrackHighPowerCommittee)
     });
 
