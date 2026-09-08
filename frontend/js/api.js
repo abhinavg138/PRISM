@@ -50,6 +50,7 @@ export const api = {
   },
 
   getProjectById: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}`),
+  getProjectBenchmark: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/benchmark`),
   getProjectHistory: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/history`),
   getProjectObservations: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/observations`),
   getProjectRisk: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/risk`),

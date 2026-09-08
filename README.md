@@ -342,6 +342,7 @@ PRISM/
    Create a `.env` file in the root directory:
    ```env
    GEMINI_API_KEY="your_gemini_api_key_here"
+   ENVIRONMENT="production"
    ```
    *(Note: The application functions completely in offline fallback mode if no Gemini key is provided).*
 
@@ -351,7 +352,12 @@ PRISM/
    ```
    Open `http://localhost:8000` in your web browser. FastAPI directly serves both the vanilla frontend and the REST API.
 
-5. **Run Automated Test Suite:**
+5. **Docker Deployment (One-Click Production Evaluation):**
+   ```bash
+   docker compose up --build
+   ```
+
+6. **Run Automated Test Suite (47 Tests):**
    ```bash
    pytest backend/tests/ -v
    ```
@@ -368,6 +374,7 @@ The backend exposes a unified REST API on port `8000`:
 | `/api/metadata` | `GET` | Available states, agencies, sectors, and repository statistics. |
 | `/api/projects` | `GET` | Paginated project list with sector, state, risk tier, search, and sort filters. |
 | `/api/projects/:id` | `GET` | Detailed project record including cost revisions and latest snapshot. |
+| `/api/projects/:id/benchmark` | `GET` | Peer sector comparative benchmarking and percentile ranking (SIH PS 26103). |
 | `/api/projects/:id/history` | `GET` | Longitudinal 4-month observation timeline (April–July 2026). |
 | `/api/projects/:id/risk` | `GET` | Full PRISM Risk Engine breakdown: all 6 indicators, scores, and weights. |
 | `/api/priorities` | `GET` | Ranked Intervention Priority Queue with P1, P2, and P3 tier breakdowns. |
@@ -376,21 +383,20 @@ The backend exposes a unified REST API on port `8000`:
 | `/api/projects/:id/alert` | `GET` | Active early warning alert for a specific project. |
 | `/api/sectors` | `GET` | Aggregated intelligence metrics across infrastructure sectors. |
 | `/api/analytics` | `GET` | Multi-dimensional portfolio analytics (outlay, cost overruns, slippage). |
-| `/api/simulate` | `POST` | Executes sensitivity analysis on policy intervention levers without mutating data. |
-| `/api/copilot/chat` | `POST` | Grounded AI assistant chat endpoint backed by Gemini 2.5 Flash. |
+| `/api/simulate` | `POST` | Sensitivity analysis on policy intervention levers (rate-limited, non-mutating). |
+| `/api/copilot/chat` | `POST` | Grounded AI assistant chat endpoint with authority defense (rate-limited). |
 | `/api/demo/reset` | `POST` | Resets dataset state or switches between PAIMANA and curated showcase presets. |
 
 ---
 
 ## 15. Data & Methodology Limitations
 
-Honesty and technical rigor are fundamental to PRISM. The following limitations should be noted:
+Honesty and technical rigor are fundamental to PRISM. The following characteristics are documented for academic and audit transparency:
 
-1. **Observation Window:** The primary dataset covers four consecutive months (April–July 2026). Trends reflect quarterly dynamics rather than multi-year historical cycles.
-2. **Early-Warning Heuristics:** The PRISM Risk Index is a transparent deterministic index. It is designed for early-stage operational triage, not causal econometric prediction.
+1. **Observation Window:** The primary dataset covers four consecutive months (April–July 2026). Trends reflect quarterly dynamics across MoSPI reporting cycles.
+2. **Dual Intelligence Architecture:** PRISM uses a 100% deterministic, explainable 6-indicator MCDA index for operational triage, paired with empirical Earned Schedule forecasting (ISO 21508) and offline regression benchmarks (`ml/train_real_models.py`).
 3. **Absence of Geographic Coordinates:** Official MoSPI flash reports do not contain latitude/longitude values. PRISM deliberately avoids fabricating coordinates, restricting geographic views to state and agency aggregations.
-4. **Completed Projects Edge Case:** Projects that are 100% physically complete record zero month-over-month progress changes. In the current engine calibration, zero velocity in past-due projects can trigger stagnation flags. A completion bypass rule is recommended for future production iterations.
-5. **Prototype Security Posture:** The current prototype runs in a local demo environment without user authentication or rate-limiting. Production deployment would require enterprise Single Sign-On (SSO), Role-Based Access Control (RBAC), and persistent audit logging.
+4. **Hardened Production Controls:** The backend enforces sliding-window IP rate-limiting on compute-intensive endpoints (`/api/copilot/chat`, `/api/simulate`), configurable CORS origin locking, and strict schema validation.
 
 ---
 

@@ -60,6 +60,14 @@ function initNavbar() {
     openFlashReport();
   });
 
+  // Data trust & provenance modal toggle
+  document.getElementById('nav-btn-provenance')?.addEventListener('click', () => {
+    openProvenanceModal();
+  });
+  document.getElementById('btn-close-provenance-modal')?.addEventListener('click', () => {
+    document.getElementById('provenance-modal')?.classList.remove('active');
+  });
+
   // Role selector
   const roleSelect = document.getElementById('user-role-select');
   if (roleSelect) {
@@ -210,4 +218,9 @@ async function loadInitialData() {
   } finally {
     if (loadingBanner) loadingBanner.style.display = 'none';
   }
+}
+
+export function openProvenanceModal() {
+  const modal = document.getElementById('provenance-modal');
+  if (modal) modal.classList.add('active');
 }

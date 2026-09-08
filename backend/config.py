@@ -18,14 +18,29 @@ DATA_DIR = ROOT_DIR / "data"
 EXCEL_PATH = str(DATA_DIR / "PRISM_PAIMANA_Dataset_v1_Apr-Jul_2026.xlsx")
 CSV_PATH = str(DATA_DIR / "PRISM_ML_features_v1.csv")
 
-# CORS Origins
-CORS_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-    "*"
-]
+# Environment & CORS configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+
+if allowed_origins_env:
+    CORS_ORIGINS = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+elif ENVIRONMENT == "production":
+    CORS_ORIGINS = [
+        f"http://localhost:{API_PORT}",
+        f"http://127.0.0.1:{API_PORT}",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ]
+else:
+    CORS_ORIGINS = [
+        f"http://localhost:{API_PORT}",
+        f"http://127.0.0.1:{API_PORT}",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "*"
+    ]
 
 # App URL
 APP_URL = os.getenv("APP_URL", f"http://localhost:{API_PORT}")

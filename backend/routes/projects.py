@@ -152,3 +152,10 @@ def get_project_detail(proj_id: str):
     if not demo:
         raise HTTPException(status_code=404, detail="Project not found")
     return demo.model_dump()
+
+@router.get("/projects/{proj_id}/benchmark")
+def get_project_benchmark_endpoint(proj_id: str):
+    benchmark = paimana_repository.get_project_benchmark(proj_id)
+    if not benchmark:
+        raise HTTPException(status_code=404, detail=f"Benchmarking not available for project '{proj_id}'")
+    return benchmark

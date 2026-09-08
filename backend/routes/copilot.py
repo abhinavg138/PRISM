@@ -4,11 +4,13 @@ from fastapi.responses import JSONResponse
 from backend.repositories.paimana_repository import paimana_repository
 from backend.services.copilot_service import CopilotService
 from backend.services.state_manager import app_state
+from backend.services.rate_limiter import copilot_limiter
 
 router = APIRouter(prefix="/api", tags=["Copilot"])
 
 @router.post("/copilot/chat")
 async def copilot_chat(request: Request):
+    copilot_limiter.check(request)
     try:
         body = await request.json()
     except Exception:

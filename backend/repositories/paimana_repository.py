@@ -12,7 +12,9 @@ from backend.models.project import (
     EarlyWarningAlert
 )
 from backend.models.risk import RiskAssessment, PriorityAssessment
-from backend.services.risk_engine import PRISMRiskEngine
+from backend.services.risk_engine import (
+    PRISMRiskEngine, parse_completion_date_to_fractional_year, report_month_to_fractional_year
+)
 from backend.services.priority_engine import PRISMPriorityEngine
 from backend.services.alert_engine import PRISMAlertEngine
 
@@ -69,6 +71,63 @@ def calc_month_difference(orig_str: Optional[str], rev_str: Optional[str]) -> in
         return 0
     diff = (rev[1] - orig[1]) * 12 + (rev[0] - orig[0])
     return max(0, diff)
+
+def compute_forward_looking_forecast(
+    obs_list: List[PaimanaObservation],
+    project: Project
+) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Computes an empirical, forward-looking Earned Schedule and EAC forecast.
+    Methodology: Earned Schedule / Earned Value Management (EVM - ISO 21508)
+    Grounded strictly on actual observed monthly physical velocity and burn rate.
+    """
+    if not obs_list:
+        return None, None
+    latest = obs_list[-1]
+    phys = latest.physical_progress_pct or 0.0
+    if phys >= 100.0:
+        return 0.0, 0.0
+
+    # 1. Earned Progress Velocity (pp/month)
+    deltas = []
+    if len(obs_list) >= 2:
+        for i in range(1, len(obs_list)):
+            d = (obs_list[i].physical_progress_pct or 0.0) - (obs_list[i-1].physical_progress_pct or 0.0)
+            deltas.append(d)
+
+    avg_velocity = (sum(deltas) / len(deltas)) if deltas else (latest.physical_progress_change_mom_pct_points or 0.0)
+    remaining_work = max(0.0, 100.0 - phys)
+
+    # 2. Schedule Forecast
+    target_date_str = latest.revised_target_completion_mm_yyyy or latest.original_target_completion_mm_yyyy
+    target_year = parse_completion_date_to_fractional_year(target_date_str)
+    report_year = report_month_to_fractional_year(latest.report_month or '2026-07')
+
+    if avg_velocity and avg_velocity > 0.1:
+        months_to_complete = remaining_work / avg_velocity
+        projected_completion_year = report_year + (months_to_complete / 12.0)
+        if target_year is not None:
+            delay_months = round(max(0.0, (projected_completion_year - target_year) * 12.0), 1)
+        else:
+            delay_months = round(months_to_complete, 1)
+    else:
+        current_slip = round(max(0.0, (report_year - target_year) * 12.0), 1) if target_year else 6.0
+        delay_months = round(max(current_slip, 6.0) + (remaining_work * 0.2), 1)
+
+    # 3. Cost Escalation Forecast (EAC)
+    orig_cost = latest.original_cost_cr or 0.0
+    rev_cost = latest.revised_cost_cr or orig_cost
+    cum_exp = latest.cumulative_expenditure_cr or 0.0
+    base_escalation = max(0.0, rev_cost - orig_cost)
+
+    if phys > 5.0 and cum_exp > 0:
+        unit_cost_pct = cum_exp / phys
+        projected_final_cost = cum_exp + (remaining_work * unit_cost_pct)
+        projected_cost_escalation = round(max(base_escalation, projected_final_cost - orig_cost), 1)
+    else:
+        projected_cost_escalation = round(base_escalation, 1)
+
+    return delay_months, projected_cost_escalation
 
 class PaimanaRepository:
     """
@@ -357,6 +416,10 @@ class PaimanaRepository:
 
                     if assessment.primaryConcerns:
                         project.primaryDelayCause = assessment.primaryConcerns[0]
+
+                    delay_pred, cost_pred = compute_forward_looking_forecast(obs_list, project)
+                    project.predictedDelayMonths = delay_pred
+                    project.predictedCostEscalationCr = cost_pred
                     rated_count += 1
             except Exception as err:
                 print(f"[PaimanaRepository] Risk/priority engine failed for project {pid}: {err}")
@@ -528,6 +591,97 @@ class PaimanaRepository:
     def get_project_priority_assessment(self, proj_id: str) -> Optional[PriorityAssessment]:
         self.ensure_loaded()
         return self.priority_assessments_map.get(proj_id)
+
+    def get_project_benchmark(self, proj_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Computes comparative peer sector benchmarking for SIH PS 26103.
+        Evaluates project's performance, cost escalation, and velocity against sector peers.
+        """
+        self.ensure_loaded()
+        project = self.projects_map.get(proj_id)
+        if not project:
+            return None
+
+        sector = project.sector
+        peers = [p for p in self.projects_map.values() if p.sector == sector]
+        if not peers:
+            peers = [project]
+
+        peer_count = len(peers)
+        avg_risk = round(sum(p.riskScore or 0 for p in peers) / peer_count, 1)
+        avg_cost_overrun = round(sum(p.costOverrunPercent or 0.0 for p in peers) / peer_count, 1)
+        avg_progress = round(sum(p.physicalProgressPercent or 0.0 for p in peers) / peer_count, 1)
+
+        velocities = []
+        for p in peers:
+            if p.rawPaimana and p.rawPaimana.physical_progress_change_mom_pct_points is not None:
+                velocities.append(p.rawPaimana.physical_progress_change_mom_pct_points)
+        avg_velocity = round(sum(velocities) / len(velocities), 2) if velocities else 0.0
+
+        project_risk = project.riskScore or 0
+        project_overrun = project.costOverrunPercent or 0.0
+        project_progress = project.physicalProgressPercent or 0.0
+        project_velocity = (
+            project.rawPaimana.physical_progress_change_mom_pct_points
+            if project.rawPaimana and project.rawPaimana.physical_progress_change_mom_pct_points is not None
+            else 0.0
+        )
+
+        lower_risk_peers = sum(1 for p in peers if (p.riskScore or 0) < project_risk)
+        percentile_in_sector = round((lower_risk_peers / peer_count) * 100.0, 1)
+
+        risk_tier_distribution = {'CRITICAL': 0, 'HIGH': 0, 'MODERATE': 0, 'LOW': 0}
+        for p in peers:
+            rt = p.riskTier or 'LOW'
+            if rt in risk_tier_distribution:
+                risk_tier_distribution[rt] += 1
+
+        risk_delta = round(project_risk - avg_risk, 1)
+        cost_overrun_delta = round(project_overrun - avg_cost_overrun, 1)
+        velocity_delta = round(project_velocity - avg_velocity, 2)
+
+        if percentile_in_sector >= 75 and cost_overrun_delta > 15:
+            verdict = "Significantly underperforming sector benchmark with critical cost and schedule risk"
+            performance_tier = "UNDERPERFORMING"
+        elif velocity_delta < -1.0 and project_progress < avg_progress:
+            verdict = "Progress velocity lagging behind sector peer pace"
+            performance_tier = "LAGGING"
+        elif project_risk < avg_risk and project_overrun <= avg_cost_overrun:
+            verdict = "Outperforming sector peer benchmark across cost and risk stability"
+            performance_tier = "OUTPERFORMING"
+        else:
+            verdict = "Performing within expected sector variance parameters"
+            performance_tier = "NORMAL"
+
+        return {
+            'projectId': project.id,
+            'projectName': project.name,
+            'sector': sector,
+            'peerCount': peer_count,
+            'projectMetrics': {
+                'riskScore': project_risk,
+                'costOverrunPercent': project_overrun,
+                'physicalProgressPercent': project_progress,
+                'monthlyVelocityPp': project_velocity,
+                'predictedDelayMonths': project.predictedDelayMonths,
+                'predictedCostEscalationCr': project.predictedCostEscalationCr
+            },
+            'sectorBenchmark': {
+                'avgRiskScore': avg_risk,
+                'avgCostOverrunPercent': avg_cost_overrun,
+                'avgPhysicalProgressPercent': avg_progress,
+                'avgMonthlyVelocityPp': avg_velocity,
+                'riskTierDistribution': risk_tier_distribution
+            },
+            'deltas': {
+                'riskScoreDelta': risk_delta,
+                'costOverrunDelta': cost_overrun_delta,
+                'velocityDelta': velocity_delta,
+                'percentileInSector': percentile_in_sector
+            },
+            'verdict': verdict,
+            'performanceTier': performance_tier
+        }
 
     def get_stats(self) -> Dict[str, Any]:
         self.ensure_loaded()

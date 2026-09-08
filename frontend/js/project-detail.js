@@ -127,6 +127,33 @@ function renderDossierContent(p, observations) {
       </div>
     </div>
 
+    <!-- Forward-Looking Earned Schedule & EAC Forecast (ISO 21508) -->
+    <div class="mt-4 p-3.5 rounded-lg bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white border border-blue-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-blue-300 uppercase tracking-wider">Earned Schedule & EAC Forecast</span>
+          <span class="badge bg-blue-500/20 text-blue-200 border border-blue-400/30 text-[9px]">ISO 21508 EVM</span>
+        </div>
+        <div class="text-xs text-slate-300 mt-1">
+          Projected completion slippage derived from observed MoM physical progress velocity and financial burn rate.
+        </div>
+      </div>
+      <div class="flex items-center gap-4 text-right">
+        <div>
+          <div class="text-[10px] text-slate-400 uppercase font-bold">Projected Delay</div>
+          <div class="text-base font-black text-amber-300">
+            ${p.predictedDelayMonths !== null && p.predictedDelayMonths !== undefined ? `+${p.predictedDelayMonths} mos` : '0.0 mos'}
+          </div>
+        </div>
+        <div class="border-l border-slate-700 pl-4">
+          <div class="text-[10px] text-slate-400 uppercase font-bold">Est. Additional Escalation</div>
+          <div class="text-base font-black text-emerald-300">
+            ${p.predictedCostEscalationCr ? `${formatCurrencyCr(p.predictedCostEscalationCr)}` : '₹0 Cr'}
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Agency & Implementation Context -->
     <div class="mt-4 p-3.5 rounded-lg bg-blue-50/50 border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-700 gap-2">
       <div>
@@ -136,6 +163,23 @@ function renderDossierContent(p, observations) {
       </div>
       <div>
         <strong>Latest Observation:</strong> ${escapeHtml(p.lastReportMonth || 'Jul-2026')}
+      </div>
+    </div>
+
+    <!-- Peer Sector Benchmarking (SIH PS 26103) -->
+    <div class="mt-6">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="scale" class="w-4 h-4 text-blue-600"></i>
+            Peer Sector Benchmarking (Comparative Analytics)
+          </h4>
+          <p class="text-xs text-slate-500">Evaluating asset execution velocity and cost stability against sectoral peers</p>
+        </div>
+        <span id="benchmark-status-badge" class="badge bg-slate-100 text-slate-700 text-[10px] font-bold">Loading...</span>
+      </div>
+      <div id="dossier-benchmarking-content" class="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+        <div class="text-xs text-slate-400 text-center py-2">Loading sector peer metrics...</div>
       </div>
     </div>
 
@@ -204,11 +248,102 @@ function renderDossierContent(p, observations) {
     notify('OPEN_COPILOT_WITH_PROJECT', p);
   });
 
-  // Render Longitudinal Chart
+  // Render Longitudinal Chart & Benchmarking
   renderLongitudinalChart(observations);
+  loadAndRenderBenchmark(p.id);
 
   // Initialize Intervention Lab
   initScenarioLab(p);
+}
+
+async function loadAndRenderBenchmark(projectId) {
+  const container = document.getElementById('dossier-benchmarking-content');
+  const badge = document.getElementById('benchmark-status-badge');
+  if (!container) return;
+
+  try {
+    const b = await api.getProjectBenchmark(projectId);
+    if (!b) {
+      container.innerHTML = `<div class="text-xs text-slate-400 py-2 text-center">Benchmarking comparison not available.</div>`;
+      return;
+    }
+
+    if (badge) {
+      let badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
+      if (b.performanceTier === 'UNDERPERFORMING') badgeClass = 'bg-red-50 text-red-700 border-red-200';
+      else if (b.performanceTier === 'LAGGING') badgeClass = 'bg-orange-50 text-orange-700 border-orange-200';
+      else if (b.performanceTier === 'OUTPERFORMING') badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      badge.className = `badge text-[10px] font-bold border ${badgeClass}`;
+      badge.textContent = `${b.performanceTier} (${b.deltas.percentileInSector}th %tile)`;
+    }
+
+    const m = b.projectMetrics;
+    const s = b.sectorBenchmark;
+    const d = b.deltas;
+
+    container.innerHTML = `
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200 text-xs">
+        <div>
+          <span class="font-bold text-slate-900">${escapeHtml(b.sector)} Peer Group:</span>
+          <span class="text-slate-600 ml-1 font-medium">${b.peerCount} monitored projects</span>
+        </div>
+        <div class="text-slate-500 italic text-[11px]">
+          ${escapeHtml(b.verdict)}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+        <!-- Risk Score Comparison -->
+        <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+          <div class="text-[10px] text-slate-400 uppercase font-bold">Composite Risk</div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span class="text-base font-bold text-slate-900">${Math.round(m.riskScore)}</span>
+            <span class="text-[11px] font-semibold ${d.riskScoreDelta > 0 ? 'text-red-600' : 'text-emerald-600'}">
+              ${d.riskScoreDelta > 0 ? `+${d.riskScoreDelta}` : d.riskScoreDelta} vs peer avg
+            </span>
+          </div>
+          <div class="text-[10.5px] text-slate-500 mt-1">Sector Avg: ${s.avgRiskScore}</div>
+        </div>
+
+        <!-- Monthly Progress Velocity -->
+        <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+          <div class="text-[10px] text-slate-400 uppercase font-bold">MoM Progress Velocity</div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span class="text-base font-bold text-slate-900">${m.monthlyVelocityPp > 0 ? `+${m.monthlyVelocityPp}` : m.monthlyVelocityPp} pp</span>
+            <span class="text-[11px] font-semibold ${d.velocityDelta < 0 ? 'text-red-600' : 'text-emerald-600'}">
+              ${d.velocityDelta > 0 ? `+${d.velocityDelta}` : d.velocityDelta} pp
+            </span>
+          </div>
+          <div class="text-[10.5px] text-slate-500 mt-1">Sector Avg: ${s.avgMonthlyVelocityPp} pp/mo</div>
+        </div>
+
+        <!-- Cost Escalation % -->
+        <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+          <div class="text-[10px] text-slate-400 uppercase font-bold">Cost Escalation</div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span class="text-base font-bold text-slate-900">${Math.round(m.costOverrunPercent)}%</span>
+            <span class="text-[11px] font-semibold ${d.costOverrunDelta > 0 ? 'text-red-600' : 'text-emerald-600'}">
+              ${d.costOverrunDelta > 0 ? `+${d.costOverrunDelta}%` : `${d.costOverrunDelta}%`}
+            </span>
+          </div>
+          <div class="text-[10.5px] text-slate-500 mt-1">Sector Avg: ${s.avgCostOverrunPercent}%</div>
+        </div>
+
+        <!-- Physical Completion -->
+        <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+          <div class="text-[10px] text-slate-400 uppercase font-bold">Physical Progress</div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span class="text-base font-bold text-slate-900">${Math.round(m.physicalProgressPercent)}%</span>
+            <span class="text-[11px] font-semibold text-slate-600 font-mono">${d.percentileInSector}th %tile</span>
+          </div>
+          <div class="text-[10.5px] text-slate-500 mt-1">Sector Avg: ${s.avgPhysicalProgressPercent}%</div>
+        </div>
+      </div>
+    `;
+    renderIcons();
+  } catch (err) {
+    container.innerHTML = `<div class="text-xs text-slate-400 py-2 text-center">Sector benchmark comparison not available.</div>`;
+  }
 }
 
 function renderLongitudinalChart(observations) {
@@ -221,10 +356,10 @@ function renderLongitudinalChart(observations) {
   }
 
   // Sort observations chronologically
-  const sorted = [...observations].sort((a, b) => (a.month || '').localeCompare(b.month || ''));
-  const labels = sorted.map(o => o.month || 'Cycle');
+  const sorted = [...observations].sort((a, b) => (a.report_month || a.month || '').localeCompare(b.report_month || b.month || ''));
+  const labels = sorted.map(o => o.report_month || o.month || 'Cycle');
   const physicalData = sorted.map(o => o.physical_progress_pct ?? 0);
-  const financialData = sorted.map(o => o.financial_progress_pct ?? 0);
+  const financialData = sorted.map(o => o.expenditure_pct_of_revised_cost ?? o.financial_progress_pct ?? 0);
 
   const ctx = canvas.getContext('2d');
   longitudinalChartInstance = new window.Chart(ctx, {

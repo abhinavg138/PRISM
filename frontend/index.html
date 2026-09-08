@@ -67,6 +67,12 @@
             </select>
           </div>
 
+          <!-- Data Trust & Provenance Trigger -->
+          <button id="nav-btn-provenance" class="btn btn-secondary text-xs py-1.5 px-2.5" title="MoSPI PAIMANA Data Provenance & Integrity">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-600"></i>
+            <span class="hidden sm:inline">Data Trust</span>
+          </button>
+
           <!-- Flash Report Trigger -->
           <button id="nav-btn-report" class="btn btn-secondary text-xs py-1.5 px-2.5" title="Executive Flash Report">
             <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-600"></i>
@@ -369,6 +375,107 @@
         </div>
         <div id="flash-report-body" class="modal-body">
           <!-- Injected by reports.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Provenance & Trust Matrix Modal -->
+    <div id="provenance-modal" class="modal-backdrop">
+      <div class="modal-container max-w-3xl">
+        <div class="modal-header">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+              <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">MoSPI PAIMANA Data Provenance & Trust Architecture</h3>
+              <p class="text-xs text-slate-500">SIH 2026 Problem Statement 26103 &bull; Grounded Evidence Verification</p>
+            </div>
+          </div>
+          <button id="btn-close-provenance-modal" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div class="modal-body space-y-4">
+          <!-- Authority Citation Box -->
+          <div class="p-3.5 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Primary Official Authority</div>
+              <div class="text-sm font-black mt-0.5">Ministry of Statistics & Programme Implementation (MoSPI)</div>
+              <div class="text-xs text-slate-300">Infrastructure & Project Monitoring Division (IPMD) &bull; PAIMANA Platform</div>
+            </div>
+            <div class="text-xs bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 font-mono text-emerald-400">
+              Threshold: &ge; ₹150 Crore Outlay
+            </div>
+          </div>
+
+          <!-- Exact Provenance Table -->
+          <div class="card p-4">
+            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Portfolio Snapshot Facts</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="text-slate-500 text-[10px] font-semibold uppercase">Total Monitored</div>
+                <div class="text-base font-bold text-slate-900 mt-1">2,054 Projects</div>
+                <div class="text-[10px] text-slate-400">17+ Union Ministries</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="text-slate-500 text-[10px] font-semibold uppercase">Longitudinal Series</div>
+                <div class="text-base font-bold text-slate-900 mt-1">7,499 Observations</div>
+                <div class="text-[10px] text-slate-400">Apr &ndash; Jul 2026 Cycles</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="text-slate-500 text-[10px] font-semibold uppercase">Sanctioned Outlay</div>
+                <div class="text-base font-bold text-slate-900 mt-1">₹32.74 Lakh Cr</div>
+                <div class="text-[10px] text-slate-400">National Infrastructure</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="text-slate-500 text-[10px] font-semibold uppercase">Early Warnings</div>
+                <div class="text-base font-bold text-red-600 mt-1">1,036 Active Alerts</div>
+                <div class="text-[10px] text-slate-400">Rule-Based Radar</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transparent Data Classification Matrix -->
+          <div class="card p-4 space-y-3">
+            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Classification of System Intelligence</h4>
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 flex items-start gap-2.5">
+                <span class="badge bg-emerald-600 text-white font-bold text-[9px] mt-0.5">REAL</span>
+                <div>
+                  <strong class="text-emerald-950">Observed MoSPI PAIMANA Records:</strong>
+                  <span class="text-emerald-900"> Sanctioned outlay, revised cost, cumulative expenditure, physical progress %, start & target completion dates, implementing agency, and ministry.</span>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-blue-50 border border-blue-200 flex items-start gap-2.5">
+                <span class="badge bg-blue-600 text-white font-bold text-[9px] mt-0.5">DERIVED</span>
+                <div>
+                  <strong class="text-blue-950">Deterministic Engineering Indicators:</strong>
+                  <span class="text-blue-900"> PRISM Risk Score (0-100), Priority Tier (P1/P2/P3), 6 Engineering Indicators (Velocity, Stagnation, Schedule Pressure, Cost Escalation, Physical-Financial Divergence, Trend). 100% auditable and repeatable.</span>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-indigo-50 border border-indigo-200 flex items-start gap-2.5">
+                <span class="badge bg-indigo-600 text-white font-bold text-[9px] mt-0.5">FORECAST</span>
+                <div>
+                  <strong class="text-indigo-950">Earned Schedule & EAC (ISO 21508):</strong>
+                  <span class="text-indigo-900"> Forward-looking projected completion delay and estimated additional escalation derived from empirical monthly physical velocity and spend burn rate.</span>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2.5">
+                <span class="badge bg-amber-600 text-white font-bold text-[9px] mt-0.5">SCENARIO</span>
+                <div>
+                  <strong class="text-amber-950">Intervention Lab Simulations:</strong>
+                  <span class="text-amber-900"> Sliders for land acquisition acceleration, liquidity injection, and HPC fast-tracking represent illustrative policy counterfactuals and strictly never mutate persistent project records.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Integrity Assurances -->
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-[11.5px] text-slate-600 space-y-1">
+            <div>&bull; <strong>Zero Synthetic Fabrication:</strong> Projects without verified GPS coordinates are honestly represented in the National State Registry without fabricated coordinates.</div>
+            <div>&bull; <strong>Anti-Hallucination Authority Defense:</strong> PRISM AI Copilot strictly defers risk and score computation to deterministic engines and rejects manual override prompts.</div>
+          </div>
         </div>
       </div>
     </div>

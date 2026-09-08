@@ -7,6 +7,7 @@ from backend.services.scenario_engine import ScenarioEngine
 from backend.services.copilot_service import CopilotService
 from backend.services.state_manager import app_state
 from backend.models.simulation import SimulationParams
+from backend.services.rate_limiter import simulation_limiter
 
 router = APIRouter(prefix="/api", tags=["Simulation"])
 
@@ -23,6 +24,7 @@ def sanitize_num(val: Any, min_val: float, max_val: float, default: float = 0.0)
 
 @router.post("/simulate")
 async def simulate_scenario(request: Request):
+    simulation_limiter.check(request)
     try:
         body = await request.json()
     except Exception:

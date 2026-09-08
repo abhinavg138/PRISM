@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  prism:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prism-platform
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - API_PORT=8000
+      - API_HOST=0.0.0.0
+      - ENVIRONMENT=production
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
