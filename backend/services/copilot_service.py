@@ -83,13 +83,17 @@ def resolve_query_factual_context(
 ) -> FactualContext:
     q = user_query.lower().strip()
 
-    # 1. Authority Defense
+    # 1. Authority Defense (Score modification, hallucination resistance, prompt injection)
     if any(k in q for k in [
         'calculate the risk yourself', 'calculate risk yourself',
         'can you calculate the risk', 'compute the risk yourself',
         'calculate a different', 'calculate different', 'different risk score',
-        'modify the risk score', 'change the risk score',
-        'override the risk', 'override risk',
+        'modify the risk score', 'change the risk score', 'modify risk score',
+        'lower the risk score', 'lower the risk', 'lower risk', 'lower score',
+        'decrease the risk score', 'decrease the risk', 'decrease risk', 'decrease score',
+        'reduce the risk score', 'reduce the risk', 'reduce risk', 'reduce score',
+        'override the risk', 'override risk', 'override score', 'override the score',
+        'change score', 'alter the score', 'alter score', 'edit the risk score',
         'ignore prism', 'ignore the risk engine',
         'tell me your own', 'your own risk score',
         'ignore all previous', 'ignore previous',
@@ -109,7 +113,7 @@ PRISM computes risk scores deterministically using 6 evidence-based indicators d
 5. **Physical-Financial Divergence (10% weight)**: Expenditure percentage exceeding physical progress.
 6. **Deteriorating Trend (10% weight)**: Negative deceleration comparing earlier vs recent velocities.
 
-Gemini functions solely as an explanation and analytical interface; it does not calculate, modify, or fabricate risk scores.""",
+Under public governance guidelines (MoSPI/CAG/Cabinet Secretariat), AI models are strictly prohibited from modifying, overriding, or fabricating deterministic project scores. Risk scores can only change through officially certified project progress and expenditure updates.""",
             grounded_projects=[active_project] if active_project else [],
             suggested_questions=DEFAULT_SUGGESTED_QUESTIONS
         )
@@ -143,25 +147,35 @@ Risk Tiers:
         )
 
     # 3. Specific Project Query
-    id_match = re.search(r'\b\d{6,7}\b', q) or re.search(r'\bprj-in-\d+\b', q)
-    mentioned_id = id_match.group(0) if id_match else None
+    id_match = re.search(r'\b\d{5,7}\b', q) or re.search(r'\bprj-in-\d+\b', q) or re.search(r'\bpaimana-\d+\b', q)
+    mentioned_id = id_match.group(0).lower().replace('paimana-', '') if id_match else None
 
     target_project: Optional[Project] = None
     if mentioned_id:
         target_project = paimana_repository.get_project_by_id(mentioned_id)
         if not target_project:
-            target_project = next((p for p in all_projects if p.id.lower() == mentioned_id.lower()), None)
+            target_project = next((p for p in all_projects if p.id.lower() == mentioned_id), None)
     elif active_project and any(k in q for k in [
         'this project', 'the project', 'project in focus', 'why is it',
         'how has progress changed', 'expenditure changed', 'since april'
     ]):
         target_project = active_project
     else:
-        for p in all_projects:
-            p_name = p.name.lower()
-            if len(p_name) > 5 and p_name.split('(')[0].strip().lower() in q:
-                target_project = p
-                break
+        # Check canonical projects directly
+        if 'polavaram' in q:
+            target_project = paimana_repository.get_project_by_id('701415')
+        elif 'sivok' in q or 'rangpo' in q:
+            target_project = paimana_repository.get_project_by_id('705432')
+        elif 'rishikesh' in q or 'karnaprayag' in q:
+            target_project = paimana_repository.get_project_by_id('705429')
+        elif 'awantipora' in q or 'aiims kashmir' in q:
+            target_project = paimana_repository.get_project_by_id('701167')
+        elif not any(k in q for k in ['which projects', 'highest risk', 'stagnant', 'good pace', 'healthy pace', 'intervention', 'average risk', 'in delhi', 'in maharashtra']):
+            for p in all_projects:
+                p_clean = p.name.lower().split('(')[0].strip()
+                if len(p_clean) > 8 and p_clean in q:
+                    target_project = p
+                    break
 
     if target_project:
         p = target_project

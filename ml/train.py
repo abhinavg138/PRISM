@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 """
-PRISM (Predictive Risk Intelligence & Smart Monitoring)
-Machine Learning Training Pipeline for SIH 2026
+[LEGACY / HISTORICAL PROTOTYPE]
+This script was an initial synthetic prototype during early prototyping.
+FOR THE EMPIRICAL PAIMANA TRAINING PIPELINE ON 7,499 REAL OBSERVATIONS, SEE:
+    ml/train_real_models.py
 
-Simulates and benchmarks gradient boosting models on MoSPI/PAIMANA infrastructure features:
-- Physical vs Financial Progress Divergence
-- Land Acquisition Pending Ratio
-- Statutory Forest/Wildlife Clearance Lag (Days)
-- Contractor Liquidity & Debt-to-Equity
-- Geological Complexity Index (Himalayan / Coastal / Sub-surface)
-- Multi-agency Utility Shifting Dependencies
+PRISM in production uses deterministic, audit-compliant MCDA scoring (backend/services/risk_engine.py).
 """
 
 import json

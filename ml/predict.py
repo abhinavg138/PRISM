@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-PRISM (Predictive Risk Intelligence & Smart Monitoring)
-ML Inference Script for SIH 2026
+[LEGACY / HISTORICAL PROTOTYPE]
+Standalone prototype inference script from early exploratory phase.
+PRISM in production uses deterministic, audit-compliant MCDA scoring (backend/services/risk_engine.py).
+For genuine MoSPI empirical machine learning benchmarks, see: ml/train_real_models.py
 """
 
 import sys

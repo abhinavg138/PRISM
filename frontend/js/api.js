@@ -54,7 +54,7 @@ export const api = {
   getProjectHistory: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/history`),
   getProjectObservations: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/observations`),
   getProjectRisk: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/risk`),
-  getProjectPriority: (id) => fetchJson(`/api/priorities/${encodeURIComponent(id)}`),
+  getProjectPriority: (id) => fetchJson(`/api/projects/${encodeURIComponent(id)}/priority`),
 
   // Priorities, Alerts, Sectors, Analytics
   getPriorities: (params = {}) => {

@@ -24,6 +24,7 @@ def list_priorities(
         **res
     }
 
+@router.get("/priorities/{proj_id}")
 @router.get("/projects/{proj_id}/priority")
 def get_project_priority(proj_id: str):
     priority = paimana_repository.get_project_priority_assessment(proj_id)
