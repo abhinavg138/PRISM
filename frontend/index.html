@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PRISM — Predictive Risk Intelligence & Smart Monitoring</title>
+    <meta name="description" content="National infrastructure project risk intelligence platform with deterministic PRISM Risk Engine scoring, evidence-based indicator attribution, and grounded AI assistant for SIH 2026." />
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (Progressive enhancement CDN for utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- PRISM Source Stylesheets -->
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+
+    <!-- Local Standalone Vendor Scripts (Zero Build Tooling) -->
+    <script src="/assets/chart.umd.min.js"></script>
+    <script src="/assets/lucide.min.js"></script>
+  </head>
+  <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+    
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+      <div class="container flex items-center justify-between h-16">
+        <!-- Logo & Branding -->
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-base font-black tracking-tight text-slate-900">PRISM</span>
+              <span class="badge bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">PAIMANA v1.0</span>
+            </div>
+            <div class="text-[10.5px] text-slate-500 font-medium hidden sm:block">Predictive Risk Intelligence & Smart Monitoring</div>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200">
+          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-blue-50 text-blue-700" data-view="dashboard">
+            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 inline mr-1"></i> Dashboard
+          </button>
+          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all" data-view="projects">
+            <i data-lucide="folder-kanban" class="w-3.5 h-3.5 inline mr-1"></i> Projects Directory
+          </button>
+          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all" data-view="gis">
+            <i data-lucide="map" class="w-3.5 h-3.5 inline mr-1"></i> GIS Map & States
+          </button>
+          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all" data-view="analytics">
+            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 inline mr-1"></i> Sector Analytics
+          </button>
+        </nav>
+
+        <!-- Right Header Actions -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Role Switcher -->
+          <div class="hidden lg:flex items-center gap-1.5 text-xs bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg">
+            <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-500"></i>
+            <select id="user-role-select" class="bg-transparent font-medium text-slate-800 text-xs border-none focus:outline-none cursor-pointer">
+              <!-- Injected by app.js -->
+            </select>
+          </div>
+
+          <!-- Flash Report Trigger -->
+          <button id="nav-btn-report" class="btn btn-secondary text-xs py-1.5 px-2.5" title="Executive Flash Report">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-600"></i>
+            <span class="hidden sm:inline">Flash Report</span>
+          </button>
+
+          <!-- Early Warning Alerts Trigger -->
+          <button id="nav-btn-alerts" class="btn btn-secondary text-xs py-1.5 px-2.5 relative" title="Early Warning Alerts Radar">
+            <i data-lucide="bell" class="w-3.5 h-3.5 text-slate-600"></i>
+            <span id="nav-alerts-badge" class="badge badge-critical text-[9px] py-0 px-1.5 absolute -top-1.5 -right-1.5 hidden">0</span>
+          </button>
+
+          <!-- AI Copilot Trigger -->
+          <button id="nav-btn-copilot" class="btn btn-copilot text-xs py-1.5 px-3">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span>Copilot</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Sub-Nav -->
+    <div class="md:hidden bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between overflow-x-auto gap-2">
+      <button class="nav-tab text-xs font-bold py-1 px-2.5 rounded bg-blue-50 text-blue-700 whitespace-nowrap" data-view="dashboard">Dashboard</button>
+      <button class="nav-tab text-xs font-medium py-1 px-2.5 rounded text-slate-600 whitespace-nowrap" data-view="projects">Projects</button>
+      <button class="nav-tab text-xs font-medium py-1 px-2.5 rounded text-slate-600 whitespace-nowrap" data-view="gis">GIS Map</button>
+      <button class="nav-tab text-xs font-medium py-1 px-2.5 rounded text-slate-600 whitespace-nowrap" data-view="analytics">Analytics</button>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 container py-6">
+      
+      <!-- Initial Loading Banner -->
+      <div id="app-loading-banner" class="card p-6 mb-6 flex items-center justify-center gap-3 bg-blue-50/50 border-blue-200">
+        <div class="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+        <span class="text-sm font-semibold text-blue-900">Synchronizing PRISM Risk Intelligence and loading PAIMANA records...</span>
+      </div>
+
+      <!-- VIEW 1: DASHBOARD -->
+      <section id="view-dashboard" class="view-section active space-y-6">
+        <!-- Hero Banner -->
+        <div class="card p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white relative overflow-hidden">
+          <div class="relative z-10">
+            <div class="flex items-center gap-2 text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              Live Monitoring &bull; MoSPI PAIMANA April&ndash;July 2026 Reporting Cycle
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">Predictive Risk Intelligence & Smart Monitoring</h1>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              National decision-support platform empowering MoSPI, Project Monitoring Group (PMG), and implementing ministries to identify emerging schedule slippages, cost escalations, and contractor liquidity bottlenecks before they escalate into stalled assets.
+            </p>
+          </div>
+        </div>
+
+        <!-- Early Warning Radar Widget -->
+        <div id="dashboard-alerts-widget"></div>
+
+        <!-- KPI Summary Cards -->
+        <div id="dashboard-kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+        <!-- Sector Cards Carousel -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Monitored Sector Intelligence</h3>
+            <span class="text-xs text-slate-500">Quick Regional / Sector Drilldown</span>
+          </div>
+          <div id="dashboard-sector-cards"></div>
+        </div>
+
+        <!-- Priority Action Queue -->
+        <div id="dashboard-priority-queue"></div>
+
+        <!-- Portfolio Risk Insights -->
+        <div id="dashboard-risk-insights"></div>
+      </section>
+
+      <!-- VIEW 2: PROJECTS DIRECTORY -->
+      <section id="view-projects" class="view-section space-y-4">
+        <!-- Filters Bar Card -->
+        <div class="card p-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <!-- Search -->
+            <div class="lg:col-span-2">
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Search Projects</label>
+              <div class="relative">
+                <input type="text" id="filter-search" placeholder="Search project name, ID, agency, state..." class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              </div>
+            </div>
+
+            <!-- State -->
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">State / UT</label>
+              <select id="filter-state" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 font-medium text-slate-800 focus:outline-none">
+                <option value="ALL">All States</option>
+              </select>
+            </div>
+
+            <!-- Sector -->
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Infrastructure Sector</label>
+              <select id="filter-sector" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 font-medium text-slate-800 focus:outline-none">
+                <option value="ALL">All Sectors</option>
+              </select>
+            </div>
+
+            <!-- Risk Tier -->
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Risk Classification</label>
+              <select id="filter-risk" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 font-medium text-slate-800 focus:outline-none">
+                <option value="ALL">All Risk Tiers</option>
+                <option value="CRITICAL">Critical (80–100)</option>
+                <option value="HIGH">High (60–79)</option>
+                <option value="MODERATE">Moderate (40–59)</option>
+                <option value="LOW">Low (0–39)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Secondary Filter Row -->
+          <div class="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-slate-100 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-500 font-medium">Sort Order:</span>
+              <select id="filter-sort" class="text-xs bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-slate-800">
+                <option value="id-asc">Project ID (Ascending)</option>
+                <option value="riskScore-desc">Highest Risk Score</option>
+                <option value="priorityScore-desc">Highest Intervention Priority</option>
+                <option value="cost-desc">Highest Sanctioned Outlay</option>
+                <option value="delay-desc">Longest Delay (Months)</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-3">
+              <span id="projects-matching-count" class="font-bold text-slate-700">0 matching projects</span>
+              <button id="btn-reset-filters" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1">
+                <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Projects Table Card -->
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
+                  <th class="py-3 px-4">Project Name & ID</th>
+                  <th class="py-3 px-3">Sector & State</th>
+                  <th class="py-3 px-3">Risk Assessment</th>
+                  <th class="py-3 px-3">Priority Tier</th>
+                  <th class="py-3 px-3">Sanctioned Outlay</th>
+                  <th class="py-3 px-3">Physical Progress</th>
+                  <th class="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="projects-table-body" class="divide-y divide-slate-100">
+                <!-- Injected by projects.js -->
+              </tbody>
+            </table>
+          </div>
+          <div id="projects-pagination"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: GIS MAP & STATES -->
+      <section id="view-gis" class="view-section">
+        <div id="gis-map-content"></div>
+      </section>
+
+      <!-- VIEW 4: SECTOR ANALYTICS -->
+      <section id="view-analytics" class="view-section">
+        <div id="analytics-content"></div>
+      </section>
+    </main>
+
+    <!-- Project Detail Dossier Modal -->
+    <div id="project-detail-modal" class="modal-backdrop">
+      <div class="modal-container">
+        <div class="modal-header">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 id="project-detail-title" class="text-base font-bold text-slate-900 line-clamp-1">Project Dossier</h2>
+              <span class="text-xs text-slate-400">MoSPI PAIMANA Verified Infrastructure Intelligence</span>
+            </div>
+          </div>
+          <button class="modal-close-btn p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div id="project-detail-body" class="modal-body">
+          <!-- Injected by project-detail.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Copilot Side Drawer -->
+    <div id="copilot-drawer-backdrop" class="drawer-backdrop">
+      <div class="drawer-panel">
+        <!-- Copilot Header -->
+        <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white flex items-center justify-center shadow-xs">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-900">PRISM Copilot</h3>
+                <span class="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">Grounded</span>
+              </div>
+              <p class="text-[11px] text-slate-400">MoSPI PAIMANA Infrastructure Assistant</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="btn-copilot-clear" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg" title="Clear Conversation">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+            <button id="btn-copilot-close" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Project Context Banner -->
+        <div id="copilot-context-banner"></div>
+
+        <!-- Chat Log Container -->
+        <div id="copilot-chat-container" class="flex-1 p-4 overflow-y-auto space-y-3 flex flex-col">
+          <!-- Injected by copilot.js -->
+        </div>
+
+        <!-- Canned Query Suggestions -->
+        <div class="px-4 pt-2 border-t border-slate-100 bg-slate-50/50">
+          <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Suggested Inquiries</div>
+          <div id="copilot-suggestions"></div>
+        </div>
+
+        <!-- Input Box -->
+        <div class="p-3 border-t border-slate-200 bg-white">
+          <div class="relative flex items-center">
+            <textarea id="copilot-input" rows="2" placeholder="Ask about regional bottlenecks, high risk sectors, or project IDs..." class="w-full text-xs p-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-1 focus:ring-blue-600 text-slate-800"></textarea>
+            <button id="btn-copilot-send" class="absolute right-2.5 p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1.5 text-center">
+            Gemini grounded explanation assistant &bull; Risk scores computed deterministically by PRISM engines
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Early Warning Radar Modal -->
+    <div id="alerts-modal" class="modal-backdrop">
+      <div class="modal-container max-w-4xl">
+        <div class="modal-header">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+              <i data-lucide="bell" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">PRISM Early Warning Radar</h3>
+              <span id="alerts-total-count" class="text-xs text-slate-500">Active alerts across portfolio</span>
+            </div>
+          </div>
+          <button id="btn-close-alerts-modal" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div class="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2 text-xs">
+          <span class="text-slate-500 font-medium mr-1">Filter Severity:</span>
+          <button class="alert-filter-btn px-2.5 py-1 rounded-md font-semibold bg-blue-600 text-white" data-severity="ALL">All</button>
+          <button class="alert-filter-btn px-2.5 py-1 rounded-md font-semibold bg-white border border-slate-200 text-slate-700" data-severity="CRITICAL">Critical</button>
+          <button class="alert-filter-btn px-2.5 py-1 rounded-md font-semibold bg-white border border-slate-200 text-slate-700" data-severity="HIGH">High</button>
+          <button class="alert-filter-btn px-2.5 py-1 rounded-md font-semibold bg-white border border-slate-200 text-slate-700" data-severity="MODERATE">Moderate</button>
+        </div>
+        <div id="alerts-list-container" class="modal-body space-y-3">
+          <!-- Injected by alerts.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Executive Flash Report Modal -->
+    <div id="flash-report-modal" class="modal-backdrop">
+      <div class="modal-container max-w-4xl">
+        <div class="modal-header no-print">
+          <div class="flex items-center gap-2">
+            <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i>
+            <h3 class="text-base font-bold text-slate-900">Executive Flash Report (Secretary Level)</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-print-flash-report" class="btn btn-secondary text-xs py-1.5 px-3">
+              <i data-lucide="printer" class="w-3.5 h-3.5"></i> Print / Export PDF
+            </button>
+            <button id="btn-close-report-modal" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+        <div id="flash-report-body" class="modal-body">
+          <!-- Injected by reports.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 mt-auto">
+      <div class="container flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-slate-700">PRISM v2.1.0-sih2026</span>
+          <span>&bull;</span>
+          <span>MoSPI PAIMANA Central Sector Project Oversight</span>
+        </div>
+        <div class="text-slate-400">
+          Powered by Python / FastAPI + Vanilla HTML/CSS/JavaScript
+        </div>
+      </div>
+    </footer>
+
+    <!-- Main Controller Module -->
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

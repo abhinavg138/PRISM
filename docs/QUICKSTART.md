@@ -1,88 +1,67 @@
 # PRISM Quickstart Guide
 
-This guide gets PRISM running locally with the Python FastAPI backend and the React Vite frontend.
+PRISM runs as a unified, high-performance architecture:
+- **Frontend**: Pure HTML5 + CSS3 + Vanilla JavaScript (ES6) in `frontend/`
+- **Backend**: Python 3 / FastAPI in `backend/`
+- **Data & Intelligence**: MoSPI PAIMANA Excel/CSV dataset + Deterministic PRISM Risk Engine + Priority Engine + Early Warning Alerts + Scenario Engine + Grounded Gemini Copilot
 
 ---
 
 ## 1. Prerequisites
 
 - **Python**: 3.10 or newer (tested on Python 3.14)
-- **Node.js**: 18.0 or newer
-- **Package Managers**: `pip` and `npm`
+- **Pip**: Python package manager
+- *(Optional)* Gemini API Key (PRISM works with full deterministic intelligence even without a key via local grounding).
 
 ---
 
 ## 2. Installation
 
-### Python Backend Dependencies
+Install Python backend dependencies:
 ```bash
 python -m pip install -r backend/requirements.txt
 ```
 
-### Frontend Dependencies
-```bash
-npm install
-```
+*(No `npm install` or frontend build step is required. The frontend uses standard browser-native HTML, CSS, and ES6 JavaScript with local assets).*
 
 ---
 
 ## 3. Environment Configuration
 
-Copy the example environment file if you wish to configure API keys:
+Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
+
 Add your optional Gemini API key to `.env`:
 ```env
 GEMINI_API_KEY="your_gemini_api_key_here"
-PORT=8000
-VITE_BACKEND_URL="http://localhost:8000"
+API_PORT=8000
 ```
-*(Note: PRISM works with full deterministic intelligence even without a Gemini API key using its built-in local grounding engine).*
 
 ---
 
-## 4. Running the Development Servers
+## 4. Running PRISM
 
-### Terminal 1: Python FastAPI Backend (Port 8000)
+Start the unified FastAPI server:
 ```bash
-npm run dev:backend
-# Or directly via Python:
-# python -m uvicorn backend.main:app --port 8000 --reload
+python -m uvicorn backend.main:app --port 8000 --reload
 ```
-Verify the backend is live by opening:
-- Health Check: `http://localhost:8000/api/health`
-- Interactive API Docs: `http://localhost:8000/docs`
 
-### Terminal 2: React Vite Frontend (Port 5173)
-```bash
-npm run dev:frontend
-```
 Open your browser to:
-`http://localhost:5173`
+```text
+http://localhost:8000/
+```
 
-The Vite dev server automatically proxies all `/api/*` calls directly to the FastAPI server at `http://localhost:8000`.
+- **Application Dashboard**: `http://localhost:8000/`
+- **Health Check**: `http://localhost:8000/api/health`
+- **Interactive API Documentation**: `http://localhost:8000/docs`
 
 ---
 
-## 5. Running Automated Verification Tests
+## 5. Running Tests
 
-### Run the Complete Python Backend Test Suite (42 Tests)
+Execute the automated test suite across all 42 parity and endpoint tests:
 ```bash
-npm run test:backend
-# Or directly via pytest:
-# pytest backend/tests -v
-```
-
-All 42 tests should pass:
-- 17 REST API Endpoints
-- 14 Canonical Consistency Matrix Tests
-- 5 Priority Engine Scenarios
-- 3 Dataset Count Invariants
-- 3 Risk Calculation Parity Tests
-
-### Run Frontend Typecheck & Build Verification
-```bash
-npm run lint    # Verifies TypeScript types (tsc --noEmit)
-npm run build   # Verifies production Vite bundle
+pytest backend/tests -v
 ```

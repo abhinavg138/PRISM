@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,14 +67,31 @@ async def general_exception_handler(request: Request, exc: Exception):
 for router in routers:
     app.include_router(router)
 
-@app.get("/")
-def root():
-    return {
-        "platform": "PRISM - Predictive Risk Intelligence & Smart Monitoring",
-        "version": "2.1.0-sih2026",
-        "documentation": "/docs",
-        "health": "/api/health"
-    }
+# Mount frontend static files and root view
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+if FRONTEND_DIR.exists():
+    from fastapi.responses import FileResponse
+    from starlette.staticfiles import StaticFiles
+
+    if (FRONTEND_DIR / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+    if (FRONTEND_DIR / "css").exists():
+        app.mount("/css", StaticFiles(directory=str(FRONTEND_DIR / "css")), name="css")
+    if (FRONTEND_DIR / "js").exists():
+        app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(FRONTEND_DIR / "index.html")
+else:
+    @app.get("/")
+    def root():
+        return {
+            "platform": "PRISM - Predictive Risk Intelligence & Smart Monitoring",
+            "version": "2.1.0-sih2026",
+            "documentation": "/docs",
+            "health": "/api/health"
+        }
 
 if __name__ == "__main__":
     import uvicorn

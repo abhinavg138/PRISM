@@ -41,15 +41,18 @@ This document guides engineers on where to modify code in the PRISM codebase bas
 
 ## 4. Modifying Frontend UI Components
 
-- **Main Navigation & Layout**: `src/App.tsx`
-- **Dashboard Overview**: `src/components/Dashboard.tsx`
-- **Projects List & Filters**: `src/components/ProjectsTable.tsx`, `src/components/FilterBar.tsx`
-- **Project Detail Drawer**: `src/components/ProjectDetailModal.tsx`
-- **Intervention Lab (Simulation)**: `src/components/InterventionLab.tsx`
-- **AI Copilot Drawer**: `src/components/AICopilotDrawer.tsx`
-- **Alerts Feed**: `src/components/AlertsPanel.tsx`
-- **Map / GIS View**: `src/components/GISMapView.tsx`
-- **TypeScript Data Models**: `src/types/index.ts` (Keep in sync with `backend/models/`)
+- **Main Navigation & HTML Structure**: `frontend/index.html`
+- **Design System & Styles**: `frontend/css/styles.css` and `frontend/css/components.css`
+- **Dashboard Overview**: `frontend/js/dashboard.js`
+- **Projects List & Filters**: `frontend/js/projects.js`
+- **Project Detail Dossier**: `frontend/js/project-detail.js`
+- **Intervention Lab (Simulation)**: `frontend/js/scenario.js`
+- **AI Copilot Drawer**: `frontend/js/copilot.js`
+- **Alerts Feed & Radar**: `frontend/js/alerts.js`
+- **Map / GIS View**: `frontend/js/map.js`
+- **Sector Analytics**: `frontend/js/analytics.js`
+- **State Management**: `frontend/js/state.js`
+- **REST API Client**: `frontend/js/api.js`
 
 ---
 
