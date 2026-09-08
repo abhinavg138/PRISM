@@ -1,3 +1,18 @@
+/**
+ * ============================================================================
+ * PRISM — LEGACY NODE.JS / EXPRESS BACKEND REFERENCE IMPLEMENTATION
+ * ============================================================================
+ * NOTICE: As part of the PRISM architecture migration, the primary production
+ * backend is now implemented in Python / FastAPI located in `/backend`.
+ *
+ * This Node/Express file is retained as the authoritative reference
+ * implementation for parity verification and regression testing.
+ *
+ * To start the primary Python backend:
+ *   npm run dev:backend  (or: python -m uvicorn backend.main:app --port 8000 --reload)
+ * ============================================================================
+ */
+
 import 'dotenv/config';
 import express from 'express';
 import path from 'path';
@@ -6,8 +21,9 @@ import dotenv from 'dotenv';
 import { SEEDED_PROJECTS, computePortfolioKPIs } from './data/projectsData';
 import { paimanaRepository } from './server/paimanaRepository';
 import { MLRiskEngine } from './server/mlEngine';
-import { askPRISMCopilot } from './server/gemini';
-import { Project } from './src/types/index';
+import { askPRISMCopilot, generateInterventionNarrative } from './server/gemini';
+import { Project, RiskTier } from './src/types/index';
+import { ProjectQueryService } from './server/projectQueryService';
 
 dotenv.config();
 
@@ -108,20 +124,17 @@ async function startServer() {
     } = req.query;
 
     if (currentDataSource === 'PAIMANA') {
-      const { projects: filtered, allMatching, totalCount } = paimanaRepository.listProjects({
+      const { projects: filtered, totalCount, kpis } = ProjectQueryService.query({
         search: search as string,
         state: state as string,
         agency: agency as string,
         sector: sector as string,
-        riskTier: riskTier as string,
+        riskTier: riskTier as RiskTier,
         sortBy: sortBy as string,
         sortDirection: (sortDirection as 'asc' | 'desc') || 'asc',
         limit: limit ? parseInt(limit as string, 10) : undefined,
         offset: offset ? parseInt(offset as string, 10) : undefined
       });
-
-      // Compute KPIs on the full matching dataset, NOT just the paginated slice
-      const kpis = paimanaRepository.computeKPIs(allMatching || filtered);
 
       return res.json({
         dataSource: 'PAIMANA',
@@ -418,23 +431,56 @@ async function startServer() {
       return Math.max(min, Math.min(max, n));
     };
 
+    const assessment = currentDataSource === 'PAIMANA' ? paimanaRepository.getProjectRiskAssessment(projectId) : undefined;
+
     const simResult = MLRiskEngine.simulate(project, {
       projectId,
       landClearanceAccelerationWeeks: sanitizeNum(params?.landClearanceAccelerationWeeks, 0, 52, 0),
       contractorLiquidityInjectionPercent: sanitizeNum(params?.contractorLiquidityInjectionPercent, 0, 100, 0),
       weatherGeologicalMitigationLevel: sanitizeNum(params?.weatherGeologicalMitigationLevel, 0, 100, 0),
       fastTrackHighPowerCommittee: Boolean(params?.fastTrackHighPowerCommittee)
-    });
+    }, { assessment });
 
     res.json(simResult);
+  });
+
+  // PRISM Intervention Lab: AI-Synthesized Officer Executive Memorandum Endpoint
+  // Strictly fed verified structured scenario output; Gemini NEVER calculates or modifies risk.
+  app.post('/api/intervention-lab/narrative', async (req, res) => {
+    try {
+      const { projectId, scenarioResult } = req.body || {};
+      if (!projectId || !scenarioResult) {
+        return res.status(400).json({ error: 'Missing projectId or scenarioResult' });
+      }
+
+      let project: Project | undefined;
+      if (currentDataSource === 'PAIMANA') {
+        project = paimanaRepository.getProjectById(projectId);
+      }
+      if (!project) {
+        project = currentDemoProjects.find(p => p.id === projectId);
+      }
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const response = await generateInterventionNarrative(project, scenarioResult);
+      res.json(response);
+    } catch (err: any) {
+      console.error('[Intervention Lab] Error generating executive brief narrative:', err);
+      res.status(500).json({ error: 'Failed to generate brief narrative' });
+    }
   });
 
   // Grounded AI Copilot Chat Endpoint
   app.post('/api/copilot/chat', async (req, res) => {
     try {
       const { message, activeProjectId } = req.body || {};
-      if (!message) {
-        return res.status(400).json({ error: 'Message is required' });
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return res.status(400).json({ error: 'Message must be a non-empty string' });
+      }
+      if (message.length > 2000) {
+        return res.status(400).json({ error: 'Message exceeds maximum allowed length of 2000 characters' });
       }
 
       const activeList = currentDataSource === 'PAIMANA'

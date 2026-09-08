@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:frontend": "vite",
+    "dev:backend": "python -m uvicorn backend.main:app --port 8000 --reload",
+    "start:backend": "python -m uvicorn backend.main:app --port 8000",
+    "test:backend": "pytest backend/tests -v",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
@@ -22,7 +26,9 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.10.1",
+    "remark-gfm": "^4.0.1",
     "vite": "^6.2.3",
     "xlsx": "^0.18.5"
   },

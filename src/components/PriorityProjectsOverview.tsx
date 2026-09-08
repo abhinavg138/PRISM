@@ -194,6 +194,7 @@ export const PriorityProjectsOverview: React.FC<PriorityProjectsOverviewProps> =
                 <th className="py-2.5 px-3 min-w-[90px]">Confidence</th>
                 <th className="py-2.5 px-4 min-w-[150px]">Primary Risk Indicator</th>
                 <th className="py-2.5 px-4 min-w-[280px]">Reason for Priority</th>
+                <th className="py-2.5 px-3 text-right min-w-[100px]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-sans">
@@ -260,6 +261,17 @@ export const PriorityProjectsOverview: React.FC<PriorityProjectsOverviewProps> =
                       <p className="line-clamp-2" title={p.priorityReason}>
                         {p.priorityReason || 'High risk combined with schedule pressure.'}
                       </p>
+                    </td>
+
+                    {/* 8. Intervention Lab Quick Launch */}
+                    <td className="py-3 px-3 text-right whitespace-nowrap" onClick={(e) => { e.stopPropagation(); onSelectProject(p); }}>
+                      <button
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white border border-blue-200 transition-all shadow-2xs"
+                        title={`Open PRISM Intervention Lab for ${p.name}`}
+                      >
+                        <Zap className="w-3 h-3 text-amber-500 fill-amber-500 group-hover:text-white group-hover:fill-white" />
+                        <span>Simulate</span>
+                      </button>
                     </td>
                   </tr>
                 );

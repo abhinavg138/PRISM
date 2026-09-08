@@ -268,8 +268,20 @@ export interface AICopilotMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
-  groundedProjects?: Array<{ id: string; name: string; riskScore: number; riskTier: RiskTier }>;
+  groundedProjects?: Array<{
+    id: string;
+    name: string;
+    riskScore: number;
+    riskTier: RiskTier;
+    priorityTier?: string;
+    state?: string;
+    sector?: string;
+    physicalProgressPercent?: number;
+    primaryRiskDriver?: string;
+  }>;
   suggestedQuestions?: string[];
+  totalMatching?: number;
+  displayedCount?: number;
 }
 
 export interface FullAnalyticsData {
@@ -335,5 +347,70 @@ export interface FullAnalyticsData {
     divergenceRate: number;
     criticalUrgencyCount: number;
   };
+}
+
+export interface IndicatorChange {
+  id: string;
+  label: string;
+  weight: number;
+  originalScore: number;
+  simulatedScore: number;
+  scoreDelta: number;
+  originalContribution: number;
+  simulatedContribution: number;
+  assumptionDriver: string;
+}
+
+export interface AssumptionImpact {
+  lever: string;
+  value: string;
+  pointsReduced: number;
+  mechanism: string;
+}
+
+export interface InterventionBriefData {
+  projectName: string;
+  projectId: string;
+  sector: string;
+  state: string;
+  agency: string;
+  currentRisk: { score: number | null; tier: RiskTier };
+  currentPriority: { score: number | null; tier: PriorityTier | null };
+  simulatedRisk: { score: number | null; tier: RiskTier };
+  simulatedPriority: { score: number | null; tier: PriorityTier | null };
+  evidenceSummary: string;
+  primaryConcern: string;
+  recommendedAction: string;
+  scenarioAssumptions: AssumptionImpact[];
+  indicatorChanges: IndicatorChange[];
+  provenance: string;
+  disclaimer: string;
+  aiExecutiveSummary?: string;
+}
+
+export interface InterventionLabResult {
+  projectId: string;
+  originalRiskScore: number | null;
+  originalRiskTier: RiskTier;
+  simulatedRiskScore: number | null;
+  simulatedRiskTier: RiskTier;
+  riskScoreDelta: number | null;
+  originalPriorityScore: number | null;
+  originalPriorityTier: PriorityTier | null;
+  simulatedPriorityScore: number | null;
+  simulatedPriorityTier: PriorityTier | null;
+  priorityScoreDelta: number | null;
+  predictedDelayMonthsOriginal: number | null;
+  predictedDelayMonthsSimulated: number | null;
+  delaySavedMonths: number | null;
+  predictedCostEscalationCrOriginal: number | null;
+  predictedCostEscalationCrSimulated: number | null;
+  costSavedCr: number | null;
+  updatedDrivers?: RiskDriver[];
+  assumptionImpacts: AssumptionImpact[];
+  indicatorChanges: IndicatorChange[];
+  actionableInsights: string[];
+  recommendedIntervention: string;
+  officerBrief: InterventionBriefData;
 }
 

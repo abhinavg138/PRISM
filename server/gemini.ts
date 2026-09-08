@@ -1,9 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import { Project } from '../src/types/index';
+import { Project, RiskTier } from '../src/types/index';
 import { RiskAssessment } from './riskEngine';
 import { PriorityAssessment } from './priorityEngine';
 import { paimanaRepository } from './paimanaRepository';
+import { ProjectQueryService } from './projectQueryService';
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -24,8 +25,20 @@ function getGeminiClient(): GoogleGenAI | null {
 
 export interface CopilotResponse {
   answer: string;
-  groundedProjects: Array<{ id: string; name: string; riskScore: number; riskTier: any }>;
+  groundedProjects: Array<{
+    id: string;
+    name: string;
+    riskScore: number;
+    riskTier: any;
+    priorityTier?: any;
+    state?: string;
+    sector?: string;
+    physicalProgressPercent?: number;
+    primaryRiskDriver?: string;
+  }>;
   suggestedQuestions: string[];
+  totalMatching?: number;
+  displayedCount?: number;
 }
 
 const DEFAULT_SUGGESTED_QUESTIONS = [
@@ -80,6 +93,7 @@ interface FactualContext {
   groundedProjects: Project[];
   suggestedQuestions: string[];
   refuseScoreCalculation?: boolean;
+  totalMatching?: number;
 }
 
 /**
@@ -100,7 +114,15 @@ function resolveQueryFactualContext(
     q.includes('can you calculate the risk') ||
     q.includes('compute the risk yourself') ||
     q.includes('modify the risk score') ||
-    q.includes('change the risk score')
+    q.includes('change the risk score') ||
+    q.includes('override the risk') ||
+    q.includes('override risk') ||
+    q.includes('ignore all previous') ||
+    q.includes('ignore previous') ||
+    q.includes('set the risk') ||
+    q.includes('set risk to') ||
+    q.includes('reduce the risk score to') ||
+    q.includes('jailbreak')
   ) {
     return {
       intent: 'RISK_AUTHORITY_DEFENSE',
@@ -223,7 +245,8 @@ ${trajectoryText}`,
           `Why is project ${p.id} high risk?`,
           `What is the recommended action for ${p.id}?`,
           'Which projects have the highest risk?'
-        ]
+        ],
+        totalMatching: 1
       };
     }
 
@@ -249,61 +272,78 @@ ${priority?.recommendedAction || p.recommendedAction || p.primaryDelayCause || '
         `How has project ${p.id}'s progress changed since April?`,
         'Which projects have the highest risk?',
         'Which sectors have the highest average risk?'
-      ]
+      ],
+      totalMatching: 1
     };
   }
 
-  // 4. Highest Risk / Top Critical Projects
-  if (
-    q.includes('highest risk') ||
-    q.includes('top risk') ||
-    q.includes('critical projects') ||
-    q.includes('highest-risk') ||
-    q.includes('most risky') ||
-    (q.includes('highest') && q.includes('risk') && !q.includes('sector'))
-  ) {
-    const sorted = [...allProjects]
-      .filter(p => p.riskScore != null)
-      .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0));
-
-    const criticalCount = allProjects.filter(p => p.riskTier === 'CRITICAL').length;
-    const highCount = allProjects.filter(p => p.riskTier === 'HIGH').length;
-    const topProjects = sorted.slice(0, 5);
-
-    const listText = topProjects.map((p, i) =>
-      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **Risk Score**: **${p.riskScore}/100** [${p.riskTier}]\n   - **Sector & State**: ${p.sector} • ${p.state}\n   - **Progress vs Spend**: Physical ${p.physicalProgressPercent}% | Spend ₹${p.cumulativeExpenditureCr} Cr (${p.expenditurePctOfRevisedCost}% of revised cost)\n   - **Overrun**: Schedule +${p.timeOverrunMonths} mo | Cost +${p.costOverrunPercent}%\n   - **Primary Driver**: ${p.primaryRiskDriver || (p.topRiskDrivers && p.topRiskDrivers[0]?.label) || 'Progress Stagnation'}`
-    ).join('\n\n');
-
-    return {
-      intent: 'HIGHEST_RISK_PORTFOLIO',
-      summaryText: `Portfolio Risk Assessment across **${allProjects.length} monitored PAIMANA projects**:
-- **Critical Projects (Risk 80–100)**: **${criticalCount} projects**
-- **High Risk Projects (Risk 60–79)**: **${highCount} projects**
-
-Top highest-risk infrastructure projects:
-${listText}`,
-      groundedProjects: topProjects,
-      suggestedQuestions: [
-        `Why is project ${topProjects[0]?.id || '701396'} high risk?`,
-        'Which sectors have the highest average risk?',
-        'Which projects need intervention first?'
-      ]
-    };
-  }
-
-  // 5. Geography / State Inquiry
-  const matchedState = KNOWN_STATES.find(st => q.includes(st.toLowerCase()));
+  // 4. Geography / State Inquiry
+  const matchedState = KNOWN_STATES.find(st => new RegExp(`\\b${st.toLowerCase()}\\b`, 'i').test(q));
   if (matchedState) {
-    const inStateProjects = allProjects.filter(p =>
-      p.state.trim().toLowerCase() === matchedState.toLowerCase()
-    );
-    const multiStateProjects = allProjects.filter(p =>
-      p.state.trim().toLowerCase() !== matchedState.toLowerCase() &&
-      p.state.toLowerCase().includes(matchedState.toLowerCase())
-    );
-    const stateProjects = [...inStateProjects, ...multiStateProjects];
+    // 4A. State + Risk Filter (e.g. "How many high-risk projects are in Delhi?", "Show low-risk projects in Delhi")
+    let targetRiskTier: RiskTier | null = null;
+    if (q.includes('critical')) targetRiskTier = 'CRITICAL';
+    else if (q.includes('high risk') || q.includes('high-risk') || (q.includes('high') && q.includes('risk'))) targetRiskTier = 'HIGH';
+    else if (q.includes('moderate risk') || q.includes('moderate-risk') || q.includes('moderate')) targetRiskTier = 'MODERATE';
+    else if (q.includes('low risk') || q.includes('low-risk') || (q.includes('low') && q.includes('risk'))) targetRiskTier = 'LOW';
 
-    if (stateProjects.length === 0) {
+    if (targetRiskTier) {
+      const result = ProjectQueryService.getProjectsByStateAndRisk(matchedState, targetRiskTier, { limit: 5 });
+      const listText = result.displayProjects.length > 0
+        ? result.displayProjects.map((p, i) =>
+            `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **Risk Score**: **${p.riskScore}/100** [${p.riskTier}]\n   - **Sector**: ${p.sector} | **Implementing Agency**: ${p.implementingAgency}\n   - **Physical Progress**: ${p.physicalProgressPercent}% | Spend: ₹${p.cumulativeExpenditureCr.toLocaleString()} Cr (${p.expenditurePctOfRevisedCost}% of revised budget)\n   - **Overrun**: Schedule +${p.timeOverrunMonths} mo | Cost +${p.costOverrunPercent}%`
+          ).join('\n\n')
+        : `No dedicated projects found in ${result.canonicalState} matching the ${targetRiskTier} risk tier.`;
+
+      const multiNoteText = result.multiStateNotice
+        ? `\n\n*Note on Multi-State Corridors:* ${result.multiStateNotice}`
+        : '';
+
+      return {
+        intent: 'STATE_RISK_FILTER',
+        summaryText: `PAIMANA State Risk Analysis: **${result.canonicalState}** (${targetRiskTier} Risk)
+- **Authoritative In-State Projects**: Exactly **${result.totalCount} projects** located in ${result.canonicalState} are classified in the **${targetRiskTier}** risk band (${targetRiskTier === 'CRITICAL' ? '80–100' : targetRiskTier === 'HIGH' ? '60–79' : targetRiskTier === 'MODERATE' ? '40–59' : '0–39'}).
+
+${result.totalCount > 0 ? `Showing **${result.displayProjects.length} of ${result.totalCount}** verified in-state ${targetRiskTier.toLowerCase()}-risk projects:\n\n${listText}` : listText}${multiNoteText}`,
+        groundedProjects: result.displayProjects,
+        suggestedQuestions: [
+          `Which projects need intervention first in ${result.canonicalState}?`,
+          `Show ${targetRiskTier === 'HIGH' ? 'low' : 'high'}-risk projects in ${result.canonicalState}`,
+          `What is the average risk in ${result.canonicalState}?`
+        ],
+        totalMatching: result.totalCount
+      };
+    }
+
+    // 4B. State + Priority Query (e.g. "Which projects need intervention first in Delhi?")
+    if (q.includes('intervention') || q.includes('priority') || q.includes('attention first') || q.includes('p1')) {
+      const result = ProjectQueryService.getPriorityProjects({ state: matchedState, limit: 5 });
+      const listText = result.projects.length > 0
+        ? result.projects.map((p, i) =>
+            `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **Priority Tier**: **${p.priorityTier}** (Priority Score: **${p.priorityScore}**, Urgency: ${p.urgency}/100)\n   - **PRISM Risk Index**: ${p.riskScore}/100 [${p.riskTier}]\n   - **Sector**: ${p.sector} | **Physical Progress**: ${p.physicalProgressPercent}%\n   - **Recommended Action**: ${p.recommendedAction || 'Monitor progress'}`
+          ).join('\n\n')
+        : `No prioritized projects found in ${matchedState}.`;
+
+      return {
+        intent: 'STATE_PRIORITY_FILTER',
+        summaryText: `PRISM Intervention Priority Queue for **${matchedState}**:
+Total monitored in-state projects: **${result.totalMatching}** (P1 Immediate: **${result.p1Count}**, P2 Oversight: **${result.p2Count}**, P3 Routine: **${result.p3Count}**).
+
+Top prioritized projects in ${matchedState} requiring administrative intervention:
+${listText}`,
+        groundedProjects: result.projects,
+        suggestedQuestions: [
+          `Show high-risk projects in ${matchedState}`,
+          `Why is project ${result.projects[0]?.id || '701396'} high risk?`,
+          `Show low-risk projects in ${matchedState}`
+        ],
+        totalMatching: result.totalMatching
+      };
+    }
+
+    // 4C. State General Summary
+    const partition = ProjectQueryService.getStatePartition(matchedState);
+    if (!partition) {
       return {
         intent: 'STATE_SUMMARY',
         summaryText: `No matching PAIMANA projects found for the state of **${matchedState}**.`,
@@ -312,50 +352,112 @@ ${listText}`,
       };
     }
 
-    const totalStateBudget = stateProjects.reduce((s, p) => s + (p.revisedCostCr || 0), 0);
-    const criticalInState = stateProjects.filter(p => p.riskTier === 'CRITICAL');
-    const highInState = stateProjects.filter(p => p.riskTier === 'HIGH');
-    const moderateInState = stateProjects.filter(p => p.riskTier === 'MODERATE');
-    const lowInState = stateProjects.filter(p => p.riskTier === 'LOW');
-    const avgProgress = (stateProjects.reduce((s, p) => s + (p.physicalProgressPercent || 0), 0) / stateProjects.length).toFixed(1);
-
-    const topStateProjects = [...stateProjects]
+    const topStateProjects = [...partition.dedicatedProjects]
       .filter(p => p.riskScore != null)
       .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
       .slice(0, 5);
 
     const topStateList = topStateProjects.map((p, i) =>
-      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`): Risk **${p.riskScore}/100** [${p.riskTier}], ${p.sector}. Physical: ${p.physicalProgressPercent}%, Cost Overrun: +${p.costOverrunPercent}%. Primary Driver: ${p.primaryRiskDriver || 'Progress Stagnation'}`
+      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`): Risk **${p.riskScore}/100** [${p.riskTier}], ${p.sector}. Physical: ${p.physicalProgressPercent}%, Cost Overrun: +${p.costOverrunPercent}%. Driver: ${p.primaryRiskDriver || 'Progress Stagnation'}`
     ).join('\n');
 
-    const countDescription = multiStateProjects.length > 0
-      ? `**${inStateProjects.length} dedicated in-state projects** (plus ${multiStateProjects.length} multi-state corridors passing through ${matchedState}, totaling **${stateProjects.length} monitored projects**)`
-      : `**${inStateProjects.length} projects**`;
+    const multiStateBreakdown = partition.multiStateCount > 0
+      ? `\n- **Multi-State Corridors Involving ${partition.canonicalState}**: **${partition.multiStateCount} projects** (High Risk: ${partition.multiStateByRisk.HIGH}, Moderate: ${partition.multiStateByRisk.MODERATE}, Low: ${partition.multiStateByRisk.LOW})\n- **Total Associated Footprint**: **${partition.totalAssociatedCount} projects**`
+      : '';
 
     return {
       intent: 'STATE_SUMMARY',
-      summaryText: `PAIMANA State Portfolio: **${matchedState}**
-- **Total Monitored Projects**: ${countDescription}
-- **Committed Capital Outlay**: ₹${Math.round(totalStateBudget).toLocaleString()} Cr
-- **Risk Stratification**:
-  * Critical (80–100): **${criticalInState.length}**
-  * High Risk (60–79): **${highInState.length}**
-  * Moderate Risk (40–59): **${moderateInState.length}**
-  * Low Risk (0–39): **${lowInState.length}**
-- **Average Physical Progress**: **${avgProgress}%**
+      summaryText: `PAIMANA State Portfolio: **${partition.canonicalState}**
+- **Dedicated In-State Projects**: **${partition.dedicatedCount} projects**
+- **Committed Capital Outlay (In-State)**: ₹${partition.dedicatedKPIs.totalBudgetCr.toLocaleString()} Cr
+- **Risk Stratification (Dedicated In-State)**:
+  * Critical (80–100): **${partition.dedicatedByRisk.CRITICAL}**
+  * High Risk (60–79): **${partition.dedicatedByRisk.HIGH}**
+  * Moderate Risk (40–59): **${partition.dedicatedByRisk.MODERATE}**
+  * Low Risk (0–39): **${partition.dedicatedByRisk.LOW}**
+- **Average Physical Progress**: **${partition.dedicatedKPIs.averagePhysicalProgress}%**${multiStateBreakdown}
 
-Top elevated-risk projects in ${matchedState}:
+Top elevated-risk dedicated in-state projects:
 ${topStateList}`,
       groundedProjects: topStateProjects,
       suggestedQuestions: [
-        `Show high-risk projects in ${matchedState}`,
-        `Which sector has the highest average risk in ${matchedState}?`,
-        'Which projects have the highest risk?'
-      ]
+        `Show high-risk projects in ${partition.canonicalState}`,
+        `Show low-risk projects in ${partition.canonicalState}`,
+        `Which projects need intervention first in ${partition.canonicalState}?`
+      ],
+      totalMatching: partition.dedicatedCount
     };
   }
 
-  // 6. Sector Inquiries
+  // 5. Healthy / Good Pace Portfolio (Phase 11)
+  if (
+    q.includes('good pace') ||
+    q.includes('performing well') ||
+    q.includes('healthy') ||
+    q.includes('on schedule') ||
+    q.includes('best performing')
+  ) {
+    const healthyResult = ProjectQueryService.getHealthyPaceProjects({ limit: 5 });
+    const listText = healthyResult.projects.map((p, i) =>
+      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **PRISM Risk Index**: **${p.riskScore}/100** [${p.riskTier}]\n   - **Physical Progress**: **${p.physicalProgressPercent}%**\n   - **Schedule Overrun**: 0 months (Strictly On Schedule)\n   - **Cost Overrun**: 0% (Within Sanctioned Budget)\n   - **Sector & State**: ${p.sector} • ${p.state}`
+    ).join('\n\n');
+
+    return {
+      intent: 'HEALTHY_PACE_PORTFOLIO',
+      summaryText: `PRISM Verified Healthy Pace Assessment:
+Across the national PAIMANA portfolio, **${healthyResult.totalHealthy} projects** strictly satisfy PRISM's healthy execution standards:
+1. **PRISM Risk Tier LOW** (Risk Index 0–39)
+2. **Zero Schedule Slippage** (0 recorded overrun months)
+3. **Zero Cost Escalation** (Within original sanction)
+4. **Verified Physical Progress** (> 0%)
+
+> ⚠️ **Qualification Rule:** In infrastructure project monitoring, high physical completion alone (e.g. 98%) does NOT equal "good pace" if a project suffered multi-year delays or extensive budget revisions. Only projects executing on-time and within-budget qualify.
+
+Top verified healthy-pace infrastructure projects:
+${listText}`,
+      groundedProjects: healthyResult.projects,
+      suggestedQuestions: [
+        'Which projects have the highest risk?',
+        'Which projects show stagnant progress?',
+        'Which sectors have the highest average risk?'
+      ],
+      totalMatching: healthyResult.totalHealthy
+    };
+  }
+
+  // 6. Highest Risk / Top Critical Projects
+  if (
+    q.includes('highest risk') ||
+    q.includes('top risk') ||
+    q.includes('critical projects') ||
+    q.includes('highest-risk') ||
+    q.includes('most risky') ||
+    (q.includes('highest') && q.includes('risk') && !q.includes('sector'))
+  ) {
+    const topResult = ProjectQueryService.getTopRiskProjects({ limit: 5 });
+    const listText = topResult.projects.map((p, i) =>
+      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **Risk Score**: **${p.riskScore}/100** [${p.riskTier}]\n   - **Sector & State**: ${p.sector} • ${p.state}\n   - **Progress vs Spend**: Physical ${p.physicalProgressPercent}% | Spend ₹${p.cumulativeExpenditureCr.toLocaleString()} Cr (${p.expenditurePctOfRevisedCost}% of revised budget)\n   - **Overrun**: Schedule +${p.timeOverrunMonths} mo | Cost +${p.costOverrunPercent}%\n   - **Primary Driver**: ${p.primaryRiskDriver || 'Progress Stagnation'}`
+    ).join('\n\n');
+
+    return {
+      intent: 'HIGHEST_RISK_PORTFOLIO',
+      summaryText: `Portfolio Risk Assessment across **${allProjects.length} monitored PAIMANA projects**:
+- **Critical Projects (Risk 80–100)**: **${topResult.totalCritical} projects**
+- **High Risk Projects (Risk 60–79)**: **${topResult.totalHigh} projects**
+
+Top highest-risk infrastructure projects (deterministic ranking):
+${listText}`,
+      groundedProjects: topResult.projects,
+      suggestedQuestions: [
+        `Why is project ${topResult.projects[0]?.id || '701396'} high risk?`,
+        'Which sectors have the highest average risk?',
+        'Which projects need intervention first?'
+      ],
+      totalMatching: topResult.totalCritical + topResult.totalHigh
+    };
+  }
+
+  // 7. Sector Inquiries
   if (
     q.includes('which sector has the highest average risk') ||
     q.includes('sector has the highest average risk') ||
@@ -389,7 +491,8 @@ ${sectorRanking}`,
         `How many high-risk railway projects are there?`,
         'Which projects have the highest risk?',
         'Which projects show stagnant progress?'
-      ]
+      ],
+      totalMatching: highestSector.totalProjects
     };
   }
 
@@ -402,7 +505,8 @@ ${sectorRanking}`,
       (p.derivedSector || '').toLowerCase().includes(canonicalSector.toLowerCase())
     );
 
-    const highRiskSec = secProjects.filter(p => p.riskTier === 'HIGH' || p.riskTier === 'CRITICAL');
+    const highRiskSec = secProjects.filter(p => p.riskTier === 'HIGH');
+    const criticalRiskSec = secProjects.filter(p => p.riskTier === 'CRITICAL');
     const avgSecRisk = (secProjects.reduce((s, p) => s + (p.riskScore || 0), 0) / (secProjects.length || 1)).toFixed(1);
     const avgSecProgress = (secProjects.reduce((s, p) => s + (p.physicalProgressPercent || 0), 0) / (secProjects.length || 1)).toFixed(1);
     const totalSecBudget = Math.round(secProjects.reduce((s, p) => s + (p.revisedCostCr || 0), 0));
@@ -420,7 +524,8 @@ ${sectorRanking}`,
       intent: 'SECTOR_SPECIFIC_SUMMARY',
       summaryText: `PAIMANA Sector Assessment: **${canonicalSector}**
 - **Total Monitored Projects**: **${secProjects.length} projects**
-- **High-Risk Projects (Risk ≥ 60)**: **${highRiskSec.length} projects** (${highRiskSec.filter(p => p.riskTier === 'CRITICAL').length} Critical, ${highRiskSec.filter(p => p.riskTier === 'HIGH').length} High)
+- **Critical Risk Projects (80–100)**: **${criticalRiskSec.length} projects**
+- **High Risk Projects (60–79)**: **${highRiskSec.length} projects**
 - **Average PRISM Risk Index**: **${avgSecRisk} / 100**
 - **Average Physical Progress**: **${avgSecProgress}%**
 - **Total Capital Commitment**: ₹${totalSecBudget.toLocaleString()} Cr
@@ -432,43 +537,37 @@ ${topSecList}`,
         'Which sector has the highest average risk?',
         'Which projects have the highest risk?',
         'Which projects need intervention first?'
-      ]
+      ],
+      totalMatching: secProjects.length
     };
   }
 
-  // 7. Progress Stagnation / Deterioration
+  // 8. Progress Stagnation / Deterioration
   if (
     q.includes('stagnant progress') ||
     q.includes('stagnant') ||
     q.includes('stagnation') ||
     q.includes('frozen progress')
   ) {
-    const stagnantProjects = allProjects.filter(p =>
-      (p.primaryRiskDriver && p.primaryRiskDriver.toLowerCase().includes('stagnat')) ||
-      (p.topRiskDrivers && p.topRiskDrivers.some(d => d.label.toLowerCase().includes('stagnat') && d.shapValue >= 15))
-    );
-
-    const topStagnant = [...stagnantProjects]
-      .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
-      .slice(0, 5);
-
-    const listText = topStagnant.map((p, i) =>
-      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **Risk**: ${p.riskScore}/100 [${p.riskTier}] | **State**: ${p.state} | **Sector**: ${p.sector}\n   - **Physical Progress**: ${p.physicalProgressPercent}%\n   - **Stagnation Evidence**: ${p.topRiskDrivers?.find(d => d.label.includes('Stagnation'))?.description || p.primaryRiskDriver || 'Progress change ≤ 0.5 pp over consecutive observations'}`
+    const stagResult = ProjectQueryService.getStagnantProjects({ limit: 5 });
+    const listText = stagResult.projects.map((p, i) =>
+      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **Risk**: ${p.riskScore}/100 [${p.riskTier}] | **State**: ${p.state} | **Sector**: ${p.sector}\n   - **Physical Progress**: ${p.physicalProgressPercent}%\n   - **Stagnation Evidence**: ${p.primaryRiskDriver || (p.topRiskDrivers && p.topRiskDrivers.find(d => d.label.includes('Stagnat'))?.description) || 'Progress change ≤ 0.5 pp over consecutive observations'}`
     ).join('\n\n');
 
     return {
       intent: 'PROGRESS_STAGNATION',
       summaryText: `Progress Stagnation Analysis:
-Across the 2,054 monitored projects, **${stagnantProjects.length} projects** exhibit progress stagnation (≤ 0.5 pp progress change across consecutive reporting months in the April–July 2026 window).
+Across the national PAIMANA portfolio, **${stagResult.totalStagnant} projects** exhibit progress stagnation (≤ 0.5 pp progress change across consecutive reporting months in the April–July 2026 window).
 
 Top highest-risk projects exhibiting chronic progress stagnation:
 ${listText}`,
-      groundedProjects: topStagnant,
+      groundedProjects: stagResult.projects,
       suggestedQuestions: [
-        `Why is project ${topStagnant[0]?.id || '701396'} high risk?`,
+        `Why is project ${stagResult.projects[0]?.id || '701396'} high risk?`,
         'Which projects show deteriorating progress?',
         'Which projects need intervention first?'
-      ]
+      ],
+      totalMatching: stagResult.totalStagnant
     };
   }
 
@@ -480,11 +579,15 @@ ${listText}`,
   ) {
     const deterioratingProjects = allProjects.filter(p =>
       (p.primaryRiskDriver && p.primaryRiskDriver.toLowerCase().includes('deteriorat')) ||
-      (p.topRiskDrivers && p.topRiskDrivers.some(d => d.label.toLowerCase().includes('deteriorat') && d.shapValue >= 5))
+      (p.topRiskDrivers && p.topRiskDrivers.some(d => d.label.toLowerCase().includes('deteriorat') && (d.shapValue >= 5 || d.severity === 'high' || d.severity === 'critical')))
     );
 
     const topDeteriorating = [...deterioratingProjects]
-      .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
+      .sort((a, b) => {
+        const diff = (b.riskScore ?? 0) - (a.riskScore ?? 0);
+        if (diff !== 0) return diff;
+        return a.id.localeCompare(b.id);
+      })
       .slice(0, 5);
 
     const listText = topDeteriorating.map((p, i) =>
@@ -503,11 +606,12 @@ ${listText}`,
         'Which projects show stagnant progress?',
         'Which projects have the highest risk?',
         'Which projects need intervention first?'
-      ]
+      ],
+      totalMatching: deterioratingProjects.length
     };
   }
 
-  // 8. Intervention / Prioritization
+  // 9. Intervention / Prioritization
   if (
     q.includes('attention first') ||
     q.includes('prioritize') ||
@@ -516,37 +620,34 @@ ${listText}`,
     q.includes('need intervention') ||
     q.includes('priority tier')
   ) {
-    const priorities = paimanaRepository.listPriorities({ limit: 5 });
+    const prioResult = ProjectQueryService.getPriorityProjects({ limit: 5 });
 
-    const listText = priorities.priorities.map((p, i) =>
-      `${i + 1}. **${p.projectName}** (\`${p.projectId}\`)\n   - **Priority Score**: **${p.priorityScore}** [${p.priorityTier}]\n   - **PRISM Risk Index**: ${p.riskScore}/100 | **Urgency**: ${p.urgency}/100\n   - **Sector & State**: ${p.sector} • ${p.state}\n   - **Recommended Action**: ${p.recommendedAction}`
+    const listText = prioResult.projects.map((p, i) =>
+      `${i + 1}. **${p.name}** (\`${p.code || p.id}\`)\n   - **Priority Tier**: **${p.priorityTier}** (Priority Score: **${p.priorityScore}**, Urgency: ${p.urgency}/100)\n   - **PRISM Risk Index**: ${p.riskScore}/100 [${p.riskTier}]\n   - **Sector & State**: ${p.sector} • ${p.state}\n   - **Recommended Action**: ${p.recommendedAction || 'Maintain standard PMG oversight'}`
     ).join('\n\n');
-
-    const topGrounded = priorities.priorities
-      .map(pr => allProjects.find(p => p.id === pr.projectId))
-      .filter((p): p is Project => Boolean(p));
 
     return {
       intent: 'INTERVENTION_PRIORITY_QUEUE',
       summaryText: `PRISM Intervention Priority Queue (Phase 3A):
 The priority engine rank-orders projects by combining **PRISM Risk Index (40%)**, **Schedule Urgency (25%)**, **Recent Progress Deterioration (20%)**, and **Evidence Confidence (15%)**.
 
-- **P1 Immediate Intervention (Priority ≥ 70)**: **${priorities.p1Count} projects**
-- **P2 High-Priority Monitoring (50–69)**: **${priorities.p2Count} projects**
-- **P3 Routine Monitoring (< 50)**: **${priorities.p3Count} projects**
+- **P1 Immediate Intervention (Priority ≥ 70)**: **${prioResult.p1Count} projects**
+- **P2 High-Priority Monitoring (50–69)**: **${prioResult.p2Count} projects**
+- **P3 Routine Monitoring (< 50)**: **${prioResult.p3Count} projects**
 
 Top prioritized projects requiring immediate inter-ministerial intervention:
 ${listText}`,
-      groundedProjects: topGrounded,
+      groundedProjects: prioResult.projects,
       suggestedQuestions: [
-        `Why is project ${priorities.priorities[0]?.projectId || '705610'} high risk?`,
+        `Why is project ${prioResult.projects[0]?.id || '701396'} high risk?`,
         'Which projects have the highest risk?',
         'Which sectors have the highest average risk?'
-      ]
+      ],
+      totalMatching: prioResult.totalMatching
     };
   }
 
-  // 9. Portfolio Statistics / Counts / Average Risk
+  // 10. Portfolio Statistics / Counts / Average Risk
   if (
     q.includes('how many projects are being monitored') ||
     q.includes('how many projects are monitored') ||
@@ -579,7 +680,8 @@ ${listText}`,
         'Which projects have the highest risk?',
         'Which sector has the highest average risk?',
         'Which projects show stagnant progress?'
-      ]
+      ],
+      totalMatching: kpis.totalProjects
     };
   }
 
@@ -647,15 +749,25 @@ CRITICAL OPERATIONAL RULES:
 2. NEVER invent or hallucinate project names, codes, budgets, progress percentages, dates, risk scores, or locations.
 3. NEVER calculate, alter, or predict risk scores. The PRISM Risk Engine is the sole authoritative source.
 4. If asked to calculate risk yourself, state clearly that the PRISM Risk Engine provides the authoritative assessment based on 6 evidence-based indicators.
-5. Use official PRISM terminology:
+5. QUANTITATIVE PRECISION & CANONICAL TRUTH:
+   - State the EXACT numerical counts, averages, and project IDs provided in the factual context.
+   - Never recalculate counts, percentages, or averages.
+   - If the context says "Showing 5 of 6 high-risk projects", state "Showing 5 of 6 high-risk projects" and mention the total matching count.
+6. STATE & MULTI-STATE DISTINCTION:
+   - Differentiate clearly between dedicated state projects (e.g. 17 in Delhi) and multi-state transit projects (e.g. 7 national corridors passing through Delhi).
+   - If reporting dedicated state projects, cite that dedicated count (e.g., 6 High-Risk projects).
+7. "GOOD PACE" / "PERFORMANCE" CRITERIA:
+   - Do NOT equate high physical completion with "good pace". A project at 98% completion with 40 months of delay and cost escalation is not on good pace.
+   - Only describe projects as "on good pace" if verified by the context (Low risk, 0 delay, 0 cost escalation).
+8. Use official PRISM terminology:
    - "PRISM Risk Index"
    - "PRISM Risk Engine"
    - "PRISM Risk Indicators"
    - "Evidence Weight"
    - "Scenario Simulation"
    DO NOT use terms like SHAP, TreeSHAP, XGBoost, ML Risk Model, or Phase 2 calibration.
-6. Present your answer with clear markdown headings, bullet points, and bold key metrics.
-7. Keep responses concise, professional, and policy-grade (under 250 words).
+9. Present your answer with clear markdown headings, bullet points, and bold key metrics.
+10. Keep responses concise, professional, and policy-grade (under 250 words).
 `;
 
       const prompt = `
@@ -678,16 +790,26 @@ Synthesize and explain this verified PAIMANA data directly in response to the us
       });
 
       const text = response.text || '';
+
+      const mapProjectEntity = (p: Project) => ({
+        id: p.id,
+        name: p.name,
+        riskScore: (p.riskScore ?? 0) as number,
+        riskTier: p.riskTier,
+        priorityTier: p.priorityTier,
+        state: p.state,
+        sector: (p.derivedSector || p.sector || 'Infrastructure') as string,
+        physicalProgressPercent: p.physicalProgressPercent,
+        primaryRiskDriver: p.primaryRiskDriver || p.priorityReason
+      });
+
       if (text.trim().length > 0) {
         return {
           answer: text.trim(),
-          groundedProjects: factualContext.groundedProjects.map(p => ({
-            id: p.id,
-            name: p.name,
-            riskScore: (p.riskScore ?? 0) as number,
-            riskTier: p.riskTier
-          })),
-          suggestedQuestions: factualContext.suggestedQuestions
+          groundedProjects: factualContext.groundedProjects.map(mapProjectEntity),
+          suggestedQuestions: factualContext.suggestedQuestions,
+          totalMatching: factualContext.totalMatching ?? factualContext.groundedProjects.length,
+          displayedCount: factualContext.groundedProjects.length
         };
       }
     } catch (err) {
@@ -695,15 +817,117 @@ Synthesize and explain this verified PAIMANA data directly in response to the us
     }
   }
 
+  const mapProjectEntity = (p: Project) => ({
+    id: p.id,
+    name: p.name,
+    riskScore: (p.riskScore ?? 0) as number,
+    riskTier: p.riskTier,
+    priorityTier: p.priorityTier,
+    state: p.state,
+    sector: (p.derivedSector || p.sector || 'Infrastructure') as string,
+    physicalProgressPercent: p.physicalProgressPercent,
+    primaryRiskDriver: p.primaryRiskDriver || p.priorityReason
+  });
+
   // Resilient Local Grounded Intelligence Engine (Fallback / Offline / Key-less)
   return {
     answer: factualContext.summaryText,
-    groundedProjects: factualContext.groundedProjects.map(p => ({
-      id: p.id,
-      name: p.name,
-      riskScore: (p.riskScore ?? 0) as number,
-      riskTier: p.riskTier
-    })),
-    suggestedQuestions: factualContext.suggestedQuestions
+    groundedProjects: factualContext.groundedProjects.map(mapProjectEntity),
+    suggestedQuestions: factualContext.suggestedQuestions,
+    totalMatching: factualContext.totalMatching ?? factualContext.groundedProjects.length,
+    displayedCount: factualContext.groundedProjects.length
+  };
+}
+
+export interface InterventionNarrativeResponse {
+  narrative: string;
+  isAIGenerated: boolean;
+  generatedAt: string;
+}
+
+/**
+ * Generates an official executive intervention brief memo.
+ * Strictly feeds Gemini only verified structured scenario outputs.
+ * Gemini NEVER calculates or modifies risk scores.
+ * Clearly labeled and backed by deterministic policy-grade fallback.
+ */
+export async function generateInterventionNarrative(
+  project: Project,
+  scenario: any
+): Promise<InterventionNarrativeResponse> {
+  const client = getGeminiClient();
+  const timestamp = new Date().toISOString();
+
+  // Deterministic fallback memorandum
+  const fallbackMemo = `### 🏛️ MoSPI PMG Executive Intervention Memorandum\n\n` +
+    `**1. Executive Context & PAIMANA Baseline:**\n` +
+    `Project **${project.name}** (\`${project.id}\`) under **${project.ministry || project.implementingAgency}** (${project.state}) records **${project.physicalProgressPercent}%** cumulative physical completion against ₹**${(project.cumulativeExpenditureCr || 0).toLocaleString()} Cr** expenditure. Under the authoritative PRISM Risk Engine, the project is categorized as **${scenario.originalRiskTier}** Risk (**${scenario.originalRiskScore}/100**) and **${scenario.originalPriorityTier}** Priority due to ${scenario.officerBrief?.primaryConcern || 'critical-path schedule compression and progress stagnation'}.\n\n` +
+    `**2. Simulated Policy Intervention Package:**\n` +
+    `To arrest further milestone slippage, the simulated policy package introduces targeted operational levers: ${scenario.assumptionImpacts && scenario.assumptionImpacts.length > 0 ? scenario.assumptionImpacts.map((a: any) => `*${a.lever}* (${a.value}: -${a.pointsReduced} pts)`).join(', ') : 'standard monitoring'}. These parametric adjustments directly resolve the statutory and liquidity bottlenecks identified in the 6 PRISM Risk Indicators.\n\n` +
+    `**3. Projected Scenario Recovery:**\n` +
+    `Under full operationalization of these measures, the modeled risk profile improves from **${scenario.originalRiskScore}** (${scenario.originalRiskTier}) to **${scenario.simulatedRiskScore}** (${scenario.simulatedRiskTier}), precipitating a priority tier transition from **${scenario.originalPriorityTier}** to **${scenario.simulatedPriorityTier}** and averting an estimated **~${scenario.delaySavedMonths ?? 0} months** of cumulative project delay.\n\n` +
+    `*Disclaimer: Illustrative Policy Scenario — Not an Observed Forecast. Parametric sensitivities do not modify official MoSPI PAIMANA historical records.*`;
+
+  if (client) {
+    try {
+      const systemInstruction = `You are the PRISM MoSPI Executive Brief Synthesizer.
+You draft high-level, policy-grade memoranda for the Cabinet Secretariat, Ministry of Statistics & Programme Implementation (MoSPI), and Project Monitoring Group (PMG).
+
+CRITICAL CONSTRAINTS:
+1. You MUST NOT calculate or modify risk scores or priority tiers. All figures provided in the prompt are authoritative outputs from the PRISM Deterministic Engines.
+2. DO NOT hallucinate progress figures, costs, or dates. Cite only the structured data provided.
+3. Clearly state that the simulated scenario is an "Illustrative Policy Scenario — Not an Observed Forecast".
+4. Format in exactly 3 concise, formal paragraphs:
+   - Paragraph 1: Executive Context & PAIMANA Baseline
+   - Paragraph 2: Simulated Policy Intervention Levers
+   - Paragraph 3: Projected Recovery Trajectory & Policy Disclaimer
+5. Keep tone formal, authoritative, and policy-focused (under 250 words).`;
+
+      const prompt = `
+STRUCTURED PROJECT & SCENARIO CONTEXT:
+- Project Name: ${project.name} (${project.id})
+- Ministry / Implementing Agency: ${project.ministry || project.implementingAgency}
+- State / Sector: ${project.state} / ${project.derivedSector || project.sector}
+- Physical Completion: ${project.physicalProgressPercent}% | Cumulative Spend: ₹${project.cumulativeExpenditureCr} Cr
+- Cost Overrun: +${project.costOverrunPercent}% | Time Overrun: +${project.timeOverrunMonths} months
+- Current PRISM Risk: ${scenario.originalRiskScore}/100 (${scenario.originalRiskTier})
+- Current Intervention Priority: ${scenario.originalPriorityTier} (${scenario.originalPriorityScore}/100)
+- Simulated Scenario Risk: ${scenario.simulatedRiskScore}/100 (${scenario.simulatedRiskTier}) [Delta: ${scenario.riskScoreDelta} pts]
+- Simulated Intervention Priority: ${scenario.simulatedPriorityTier} (${scenario.simulatedPriorityScore}/100) [Delta: ${scenario.priorityScoreDelta} pts]
+- Delay Recovered: ~${scenario.delaySavedMonths} months | Cost Escalation Curtailed: ₹${scenario.costSavedCr} Cr
+- Applied Policy Levers: ${JSON.stringify(scenario.assumptionImpacts || [])}
+- Indicator Changes: ${JSON.stringify(scenario.indicatorChanges || [])}
+- Primary Concern: ${scenario.officerBrief?.primaryConcern}
+- Recommended Action: ${scenario.officerBrief?.recommendedAction}
+
+Synthesize an official executive intervention memorandum based exclusively on these verified facts.
+`;
+
+      const response = await client.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          temperature: 0.1
+        }
+      });
+
+      const text = response.text || '';
+      if (text.trim().length > 0) {
+        return {
+          narrative: text.trim(),
+          isAIGenerated: true,
+          generatedAt: timestamp
+        };
+      }
+    } catch (err) {
+      console.warn('Gemini executive narrative generation failed, using deterministic fallback:', err);
+    }
+  }
+
+  return {
+    narrative: fallbackMemo,
+    isAIGenerated: false,
+    generatedAt: timestamp
   };
 }

@@ -21,6 +21,7 @@ export default function App() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [copilotProject, setCopilotProject] = useState<Project | null>(null);
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [alerts, setAlerts] = useState<EarlyWarningAlert[]>([]);
@@ -315,12 +316,29 @@ export default function App() {
                 </button>
                 {dataSource === 'PAIMANA' ? (
                   <button
-                    onClick={triggerJudgeFlow}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-xs"
-                    title="Switch to Demo Showcase preset with USBRL deep-dive"
+                    onClick={async () => {
+                      const p1 = (allProjects.length > 0 ? allProjects : projects).find(p => p.id === '701396' || p.priorityTier === 'P1');
+                      if (p1) {
+                        setSelectedProject(p1);
+                        setCopilotProject(p1);
+                      } else {
+                        try {
+                          const res = await fetch('/api/projects/701396');
+                          if (res.ok) {
+                            const data = await res.json();
+                            setSelectedProject(data);
+                            setCopilotProject(data);
+                          }
+                        } catch {
+                          triggerJudgeFlow();
+                        }
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs"
+                    title="Instantly inspect #1 P1 Critical Project in live PAIMANA dataset (Project 701396 - Lower Pedhi Project)"
                   >
-                    <PlayCircle className="w-3.5 h-3.5" />
-                    <span>Judge Demo Mode</span>
+                    <Zap className="w-3.5 h-3.5 text-amber-200 fill-amber-200" />
+                    <span>Inspect Top P1 Project</span>
                   </button>
                 ) : (
                   <button
@@ -346,31 +364,13 @@ export default function App() {
               selectedTier={filters.riskTier}
             />
 
-            {/* 3. Infrastructure Sector Cards (Main exploration mechanism across all projects) */}
-            <SectorCards
-              sectors={sectorStats}
-              selectedSector={filters.sector}
-              onSelectSector={(sec) => {
-                handleFilterUpdate({ sector: sec });
-                setActiveView('projects');
-                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
-              }}
-              isLoading={isSectorsLoading}
-            />
-
-            {/* 4. Early Warning Alerts (Operational signals derived from longitudinal data) */}
-            <EarlyWarningAlertsWidget
-              alerts={alerts}
-              onOpenAlertsModal={() => setIsAlertsModalOpen(true)}
-              onSelectProject={(p) => setSelectedProject(p)}
-              allProjects={allProjects.length > 0 ? allProjects : projects}
-              limit={4}
-            />
-
-            {/* 5. Priority Projects (Max 5-10 High-Urgency Interventions) */}
+            {/* 3. Priority Projects (Max 5-10 High-Urgency Interventions) — Placed immediately below KPIs for 90-second judge evaluation */}
             <PriorityProjectsOverview
               projects={allProjects.length > 0 ? allProjects : projects}
-              onSelectProject={(p) => setSelectedProject(p)}
+              onSelectProject={(p) => {
+                setSelectedProject(p);
+                setCopilotProject(p);
+              }}
               onViewAllPriority={() => {
                 setProjectQueueMode('priority');
                 handleFilterUpdate({ riskTier: 'ALL', sector: 'ALL', search: '', state: 'ALL' });
@@ -382,6 +382,30 @@ export default function App() {
                 }, 50);
               }}
               limit={8}
+            />
+
+            {/* 4. Early Warning Alerts (Operational signals derived from longitudinal data) */}
+            <EarlyWarningAlertsWidget
+              alerts={alerts}
+              onOpenAlertsModal={() => setIsAlertsModalOpen(true)}
+              onSelectProject={(p) => {
+                setSelectedProject(p);
+                setCopilotProject(p);
+              }}
+              allProjects={allProjects.length > 0 ? allProjects : projects}
+              limit={4}
+            />
+
+            {/* 5. Infrastructure Sector Cards (Main exploration mechanism across all projects) */}
+            <SectorCards
+              sectors={sectorStats}
+              selectedSector={filters.sector}
+              onSelectSector={(sec) => {
+                handleFilterUpdate({ sector: sec });
+                setActiveView('projects');
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+              }}
+              isLoading={isSectorsLoading}
             />
 
             {/* 5. One Small Portfolio Insight (Risk Distribution across all 2,054 projects) */}
@@ -544,17 +568,22 @@ export default function App() {
         project={selectedProject}
         onClose={() => setSelectedProject(null)}
         onAskCopilotAboutProject={(p) => {
+          setCopilotProject(p);
           setSelectedProject(null);
           setIsCopilotOpen(true);
         }}
+        onOpenFlashReport={() => setIsReportOpen(true)}
       />
 
       {/* Grounded AI Assistant Drawer */}
       <AICopilotDrawer
         isOpen={isCopilotOpen}
         onClose={() => setIsCopilotOpen(false)}
-        activeProject={selectedProject}
-        onSelectProject={(p) => setSelectedProject(p)}
+        activeProject={copilotProject || selectedProject}
+        onSelectProject={(p) => {
+          setCopilotProject(p);
+          setSelectedProject(p);
+        }}
         allProjects={allProjects.length > 0 ? allProjects : projects}
       />
 

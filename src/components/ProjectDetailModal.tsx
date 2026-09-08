@@ -12,11 +12,13 @@ import {
   Tooltip, CartesianGrid, Legend, BarChart, Bar, Cell, ReferenceLine
 } from 'recharts';
 import { Project, RiskTier, PaimanaObservation } from '../types/index';
+import { InterventionLab } from './InterventionLab';
 
 interface ProjectDetailModalProps {
   project: Project | null;
   onClose: () => void;
   onAskCopilotAboutProject: (project: Project) => void;
+  onOpenFlashReport?: () => void;
 }
 
 // Risk Indicator from PRISM Risk Engine API
@@ -56,7 +58,8 @@ const MONTH_LABELS: Record<string, string> = {
 export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   project,
   onClose,
-  onAskCopilotAboutProject
+  onAskCopilotAboutProject,
+  onOpenFlashReport
 }) => {
   if (!project) return null;
 
@@ -68,7 +71,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
   const [simResult, setSimResult] = useState<any>(null);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'indicators' | 'evidence' | 'simulation' | 'scurve' | 'intervention'>('indicators');
+  const [activeTab, setActiveTab] = useState<'lab' | 'indicators' | 'evidence' | 'scurve' | 'simulation' | 'intervention'>('lab');
 
   // PRISM Risk Engine data (from /api/projects/:id/risk)
   const [riskAssessment, setRiskAssessment] = useState<RiskAssessmentData | null>(null);
@@ -470,11 +473,10 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
         {/* Navigation Tabs */}
         <div className="px-5 border-b border-slate-200 bg-slate-50 flex gap-0 overflow-x-auto mt-3">
           {[
+            { id: 'lab', label: '🧪 Intervention Lab', badge: 'DECISION SUPPORT' },
             { id: 'indicators', label: '🔬 Risk Indicators', badge: riskAssessment ? `${riskAssessment.indicators.length}` : '' },
             { id: 'evidence', label: '📋 Evidence', badge: observations.length > 0 ? `${observations.length}mo` : '' },
-            { id: 'simulation', label: '🎛️ Scenario Simulation', badge: '' },
             { id: 'scurve', label: '📈 Longitudinal Story', badge: '' },
-            { id: 'intervention', label: '⚡ Intervention Brief', badge: isCriticalOrHigh ? '!' : '' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -488,7 +490,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
               <span>{tab.label}</span>
               {tab.badge && (
                 <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${
-                  tab.badge === '!' ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700'
+                  tab.id === 'lab' ? 'bg-blue-100 text-blue-800 font-bold' : 'bg-slate-200 text-slate-700'
                 }`}>
                   {tab.badge}
                 </span>
@@ -499,6 +501,17 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
         {/* Body Content Area */}
         <div className="p-5 overflow-y-auto flex-1 space-y-5">
+
+          {/* ================================================================= */}
+          {/* TAB 0: PRISM INTERVENTION LAB (ORCHESTRATION LAYER)                */}
+          {/* ================================================================= */}
+          {activeTab === 'lab' && (
+            <InterventionLab
+              project={project}
+              onAskCopilotAboutProject={onAskCopilotAboutProject}
+              onOpenFlashReport={onOpenFlashReport}
+            />
+          )}
 
           {/* ================================================================= */}
           {/* TAB 1: PRISM RISK INDICATORS                                       */}
@@ -919,7 +932,6 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                           <span className="text-slate-400 text-xs">/ 100</span>
                         </div>
                         <div className="flex items-center gap-2 mt-1">
-                          <SimTierBadge tier={simResult.simulatedRiskTier} />
                           {simResult.riskScoreDelta !== 0 && (
                             <span className={`text-[11px] font-bold ${simResult.riskScoreDelta < 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                               {simResult.riskScoreDelta > 0 ? '+' : ''}{simResult.riskScoreDelta} pts
@@ -1308,6 +1320,16 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                       <ShieldAlert className="w-3.5 h-3.5" />
                       Escalate to PMG
                     </button>
+                    {onOpenFlashReport && (
+                      <button
+                        onClick={onOpenFlashReport}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all"
+                        title="Open MoSPI Executive Flash Report"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        <span>View 1-Page Flash Report</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Action Feedback */}
@@ -1375,6 +1397,39 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             </div>
           )}
 
+        </div>
+
+        {/* Modal Bottom Sticky Actions Bar */}
+        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
+          <div className="text-[11px] text-slate-500 hidden sm:flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-slate-400" />
+            <span>Deterministic scores based on MoSPI PAIMANA longitudinal data.</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            {onOpenFlashReport && (
+              <button
+                onClick={onOpenFlashReport}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-all shadow-2xs"
+                title="Open MoSPI Executive Flash Report"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                <span>Flash Report</span>
+              </button>
+            )}
+            <button
+              onClick={() => onAskCopilotAboutProject(project)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-2xs"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Ask Copilot</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
       </div>

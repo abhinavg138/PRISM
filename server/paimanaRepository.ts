@@ -1,3 +1,13 @@
+/**
+ * ============================================================================
+ * PRISM — NODE.JS PAIMANA REPOSITORY (REFERENCE IMPLEMENTATION)
+ * ============================================================================
+ * NOTICE: The primary production repository is now implemented in Python
+ * at `backend/repositories/paimana_repository.py`.
+ * This file is retained as an authoritative reference implementation.
+ * ============================================================================
+ */
+
 import fs from 'fs';
 import path from 'path';
 import XLSX from 'xlsx';
@@ -426,10 +436,14 @@ export class PaimanaRepository {
       if (valA == null) return sortDir === 'asc' ? 1 : -1;
       if (valB == null) return sortDir === 'asc' ? -1 : 1;
 
+      let diff = 0;
       if (typeof valA === 'string') {
-        return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        diff = sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else {
+        diff = sortDir === 'asc' ? (valA - valB) : (valB - valA);
       }
-      return sortDir === 'asc' ? (valA - valB) : (valB - valA);
+      if (diff !== 0) return diff;
+      return a.id.localeCompare(b.id);
     });
 
     const totalCount = list.length;
