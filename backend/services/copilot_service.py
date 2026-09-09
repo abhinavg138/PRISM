@@ -13,8 +13,8 @@ from backend.repositories.paimana_repository import paimana_repository
 from backend.services.project_query_service import ProjectQueryService
 
 _ai_client = None
-# gemini-2.0-flash: 1,500 req/day free tier vs gemini-3.6-flash 20 req/day
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+# Default to gemini-3.6-flash per current GenAI model availability
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
 def get_gemini_client():
     global _ai_client
