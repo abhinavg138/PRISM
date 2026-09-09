@@ -55,6 +55,15 @@ PRISM is grounded on the official monthly infrastructure flash reports published
 - **Projects with Complete 4-Month Snapshots:** **1,664**
 - **Sectors Monitored:** Railways, Road Transport & Highways, Power & Energy, Petroleum & Natural Gas, Urban Affairs & Metro, Coal & Mining, Ports & Shipping, Water Resources, Telecommunications, Civil Aviation, Steel & Heavy Industry.
 
+### Data Scale Reconciliation Note (MoSPI Snapshot vs Longitudinal Dataset)
+Evaluators comparing the single-month snapshot in the SIH26103 problem statement against PRISM will observe different project counts. This reflects the longitudinal observation window:
+- **April 2026 Snapshot:** Exactly **1,963 projects** were active in the initial MoSPI flash report.
+- **May 2026 Snapshot:** 1,957 projects.
+- **June 2026 Snapshot:** 1,822 projects.
+- **July 2026 Snapshot:** 1,757 projects.
+- **Dynamic Project Entry & Exit:** Over the 4-month monitoring cycle, **91 newly sanctioned projects entered** monitoring after April, while **291 completed or decommissioned projects exited** monitoring by July.
+- **Total Unique Infrastructure Assets:** Across the entire multi-month window, PRISM monitors **2,054 unique projects** spanning **7,499 observation records**, with **1,664 projects** maintaining continuous 4-month reporting series.
+
 ### Zero-Fabrication Principle
 Official MoSPI PAIMANA flash reports record implementing agencies, administrative states, sanction budgets, cumulative expenditure, and physical progress percentages. They **do not** report latitude/longitude coordinates or projected monthly completion curves. 
 
@@ -128,7 +137,7 @@ flowchart TD
 
 ## 5. Risk Engine
 
-The PRISM Risk Engine (`server/riskEngine.ts`) calculates an auditable **PRISM Risk Index (0–100)** for every project using longitudinal observations from April to July 2026.
+The PRISM Risk Engine (`backend/services/risk_engine.py`) calculates an auditable **PRISM Risk Index (0–100)** for every project using longitudinal observations from April to July 2026.
 
 ```
 PRISM Risk Index = round( ∑ [ Normalised Indicator Score_i × Weight_i ] / 100 )
@@ -159,7 +168,7 @@ PRISM Risk Index = round( ∑ [ Normalised Indicator Score_i × Weight_i ] / 100
 
 High risk does not always require immediate operational intervention. For example, a project with significant cost overrun whose revised completion date is five years in the future does not demand the same crisis response as a project that has stalled 30 days before its revised commissioning deadline.
 
-The PRISM Priority Engine (`server/priorityEngine.ts`) computes an **Intervention Priority Score (0–100)** to determine executive triage order:
+The PRISM Priority Engine (`backend/services/priority_engine.py`) computes an **Intervention Priority Score (0–100)** to determine executive triage order:
 
 ```
 Priority Score = round(
@@ -214,7 +223,7 @@ PRISM's longitudinal tracking detects four specific behavioral patterns across t
 
 ## 9. What-If Policy Simulation
 
-The What-If Simulator (`server/mlEngine.ts`) provides an exploratory sensitivity analysis tool for policy analysts:
+The What-If Simulator (`backend/services/scenario_engine.py`) provides an exploratory sensitivity analysis tool for policy analysts:
 
 - **Simulated Levers:**
   - *Statutory & Land Clearance Acceleration (0–52 weeks expedited)*
@@ -246,7 +255,45 @@ Officer Query ──► Deterministic Intent Filter ──► Repository Groundi
 
 ---
 
-## 11. Tech Stack
+## 11. CUF-Based Predictive Analysis & Feature Attribution (SIH26103 Alignment)
+
+The MoSPI Problem Statement **SIH26103** specifically mandates:
+> *"Development of prediction and analytical models based on the existing Common Upload Form (CUF) fields... along with an assessment of the extent to which predictive performance is attributable to the current CUF fields vis-à-vis additional variables not presently captured in the CUF."*
+
+PRISM operationalizes this requirement through a reproducible empirical ablation study (`ml/train_real_models.py`) trained on all **7,499 longitudinal MoSPI PAIMANA observations** across **2,054 unique assets**:
+
+### Common Upload Form (CUF) Feature Attribution
+
+| Variable | Field Status | Source / Formula | Role in Analysis |
+| :--- | :---: | :--- | :---: |
+| `original_cost_cr` | **Native CUF Field** | Raw Sanction Cost (₹ Crore) | Models A & B |
+| `revised_cost_cr` | **Native CUF Field** | Anticipated / Revised Cost (₹ Crore) | Models A & B |
+| `cumulative_expenditure_cr` | **Native CUF Field** | Cumulative Expenditure (₹ Crore) | Models A & B |
+| `physical_progress_pct` | **Native CUF Field** | Cumulative Physical Progress % | Models A & B |
+| `expenditure_pct_of_revised_cost` | Derived Indicator | `(expenditure / revised_cost) * 100` | Model B |
+| `progress_expenditure_gap` | Derived Indicator | `physical_progress - expenditure_pct` | Model B |
+| `cost_revision_pct` | Derived Indicator | `((revised_cost - original_cost) / original_cost) * 100` | Model B |
+| `derived_sector` | Derived Indicator | NLP agency/title classification (9 core sectors) | Model B (One-Hot) |
+
+### Empirical Ablation Results (Reproducible Evaluation)
+
+Both models are evaluated on the exact same project-stratified split (`GroupShuffleSplit`, 20% test set, random state 42) to eliminate observation leakage across reporting months:
+
+| Empirical Evaluation Metric | Model A (Native CUF Fields Only) | Model B (CUF + Engineered Variables) | Incremental Gain ($\Delta$) |
+| :--- | :---: | :---: | :---: |
+| **Mean Absolute Error (MAE)** | **16.52 months** | **15.46 months** | **-1.05 months (6.4% error reduction)** |
+| **Root Mean Squared Error (RMSE)** | **25.46 months** | **24.89 months** | **-0.57 months** |
+| **Variance Explained ($R^2$)** | **0.245** | **0.279** | **+0.033 variance gain** |
+
+### Key Analytical Insights for MoSPI:
+1. **Physical progress (32.0% Gini importance)** and **Cost Revision % (19.0%)** dominate schedule delay prediction.
+2. Incorporating **financial drawdown ratios (`expenditure_pct_of_revised_cost`)** and **physical-financial divergence (`progress_expenditure_gap`)** yields a statistically meaningful **1.05-month error reduction** over single-snapshot raw CUF figures alone.
+3. **Scientific Limitation:** This ablation demonstrates associative predictive contribution under held-out project testing; it does not assert causal attribution.
+4. **Governance Architecture:** In production, PRISM uses the **deterministic 6-indicator Risk Engine** for official auditability; this empirical ML model serves as an auxiliary benchmarking asset. Full methodology and schema are maintained in `ml/README.md` and `ml/artifacts/real_model_metadata.json`.
+
+---
+
+## 12. Tech Stack
 
 ### Frontend
 - **Structure:** Semantic HTML5 (`frontend/index.html`)
@@ -265,15 +312,15 @@ Officer Query ──► Deterministic Intent Filter ──► Repository Groundi
 - **ASGI Web Server:** Uvicorn (`uvicorn[standard]` `^0.34.0`)
 - **Validation & Schemas:** Pydantic v2 (`pydantic` `^2.10.0`)
 - **Data Ingestion:** Pandas (`pandas` `^2.2.0`) & OpenPyXL (`openpyxl` `^3.1.5`)
-- **Testing:** Pytest (`pytest` `^8.3.0`, `httpx` `^0.28.0`)
+- **Testing:** Pytest (`pytest` `^8.3.0`, `httpx` `^0.28.0`, `pytest-asyncio` `^1.4.0`)
 
 ### AI Integration
 - **SDK:** Google Gen AI SDK (`google-genai` `^1.0.0`)
-- **Model:** `gemini-2.5-flash`
+- **Model:** `gemini-2.0-flash`
 
 ---
 
-## 12. Project Structure
+## 13. Project Structure
 
 ```
 PRISM/
@@ -287,7 +334,7 @@ PRISM/
 │   ├── repositories/                              # PAIMANA dataset loader & query cache
 │   ├── routes/                                    # REST API endpoints (/api/*)
 │   ├── services/                                  # Deterministic engines: Risk, Priority, Alert, Scenario, Copilot
-│   └── tests/                                     # Automated test suite (42 tests passing)
+│   └── tests/                                     # Automated test suite (68 verified tests passing)
 ├── frontend/
 │   ├── index.html                                 # Semantic master HTML layout
 │   ├── css/
@@ -314,7 +361,7 @@ PRISM/
 
 ---
 
-## 13. Local Development
+## 14. Local Development
 
 ### Prerequisites
 - Python 3.10+ (Python 3.12+ recommended)
@@ -357,14 +404,14 @@ PRISM/
    docker compose up --build
    ```
 
-6. **Run Automated Test Suite (47 Tests):**
+6. **Run Automated Test Suite (68 Tests Passing):**
    ```bash
    pytest backend/tests/ -v
    ```
 
 ---
 
-## 14. API Overview
+## 15. API Overview
 
 The backend exposes a unified REST API on port `8000`:
 
@@ -389,7 +436,7 @@ The backend exposes a unified REST API on port `8000`:
 
 ---
 
-## 15. Data & Methodology Limitations
+## 16. Data & Methodology Limitations
 
 Honesty and technical rigor are fundamental to PRISM. The following characteristics are documented for academic and audit transparency:
 
@@ -400,7 +447,7 @@ Honesty and technical rigor are fundamental to PRISM. The following characterist
 
 ---
 
-## 16. Security Principles
+## 17. Security Principles
 
 - **Server-Side Secret Isolation:** `GEMINI_API_KEY` is loaded exclusively on the Python/FastAPI backend. The frontend contains zero API keys or credentials.
 - **Client-Side Auto-Escaping:** Dynamic content is rendered via safe DOM text nodes and sanitized formatting helpers.
@@ -410,7 +457,7 @@ Honesty and technical rigor are fundamental to PRISM. The following characterist
 
 ---
 
-## 17. Demo Flow
+## 18. Demo Flow
 
 Follow this 90-second demonstration script during evaluations:
 
@@ -424,7 +471,7 @@ Follow this 90-second demonstration script during evaluations:
 
 ---
 
-## 18. SIH 2026
+## 19. SIH 2026
 
 - **Initiative:** Developed for **Smart India Hackathon 2026**.
 - **Domain:** Government Technology / Decision Support Systems.

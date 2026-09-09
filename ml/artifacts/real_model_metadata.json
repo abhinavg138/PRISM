@@ -5,19 +5,50 @@
   "uniqueProjects": 2054,
   "validationStrategy": "GroupShuffleSplit (80% train, 20% test by Project ID)",
   "testSetObservations": 1497,
-  "testMetrics": {
-    "meanAbsoluteErrorMonths": 16.21,
-    "rootMeanSquaredErrorMonths": 25.57,
-    "r2Score": 0.239
+  "cufOnlyMetrics": {
+    "meanAbsoluteErrorMonths": 16.52,
+    "rootMeanSquaredErrorMonths": 25.46,
+    "r2Score": 0.245
   },
+  "cufPlusEngineeredMetrics": {
+    "meanAbsoluteErrorMonths": 15.46,
+    "rootMeanSquaredErrorMonths": 24.89,
+    "r2Score": 0.279
+  },
+  "incrementalContribution": {
+    "maeReductionMonths": 1.05,
+    "maeRelativeImprovementPct": 6.4,
+    "rmseReductionMonths": 0.57,
+    "r2Improvement": 0.033
+  },
+  "cufFields": [
+    "original_cost_cr",
+    "revised_cost_cr",
+    "cumulative_expenditure_cr",
+    "physical_progress_pct"
+  ],
+  "engineeredFields": [
+    "expenditure_pct_of_revised_cost",
+    "progress_expenditure_gap",
+    "cost_revision_pct",
+    "derived_sector (one-hot encoded 9 sectors)"
+  ],
   "topFeatureImportances": {
-    "physical_progress_pct": 0.3698,
-    "original_cost_cr": 0.158,
-    "revised_cost_cr": 0.1541,
-    "expenditure_pct_of_revised_cost": 0.1121,
-    "cumulative_expenditure_cr": 0.0877,
-    "progress_expenditure_gap": 0.0715
+    "physical_progress_pct": 0.3199,
+    "cost_revision_pct": 0.1904,
+    "original_cost_cr": 0.1382,
+    "expenditure_pct_of_revised_cost": 0.1025,
+    "progress_expenditure_gap": 0.081,
+    "revised_cost_cr": 0.0728,
+    "cumulative_expenditure_cr": 0.049,
+    "sec_Railways": 0.0188
+  },
+  "methodology": {
+    "target": "time_overrun_months (revised_target_completion - original_target_completion)",
+    "grouping": "project_id (prevents temporal observation leakage across monthly snapshots)",
+    "algorithm": "GradientBoostingRegressor(n_estimators=100, max_depth=4, learning_rate=0.08, random_state=42)",
+    "causalDisclaimer": "The ablation indicates incremental associative predictive contribution under this evaluation setup; it does not claim causal attribution."
   },
   "provenanceStatus": "VERIFIED_GENUINE_PAIMANA_DATA",
-  "authoritativeNote": "Production PRISM maintains explainable deterministic MCDA risk scoring for auditing; this ML model provides empirical benchmark validation."
+  "authoritativeNote": "Production PRISM maintains explainable deterministic MCDA risk scoring for auditing; this ML model provides empirical benchmark validation and SIH26103 CUF ablation."
 }

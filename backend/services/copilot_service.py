@@ -793,7 +793,7 @@ USER QUESTION:
 Synthesize and explain this verified PAIMANA data directly in response to the user's question. Do not fabricate any numbers.
 """
                 response = client.models.generate_content(
-                    model='gemini-3.6-flash',
+                    model=GEMINI_MODEL,
                     contents=prompt,
                     config={
                         'system_instruction': system_instruction,

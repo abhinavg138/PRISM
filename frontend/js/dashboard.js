@@ -14,6 +14,7 @@ export function renderDashboard() {
   renderSectorCards();
   renderPriorityQueue();
   renderPortfolioRiskInsights();
+  renderCUFAttribution();
   renderIcons();
 }
 
@@ -367,3 +368,77 @@ export function renderPortfolioRiskInsights() {
     </div>
   `;
 }
+
+export function renderCUFAttribution() {
+  const container = document.getElementById('dashboard-cuf-attribution');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card p-5 border-l-4 border-l-purple-600 bg-gradient-to-r from-purple-50/50 via-white to-slate-50">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="badge bg-purple-100 text-purple-800 text-[10px] font-bold">SIH26103 Requirement</span>
+            <span class="text-xs text-slate-400">&bull;</span>
+            <span class="text-xs font-semibold text-slate-600">Empirical Feature Attribution</span>
+          </div>
+          <h3 class="text-base font-bold text-slate-900 mt-1 flex items-center gap-2">
+            <i data-lucide="layers" class="w-4 h-4 text-purple-600"></i>
+            Common Upload Form (CUF) Predictive Attribution &amp; Ablation
+          </h3>
+        </div>
+        <button id="btn-open-provenance-cuf" class="btn btn-secondary text-xs py-1.5 px-3 self-start sm:self-auto flex items-center gap-1.5">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-600"></i>
+          Trust Matrix &bull; Full Methodology
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-600 mb-4 max-w-4xl leading-relaxed">
+        To fulfill MoSPI SIH26103 guidelines, PRISM evaluates delay prediction accuracy attributable to native <strong>Common Upload Form (CUF)</strong> fields alone versus derived multi-dimensional indicators across 2,054 projects and 7,499 observations.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div class="p-3.5 rounded-lg bg-white border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Model A: Native CUF Fields</span>
+            <span class="badge bg-slate-100 text-slate-700 text-[9px] font-mono">4 Features</span>
+          </div>
+          <div class="mt-2 text-xl font-bold text-slate-900">16.52 <span class="text-xs font-normal text-slate-500">months MAE</span></div>
+          <div class="text-[11px] text-slate-500 mt-1">RMSE: 25.46 mo &bull; R²: 0.245</div>
+          <div class="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+            <strong>Inputs:</strong> Original cost, revised cost, cumulative spend, physical progress %.
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-lg bg-white border border-purple-200 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Model B: CUF + Engineered</span>
+            <span class="badge bg-purple-100 text-purple-800 text-[9px] font-mono">16 Features</span>
+          </div>
+          <div class="mt-2 text-xl font-bold text-purple-700">15.46 <span class="text-xs font-normal text-purple-500">months MAE</span></div>
+          <div class="text-[11px] text-slate-500 mt-1">RMSE: 24.89 mo &bull; R²: 0.279</div>
+          <div class="mt-2 pt-2 border-t border-purple-100 text-[11px] text-slate-500">
+            <strong>Inputs:</strong> Native CUF + absorption %, phys-spend gap, cost overrun %, 9 sectors.
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-lg bg-emerald-50/70 border border-emerald-200 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Incremental Attribution</span>
+            <span class="badge bg-emerald-100 text-emerald-800 text-[9px] font-bold">Gain</span>
+          </div>
+          <div class="mt-2 text-xl font-bold text-emerald-800">&minus;1.05 <span class="text-xs font-normal text-emerald-600">months MAE</span></div>
+          <div class="text-[11px] text-emerald-700 mt-1">6.4% Error Reduction &bull; +0.033 R² Gain</div>
+          <div class="mt-2 pt-2 border-t border-emerald-100 text-[11px] text-emerald-800">
+            <strong>Governance Note:</strong> Production uses the deterministic 6-indicator Risk Engine; ML serves as empirical benchmark.
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-open-provenance-cuf')?.addEventListener('click', () => {
+    document.getElementById('provenance-modal')?.classList.add('active');
+  });
+}
+
