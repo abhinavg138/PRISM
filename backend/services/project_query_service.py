@@ -55,6 +55,221 @@ class ProjectQueryService:
         }
 
     @classmethod
+    def query_structured(
+        cls,
+        state: Optional[str] = None,
+        state_exclude: Optional[List[str]] = None,
+        sector: Optional[str] = None,
+        sector_exclude: Optional[List[str]] = None,
+        risk_tier: Optional[str] = None,
+        risk_tier_exclude: Optional[List[str]] = None,
+        priority_tier: Optional[str] = None,
+        min_risk: Optional[float] = None,
+        max_risk: Optional[float] = None,
+        min_cost_cr: Optional[float] = None,
+        max_cost_cr: Optional[float] = None,
+        min_progress_pct: Optional[float] = None,
+        max_progress_pct: Optional[float] = None,
+        min_delay_months: Optional[int] = None,
+        max_delay_months: Optional[int] = None,
+        sort_by: Optional[str] = None,
+        sort_direction: Optional[str] = None,
+        limit: Optional[int] = 5,
+        offset: Optional[int] = 0,
+        include_multi_state: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Deterministic, adversarial-hardened structured project retrieval engine.
+        Supports multi-criteria combinations, negations, numerical bounds,
+        dynamic sorting, and deterministic pagination.
+        """
+        all_projects = paimana_repository.list_projects()['allMatching']
+        canonical_state = None
+        multi_state_notice: Optional[str] = None
+
+        # 1. State filtering
+        if state:
+            s = state.strip().lower()
+            if s in ('new delhi', 'delhi ncr', 'nct of delhi'):
+                s = 'delhi'
+            exact_match = next((p for p in all_projects if p.state.strip().lower() == s), None)
+            canonical_state = exact_match.state.strip() if exact_match else state.strip()
+
+            dedicated = [p for p in all_projects if p.state.strip().lower() == s]
+            multi_state = [
+                p for p in all_projects
+                if p.state.strip().lower() != s and s in p.state.lower()
+            ]
+
+            pool = (dedicated + multi_state) if include_multi_state else dedicated
+        else:
+            pool = list(all_projects)
+
+        # 2. State exclusion
+        if state_exclude:
+            normalized_ex = [
+                ('delhi' if ex.strip().lower() in ('new delhi', 'delhi ncr', 'nct of delhi') else ex.strip().lower())
+                for ex in state_exclude if ex
+            ]
+            pool = [p for p in pool if not any(ex in p.state.lower() for ex in normalized_ex)]
+
+        # 3. Sector filtering
+        if sector:
+            sec = sector.strip().lower()
+            pool = [
+                p for p in pool
+                if sec in p.sector.lower() or (p.derivedSector and sec in p.derivedSector.lower())
+            ]
+
+        # 4. Sector exclusion
+        if sector_exclude:
+            ex_secs = [ex.strip().lower() for ex in sector_exclude if ex]
+            pool = [
+                p for p in pool
+                if not any(
+                    ex in p.sector.lower() or (p.derivedSector and ex in p.derivedSector.lower())
+                    for ex in ex_secs
+                )
+            ]
+
+        # 5. Risk Tier filtering
+        if risk_tier and risk_tier.upper() != 'ALL':
+            rt = risk_tier.strip().upper()
+            pool = [p for p in pool if p.riskTier == rt]
+
+        # 6. Risk Tier exclusion
+        if risk_tier_exclude:
+            ex_tiers = {t.strip().upper() for t in risk_tier_exclude if t}
+            pool = [p for p in pool if (p.riskTier or 'UNRATED') not in ex_tiers]
+
+        # 7. Priority Tier filtering
+        if priority_tier and priority_tier.upper() != 'ALL':
+            pt = priority_tier.strip().upper()
+            pool = [p for p in pool if p.priorityTier == pt]
+
+        # 8. Numerical Bounds
+        if min_risk is not None:
+            pool = [p for p in pool if p.riskScore is not None and p.riskScore >= min_risk]
+
+        if max_risk is not None:
+            pool = [p for p in pool if p.riskScore is not None and p.riskScore <= max_risk]
+
+        if min_cost_cr is not None:
+            pool = [
+                p for p in pool
+                if (p.revisedCostCr if p.revisedCostCr is not None else (p.originalCostCr or 0.0)) >= min_cost_cr
+            ]
+
+        if max_cost_cr is not None:
+            pool = [
+                p for p in pool
+                if (p.revisedCostCr if p.revisedCostCr is not None else (p.originalCostCr or 0.0)) <= max_cost_cr
+            ]
+
+        if min_progress_pct is not None:
+            pool = [p for p in pool if (p.physicalProgressPercent or 0.0) >= min_progress_pct]
+
+        if max_progress_pct is not None:
+            pool = [p for p in pool if (p.physicalProgressPercent or 0.0) <= max_progress_pct]
+
+        if min_delay_months is not None:
+            pool = [p for p in pool if (p.timeOverrunMonths or 0) >= min_delay_months]
+
+        if max_delay_months is not None:
+            pool = [p for p in pool if (p.timeOverrunMonths or 0) <= max_delay_months]
+
+        # 9. Deterministic Sorting
+        sb = (sort_by or '').lower().strip()
+        sd = (sort_direction or '').lower().strip()
+
+        # Sensible defaults based on intent
+        if not sb:
+            if risk_tier == 'LOW' or (max_risk is not None and min_risk is None):
+                sb = 'riskscore'
+                if not sd:
+                    sd = 'asc'
+            else:
+                sb = 'riskscore'
+                if not sd:
+                    sd = 'desc'
+        elif not sd:
+            sd = 'asc' if ('least' in sb or 'low' in sb or 'safest' in sb) else 'desc'
+
+        if sb in ('riskscore', 'risk'):
+            if sd == 'asc':
+                sort_key = lambda p: ((p.riskScore if p.riskScore is not None else 999), p.id)
+            else:
+                sort_key = lambda p: (-(p.riskScore if p.riskScore is not None else -1), p.id)
+        elif sb in ('cost', 'costcr', 'budget'):
+            if sd == 'asc':
+                sort_key = lambda p: ((p.revisedCostCr or p.originalCostCr or 0.0), p.id)
+            else:
+                sort_key = lambda p: (-((p.revisedCostCr or p.originalCostCr or 0.0)), p.id)
+        elif sb in ('progress', 'physicalprogress', 'progresspercent'):
+            if sd == 'asc':
+                sort_key = lambda p: ((p.physicalProgressPercent or 0.0), p.id)
+            else:
+                sort_key = lambda p: (-(p.physicalProgressPercent or 0.0), p.id)
+        elif sb in ('delay', 'timeoverrun', 'overrun'):
+            if sd == 'asc':
+                sort_key = lambda p: ((p.timeOverrunMonths or 0), p.id)
+            else:
+                sort_key = lambda p: (-(p.timeOverrunMonths or 0), p.id)
+        elif sb in ('priority', 'priorityscore'):
+            if sd == 'asc':
+                sort_key = lambda p: ((p.priorityScore or 0), p.id)
+            else:
+                sort_key = lambda p: (-(p.priorityScore or 0), p.id)
+        else:
+            sort_key = lambda p: (-(p.riskScore if p.riskScore is not None else -1), p.id)
+
+        pool.sort(key=sort_key)
+
+        # Multi-state notice if dedicated state was isolated
+        if state and not include_multi_state and canonical_state:
+            s_name = canonical_state.strip().lower()
+            matching_multi = [
+                p for p in all_projects
+                if p.state.strip().lower() != s_name and s_name in p.state.lower()
+            ]
+            if matching_multi:
+                corridors = ', '.join(f"{p.name.split('(')[0].strip()} [{p.id}]" for p in matching_multi[:3])
+                multi_state_notice = (
+                    f"There are also {len(matching_multi)} multi-state project(s) crossing {canonical_state} ({corridors})."
+                )
+
+        off = offset or 0
+        display_projects = pool[off:off + limit] if limit is not None else pool[off:]
+
+        return {
+            'canonicalState': canonical_state,
+            'totalCount': len(pool),
+            'matchingProjects': pool,
+            'displayProjects': display_projects,
+            'multiStateNotice': multi_state_notice,
+            'appliedFilters': {
+                'state': canonical_state,
+                'state_exclude': state_exclude,
+                'sector': sector,
+                'sector_exclude': sector_exclude,
+                'risk_tier': risk_tier,
+                'risk_tier_exclude': risk_tier_exclude,
+                'min_risk': min_risk,
+                'max_risk': max_risk,
+                'min_cost_cr': min_cost_cr,
+                'max_cost_cr': max_cost_cr,
+                'min_progress_pct': min_progress_pct,
+                'max_progress_pct': max_progress_pct,
+                'min_delay_months': min_delay_months,
+                'max_delay_months': max_delay_months,
+                'sort_by': sb,
+                'sort_direction': sd,
+                'limit': limit
+            }
+        }
+
+
+    @classmethod
     def get_state_partition(cls, state_name: str) -> Optional[Dict[str, Any]]:
         s = state_name.strip().lower()
         all_projects = paimana_repository.list_projects()['allMatching']

@@ -7,6 +7,19 @@ from backend.models.simulation import (
     InterventionBriefData, InterventionLabResult
 )
 
+import math
+
+def _sanitize_param(val: Any, min_val: float, max_val: float, default: float = 0.0) -> float:
+    if val is None:
+        return default
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return default
+        return max(min_val, min(max_val, f))
+    except (ValueError, TypeError):
+        return default
+
 class ScenarioEngine:
     """
     Illustrative Policy / What-If Scenario Engine.
@@ -34,9 +47,9 @@ class ScenarioEngine:
                 'shapDrivers': []
             }
 
-        land_boost = sim_params.landClearanceAccelerationWeeks if sim_params else 0.0
-        cash_boost = sim_params.contractorLiquidityInjectionPercent if sim_params else 0.0
-        geo_mitigation = sim_params.weatherGeologicalMitigationLevel if sim_params else 0.0
+        land_boost = _sanitize_param(sim_params.landClearanceAccelerationWeeks if sim_params else 0.0, 0.0, 52.0)
+        cash_boost = _sanitize_param(sim_params.contractorLiquidityInjectionPercent if sim_params else 0.0, 0.0, 100.0)
+        geo_mitigation = _sanitize_param(sim_params.weatherGeologicalMitigationLevel if sim_params else 0.0, 0.0, 100.0)
         hpc = 1.0 if (sim_params and sim_params.fastTrackHighPowerCommittee) else 0.0
 
         raw_score = float(p.riskScore)
@@ -176,10 +189,10 @@ class ScenarioEngine:
             (round((p.revisedCostCr - p.originalCostCr) * 0.3) if p.costOverrunPercent > 0 else 0.0)
         )
 
-        land_boost = params.landClearanceAccelerationWeeks or 0.0
-        cash_boost = params.contractorLiquidityInjectionPercent or 0.0
-        geo_mitigation = params.weatherGeologicalMitigationLevel or 0.0
-        hpc = 1.0 if params.fastTrackHighPowerCommittee else 0.0
+        land_boost = _sanitize_param(params.landClearanceAccelerationWeeks if params else 0.0, 0.0, 52.0)
+        cash_boost = _sanitize_param(params.contractorLiquidityInjectionPercent if params else 0.0, 0.0, 100.0)
+        geo_mitigation = _sanitize_param(params.weatherGeologicalMitigationLevel if params else 0.0, 0.0, 100.0)
+        hpc = 1.0 if (params and params.fastTrackHighPowerCommittee) else 0.0
 
         is_completed = (p.physicalProgressPercent or 0.0) >= 100.0
 

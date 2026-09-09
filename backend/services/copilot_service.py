@@ -47,6 +47,22 @@ KNOWN_STATES = [
     'Uttarakhand', 'West Bengal', 'Chandigarh', 'Ladakh', 'Puducherry'
 ]
 
+STATE_SYNONYMS: Dict[str, str] = {
+    'new delhi': 'Delhi',
+    'delhi ncr': 'Delhi',
+    'nct of delhi': 'Delhi',
+    'up': 'Uttar Pradesh',
+    'u.p.': 'Uttar Pradesh',
+    'mp': 'Madhya Pradesh',
+    'm.p.': 'Madhya Pradesh',
+    'ap': 'Andhra Pradesh',
+    'a.p.': 'Andhra Pradesh',
+    'wb': 'West Bengal',
+    'w.b.': 'West Bengal',
+    'j&k': 'Jammu & Kashmir',
+    'jk': 'Jammu & Kashmir',
+}
+
 KNOWN_SECTORS: Dict[str, str] = {
     'railway': 'Railways', 'railways': 'Railways', 'rail': 'Railways',
     'road': 'Road Transport & Highways', 'roads': 'Road Transport & Highways',
@@ -61,38 +77,321 @@ KNOWN_SECTORS: Dict[str, str] = {
     'steel': 'Steel & Heavy Industry'
 }
 
-def _detect_risk_tier(q: str) -> Optional[str]:
-    """Deterministically map query text to a PRISM risk tier.
-    Handles all semantic synonyms for HIGH/LOW/MODERATE/CRITICAL.
-    Returns 'CRITICAL', 'HIGH', 'MODERATE', 'LOW', or None.
-    """
-    # CRITICAL (check before HIGH so 'critical risk' doesn't match HIGH)
-    if any(k in q for k in ['critical risk', 'critical-risk', 'critical']):
-        return 'CRITICAL'
-    # HIGH — 'highly risky', 'risky', 'elevated risk', 'elevated' must not match 'least'
-    if any(k in q for k in [
-        'high risk', 'high-risk', 'highly risky', 'highly-risky',
-        'elevated risk', 'elevated-risk', 'severely risky'
-    ]):
-        return 'HIGH'
-    if 'high' in q and 'risk' in q and 'least' not in q and 'low' not in q:
-        return 'HIGH'
-    if 'risky' in q and 'least' not in q and 'low' not in q:
-        return 'HIGH'
-    # MODERATE
-    if any(k in q for k in ['moderate risk', 'moderate-risk', 'medium risk', 'medium-risk', 'moderate']):
-        return 'MODERATE'
-    # LOW — covers 'least risk', 'least risky', 'safest', 'lowest risk', 'low risk'
+def _extract_state_intent(q: str) -> tuple[Optional[str], List[str]]:
+    """Returns (state, state_exclude)."""
+    state_exclude: List[str] = []
+    state: Optional[str] = None
+
+    # 1. Exclusion check: "not in delhi", "excluding delhi", "exclude delhi", "except delhi", "without delhi", "outside delhi"
+    for st_raw, st_canon in [(s.lower(), s) for s in KNOWN_STATES] + list(STATE_SYNONYMS.items()):
+        pattern_ex = rf'\b(?:not\s+in|excluding|exclude|except|without|outside)\s+{re.escape(st_raw)}\b'
+        if re.search(pattern_ex, q):
+            if st_canon not in state_exclude:
+                state_exclude.append(st_canon)
+
+    for st_raw, st_canon in [(s.lower(), s) for s in KNOWN_STATES] + list(STATE_SYNONYMS.items()):
+        if re.search(rf'\b(?:excluding|exclude)\s+{re.escape(st_raw)}\b', q):
+            if st_canon not in state_exclude:
+                state_exclude.append(st_canon)
+
+    # 2. Positive mention check:
+    for st_raw, st_canon in [(s.lower(), s) for s in KNOWN_STATES] + list(STATE_SYNONYMS.items()):
+        if st_canon in state_exclude:
+            continue
+        pattern = rf'\b{re.escape(st_raw)}\b'
+        if re.search(pattern, q):
+            state = st_canon
+            break
+
+    return state, state_exclude
+
+def _extract_sector_intent(q: str) -> tuple[Optional[str], List[str]]:
+    """Returns (sector, sector_exclude)."""
+    sector_exclude: List[str] = []
+    sector: Optional[str] = None
+
+    for sec_raw, sec_canon in KNOWN_SECTORS.items():
+        pattern_ex = rf'\b(?:not\s+in|excluding|exclude|except|without|outside|non-)\s*{re.escape(sec_raw)}\b'
+        if re.search(pattern_ex, q):
+            if sec_canon not in sector_exclude:
+                sector_exclude.append(sec_canon)
+
+    for sec_raw, sec_canon in KNOWN_SECTORS.items():
+        if sec_canon in sector_exclude:
+            continue
+        pattern = rf'\b{re.escape(sec_raw)}\b'
+        if re.search(pattern, q):
+            sector = sec_canon
+            break
+
+    return sector, sector_exclude
+
+def _extract_risk_intent(q: str) -> tuple[Optional[str], List[str], Optional[str], Optional[str]]:
+    """Returns (risk_tier, risk_tier_exclude, sort_by, sort_direction)."""
+    risk_tier_exclude: List[str] = []
+    risk_tier: Optional[str] = None
+    sort_by: Optional[str] = None
+    sort_direction: Optional[str] = None
+
+    # Negation check
+    if (
+        re.search(r"\b(?:without|not|aren't|arent|except|don't\s+show|dont\s+show|exclude)\s+(?:a\s+)?(?:high|highly|critical|elevated)[\s-]*risk\b", q) or
+        re.search(r"\b(?:without|not|aren't|arent|except|don't\s+show|dont\s+show|exclude)\s+(?:high|critical)\b", q) or
+        re.search(r"\b(?:show\s+everything\s+except\s+high[\s-]*risk)\b", q) or
+        re.search(r"\bnon-risky\b", q)
+    ):
+        risk_tier_exclude.extend(['HIGH', 'CRITICAL'])
+
+    if re.search(r"\b(?:without|not|aren't|arent|except|don't\s+show|dont\s+show|exclude)\s+(?:a\s+)?(?:low|safest|safe)[\s-]*risk\b", q):
+        risk_tier_exclude.append('LOW')
+
+    if re.search(r"\b(?:without|not|aren't|arent|except|don't\s+show|dont\s+show|exclude)\s+(?:moderate|medium)[\s-]*risk\b", q):
+        risk_tier_exclude.append('MODERATE')
+
+    # Positive risk tier (if not negated)
     if any(k in q for k in [
         'least risk', 'least-risk', 'least risky', 'least-risky',
         'lowest risk', 'lowest-risk', 'safest', 'safe projects',
         'low risk', 'low-risk'
-    ]):
-        return 'LOW'
-    if 'low' in q and 'risk' in q:
-        return 'LOW'
-    return None
+    ]) and 'LOW' not in risk_tier_exclude:
+        risk_tier = 'LOW'
+        sort_by = 'riskScore'
+        sort_direction = 'asc'
+    elif any(k in q for k in ['critical risk', 'critical-risk', 'critical projects']) and 'CRITICAL' not in risk_tier_exclude:
+        risk_tier = 'CRITICAL'
+        sort_by = 'riskScore'
+        sort_direction = 'desc'
+    elif any(k in q for k in ['highest risk', 'highest-risk', 'most risky', 'top risk', 'highest']):
+        sort_by = 'riskScore'
+        sort_direction = 'desc'
+    elif any(k in q for k in [
+        'high risk', 'high-risk', 'highly risky', 'highly-risky',
+        'elevated risk', 'elevated-risk', 'severely risky', 'risky projects'
+    ]) and 'HIGH' not in risk_tier_exclude:
+        risk_tier = 'HIGH'
+        sort_by = 'riskScore'
+        sort_direction = 'desc'
+    elif any(k in q for k in ['moderate risk', 'moderate-risk', 'medium risk', 'medium-risk', 'moderate']) and 'MODERATE' not in risk_tier_exclude:
+        risk_tier = 'MODERATE'
 
+    return risk_tier, risk_tier_exclude, sort_by, sort_direction
+
+def _extract_numerical_intent(q: str) -> Dict[str, Any]:
+    res: Dict[str, Any] = {
+        'min_risk': None,
+        'max_risk': None,
+        'min_cost_cr': None,
+        'max_cost_cr': None,
+        'min_progress_pct': None,
+        'max_progress_pct': None,
+        'min_delay_months': None,
+        'max_delay_months': None,
+    }
+
+    # Risk bounds: "risk below 20", "risk above 80", "between risk 40 and 60"
+    m_between = re.search(r'(?:between\s+risk|risk\s+between)\s+(\d+(?:\.\d+)?)\s+(?:and|to)\s+(\d+(?:\.\d+)?)', q)
+    if m_between:
+        r1, r2 = float(m_between.group(1)), float(m_between.group(2))
+        res['min_risk'] = min(r1, r2)
+        res['max_risk'] = max(r1, r2)
+    else:
+        m_below = re.search(r'(?:risk\s+(?:below|under|<|less\s+than)|(?:below|under|<|less\s+than)\s+(\d+(?:\.\d+)?)\s+risk)\s*(\d+(?:\.\d+)?)?', q)
+        if m_below:
+            val = m_below.group(2) or m_below.group(1)
+            if val:
+                res['max_risk'] = float(val)
+        m_above = re.search(r'(?:risk\s+(?:above|over|>|greater\s+than|more\s+than)|(?:above|over|>|greater\s+than|more\s+than)\s+(\d+(?:\.\d+)?)\s+risk)\s*(\d+(?:\.\d+)?)?', q)
+        if m_above:
+            val = m_above.group(2) or m_above.group(1)
+            if val:
+                res['min_risk'] = float(val)
+
+    # Cost bounds: "above ₹1000 crore", "above 1000 cr", "below 500 cr", "cost above 1000000 crore"
+    def parse_cost_val(num_str: str, unit_str: Optional[str]) -> float:
+        clean_num = float(num_str.replace(',', ''))
+        u = (unit_str or '').lower()
+        if 'lakh crore' in u or 'lakh cr' in u:
+            return clean_num * 100000.0
+        return clean_num
+
+    m_cost_above = re.search(r'(?:cost\s+)?(?:above|over|>|greater\s+than|more\s+than|exceeding)\s*(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.[0-9]+)?)\s*(lakh\s+crore|crore|cr)?', q)
+    if m_cost_above and ('crore' in q or 'cr' in q or '₹' in q or 'budget' in q or 'cost' in q):
+        if 'risk' not in m_cost_above.group(0) and 'progress' not in m_cost_above.group(0) and 'month' not in m_cost_above.group(0):
+            res['min_cost_cr'] = parse_cost_val(m_cost_above.group(1), m_cost_above.group(2))
+
+    m_cost_below = re.search(r'(?:cost\s+)?(?:below|under|<|less\s+than)\s*(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.[0-9]+)?)\s*(lakh\s+crore|crore|cr)?', q)
+    if m_cost_below and ('crore' in q or 'cr' in q or '₹' in q or 'budget' in q or 'cost' in q):
+        if 'risk' not in m_cost_below.group(0) and 'progress' not in m_cost_below.group(0) and 'month' not in m_cost_below.group(0):
+            res['max_cost_cr'] = parse_cost_val(m_cost_below.group(1), m_cost_below.group(2))
+
+    # Progress bounds: "progress below 50%", "progress above 75%", "progress below 1%"
+    m_prog_below = re.search(r'(?:progress\s+(?:below|under|<|less\s+than)\s*([0-9,]+(?:\.[0-9]+)?)|(?:below|under|<|less\s+than)\s*([0-9,]+(?:\.[0-9]+)?)\s*%?\s*progress)', q)
+    if m_prog_below:
+        v = m_prog_below.group(1) or m_prog_below.group(2)
+        if v:
+            res['max_progress_pct'] = float(v.replace(',', ''))
+
+    m_prog_above = re.search(r'(?:progress\s+(?:above|over|>|greater\s+than|more\s+than)\s*([0-9,]+(?:\.[0-9]+)?)|(?:above|over|>|greater\s+than|more\s+than)\s*([0-9,]+(?:\.[0-9]+)?)\s*%?\s*progress)', q)
+    if m_prog_above:
+        v = m_prog_above.group(1) or m_prog_above.group(2)
+        if v:
+            res['min_progress_pct'] = float(v.replace(',', ''))
+
+    # Delay bounds: "delayed by > 12 months", "delayed by more than 12 months", "not delayed"
+    m_delay_above = re.search(r'(?:delayed\s+by\s+(?:more\s+than|>|above|over)\s*(\d+)\s*(month|months|mo|year|years|yr)?|delay\s*(?:>|above|over|more\s+than)\s*(\d+)\s*(month|months|mo|year|years|yr)?)', q)
+    if m_delay_above:
+        v = m_delay_above.group(1) or m_delay_above.group(3)
+        unit = m_delay_above.group(2) or m_delay_above.group(4)
+        if v:
+            val = int(v)
+            if unit and 'year' in unit:
+                val *= 12
+            res['min_delay_months'] = val
+
+    if any(k in q for k in ['not delayed', 'without delay', '0 delay', 'zero delay', 'on schedule', 'on time']):
+        res['max_delay_months'] = 0
+
+    return res
+
+def _extract_sort_and_limit(q: str) -> tuple[Optional[str], Optional[str], Optional[int]]:
+    sort_by: Optional[str] = None
+    sort_direction: Optional[str] = None
+    limit: int = 5
+
+    # Sorting
+    if any(k in q for k in ['highest cost', 'most expensive', 'largest budget', 'biggest cost', 'highest budget']):
+        sort_by = 'cost'
+        sort_direction = 'desc'
+    elif any(k in q for k in ['lowest cost', 'cheapest', 'smallest budget', 'least cost', 'smallest cost']):
+        sort_by = 'cost'
+        sort_direction = 'asc'
+    elif any(k in q for k in ['highest progress', 'most completed', 'maximum progress', 'most progress']):
+        sort_by = 'progress'
+        sort_direction = 'desc'
+    elif any(k in q for k in ['lowest progress', 'least completed', 'minimum progress', 'least progress']):
+        sort_by = 'progress'
+        sort_direction = 'asc'
+    elif any(k in q for k in ['largest delay', 'most delayed', 'biggest delay', 'highest delay', 'maximum delay']):
+        sort_by = 'delay'
+        sort_direction = 'desc'
+    elif any(k in q for k in ['smallest delay', 'least delayed', 'minimum delay', 'shortest delay']):
+        sort_by = 'delay'
+        sort_direction = 'asc'
+
+    # Limit
+    m_top = re.search(r'\b(?:top|first)\s+(\d+)\b', q)
+    if m_top:
+        limit = int(m_top.group(1))
+    else:
+        m_bottom = re.search(r'\b(?:bottom|last)\s+(\d+)\b', q)
+        if m_bottom:
+            limit = int(m_bottom.group(1))
+            if not sort_direction:
+                sort_direction = 'asc'
+        else:
+            m_give = re.search(r'\b(?:give\s+me|show\s+me|list)\s+(?:the\s+)?(\d+)\b', q)
+            if m_give:
+                limit = int(m_give.group(1))
+
+    return sort_by, sort_direction, limit
+
+def _parse_multi_turn_query(
+    user_query: str,
+    conversation_history: List[Dict[str, str]]
+) -> Dict[str, Any]:
+    q = user_query.lower().strip()
+
+    state, state_exclude = _extract_state_intent(q)
+    sector, sector_exclude = _extract_sector_intent(q)
+    risk_tier, risk_tier_exclude, sort_by_risk, sort_dir_risk = _extract_risk_intent(q)
+    num_bounds = _extract_numerical_intent(q)
+    sort_by, sort_direction, limit = _extract_sort_and_limit(q)
+
+    if sort_by_risk and not sort_by:
+        sort_by = sort_by_risk
+        sort_direction = sort_dir_risk
+
+    current: Dict[str, Any] = {
+        'state': state,
+        'state_exclude': state_exclude,
+        'sector': sector,
+        'sector_exclude': sector_exclude,
+        'risk_tier': risk_tier,
+        'risk_tier_exclude': risk_tier_exclude,
+        'min_risk': num_bounds['min_risk'],
+        'max_risk': num_bounds['max_risk'],
+        'min_cost_cr': num_bounds['min_cost_cr'],
+        'max_cost_cr': num_bounds['max_cost_cr'],
+        'min_progress_pct': num_bounds['min_progress_pct'],
+        'max_progress_pct': num_bounds['max_progress_pct'],
+        'min_delay_months': num_bounds['min_delay_months'],
+        'max_delay_months': num_bounds['max_delay_months'],
+        'sort_by': sort_by,
+        'sort_direction': sort_direction,
+        'limit': limit or 5,
+        'is_structured': False
+    }
+
+    FOLLOWUP_MARKERS = [
+        'only', 'now show', 'show me the', 'what about', 'and the', 'instead show',
+        'least risk', 'safest', 'lowest risk', 'switch to', 'change to',
+        'exclude', 'give me', 'top 3', 'top 5', 'top 10'
+    ]
+    is_short = len(q.split()) <= 7
+    is_followup = any(m in q for m in FOLLOWUP_MARKERS) or (is_short and not state and not sector and conversation_history)
+
+    if is_followup and conversation_history:
+        inherited: Dict[str, Any] = {}
+        for msg in conversation_history[-6:]:
+            content = (msg.get('content') or '').lower().strip()
+            if not content:
+                continue
+            h_st, h_st_ex = _extract_state_intent(content)
+            h_sec, h_sec_ex = _extract_sector_intent(content)
+            h_rt, h_rt_ex, h_sb, h_sd = _extract_risk_intent(content)
+            h_num = _extract_numerical_intent(content)
+
+            if h_st: inherited['state'] = h_st
+            if h_st_ex: inherited['state_exclude'] = h_st_ex
+            if h_sec: inherited['sector'] = h_sec
+            if h_sec_ex: inherited['sector_exclude'] = h_sec_ex
+            if h_rt: inherited['risk_tier'] = h_rt
+            if h_rt_ex: inherited['risk_tier_exclude'] = h_rt_ex
+            for k, v in h_num.items():
+                if v is not None:
+                    inherited[k] = v
+
+        if current['state_exclude']:
+            for ex in current['state_exclude']:
+                if inherited.get('state') == ex:
+                    inherited['state'] = None
+        if current['state'] is None and inherited.get('state') and not current['state_exclude']:
+            current['state'] = inherited['state']
+
+        if current['sector'] is None and inherited.get('sector') and not current['sector_exclude']:
+            current['sector'] = inherited['sector']
+
+        if current['risk_tier'] is None and not current['risk_tier_exclude'] and inherited.get('risk_tier'):
+            current['risk_tier'] = inherited['risk_tier']
+
+        for k in ['min_risk', 'max_risk', 'min_cost_cr', 'max_cost_cr', 'min_progress_pct', 'max_progress_pct', 'min_delay_months', 'max_delay_months']:
+            if current[k] is None and inherited.get(k) is not None:
+                current[k] = inherited[k]
+
+    if (
+        current['state'] is not None or bool(current['state_exclude']) or
+        current['sector'] is not None or bool(current['sector_exclude']) or
+        current['risk_tier'] is not None or bool(current['risk_tier_exclude']) or
+        any(current[k] is not None for k in ['min_risk', 'max_risk', 'min_cost_cr', 'max_cost_cr', 'min_progress_pct', 'max_progress_pct', 'min_delay_months', 'max_delay_months']) or
+        current['sort_by'] is not None
+    ):
+        current['is_structured'] = True
+
+    return current
+
+def _detect_risk_tier(q: str) -> Optional[str]:
+    rt, rt_ex, _, _ = _extract_risk_intent(q)
+    return rt
 
 class FactualContext:
     def __init__(
@@ -111,44 +410,6 @@ class FactualContext:
         self.refuse_score_calc = refuse_score_calc
         self.total_matching = total_matching
 
-def _extract_context_from_history(
-    conversation_history: List[Dict[str, str]],
-    current_query: str
-) -> Dict[str, Optional[str]]:
-    """Scan conversation history to carry forward state/sector context for follow-up queries.
-    Returns dict with keys 'state' and 'risk_tier' (both may be None).
-
-    A follow-up query is detected when the current query does NOT contain a
-    state name but a recent prior turn did.  This allows:
-      'show high risk in Delhi' → 'now show least risk ones'   (carries Delhi forward)
-    A completely new query that re-specifies context discards previous context.
-    """
-    # If the current query already contains a state, don't inherit from history
-    current_q_lower = current_query.lower().strip()
-    for st in KNOWN_STATES:
-        if re.search(rf'\b{re.escape(st.lower())}\b', current_q_lower):
-            return {'state': None, 'risk_tier': None}
-
-    # Detect whether this looks like a follow-up (short, pronoun-heavy, no new entities)
-    FOLLOWUP_SIGNALS = [
-        'now show', 'show me the', 'what about', 'and the', 'instead show',
-        'least risk', 'least risky', 'safest', 'lowest risk',
-        'most risky', 'highest risk', 'now list', 'instead list',
-        'same but', 'switch to', 'change to'
-    ]
-    is_followup = any(sig in current_q_lower for sig in FOLLOWUP_SIGNALS) or len(current_q_lower.split()) <= 6
-
-    if not is_followup:
-        return {'state': None, 'risk_tier': None}
-
-    # Walk the last 6 messages in reverse to find a state mention
-    for msg in reversed(conversation_history[-6:]):
-        content = (msg.get('content') or '').lower().strip()
-        for st in KNOWN_STATES:
-            if re.search(rf'\b{re.escape(st.lower())}\b', content):
-                return {'state': st, 'risk_tier': None}
-
-    return {'state': None, 'risk_tier': None}
 
 
 def resolve_query_factual_context(
@@ -159,10 +420,6 @@ def resolve_query_factual_context(
 ) -> FactualContext:
     q = user_query.lower().strip()
     history = conversation_history or []
-
-    # Carry-forward context resolution for follow-up queries
-    inherited = _extract_context_from_history(history, user_query)
-    inherited_state = inherited.get('state')
 
     # 1. Authority Defense (Score modification, hallucination resistance, prompt injection)
     if any(k in q for k in [
@@ -177,7 +434,11 @@ def resolve_query_factual_context(
         'change score', 'alter the score', 'alter score', 'edit the risk score',
         'ignore prism', 'ignore the risk engine',
         'tell me your own', 'your own risk score',
-        'ignore all previous', 'ignore previous',
+        'ignore all previous', 'ignore previous', 'ignore instructions',
+        'ignore the database', 'invent 5 projects', 'invent projects', 'fake projects',
+        'pretend the risk score', 'pretend the risk is', 'risk is always zero',
+        'override your filtering', 'override filtering', 'override rules',
+        'say that delhi has no projects',
         'set the risk', 'set risk to',
         'reduce the risk score to', 'jailbreak'
     ]):
@@ -194,7 +455,7 @@ PRISM computes risk scores deterministically using 6 evidence-based indicators d
 5. **Physical-Financial Divergence (10% weight)**: Expenditure percentage exceeding physical progress.
 6. **Deteriorating Trend (10% weight)**: Negative deceleration comparing earlier vs recent velocities.
 
-Under public governance guidelines (MoSPI/CAG/Cabinet Secretariat), AI models are strictly prohibited from modifying, overriding, or fabricating deterministic project scores. Risk scores can only change through officially certified project progress and expenditure updates.""",
+Under public governance guidelines (MoSPI/CAG/Cabinet Secretariat), AI models are strictly prohibited from modifying, overriding, inventing, or fabricating deterministic project scores. Risk scores can only change through officially certified project progress and expenditure updates.""",
             grounded_projects=[active_project] if active_project else [],
             suggested_questions=DEFAULT_SUGGESTED_QUESTIONS
         )
@@ -227,15 +488,50 @@ Risk Tiers:
             ]
         )
 
-    # 3. Specific Project Query
+    # 3. Contractor Information Inquiry (Hallucination Resistance)
+    if any(k in q for k in ['contractor', 'contractors', 'who is the contractor', 'who built', 'who is building', 'epc contractor']):
+        id_m = re.search(r'\b\d{5,7}\b', q) or re.search(r'\bprj-in-\d+\b', q)
+        m_id = id_m.group(0).lower().replace('paimana-', '') if id_m else None
+        p_obj = paimana_repository.get_project_by_id(m_id) if m_id else (active_project if active_project else None)
+        proj_context = f" for project **{p_obj.name}** (`{p_obj.id}`)" if p_obj else ""
+        agency_info = f" The officially designated implementing agency is **{p_obj.implementingAgency}** under **{p_obj.ministry}**." if p_obj else ""
+        return FactualContext(
+            intent='CONTRACTOR_INFO_UNAVAILABLE',
+            summary_text=f"""Official MoSPI PAIMANA monthly infrastructure monitoring reports record parent ministries and designated executing agencies, but do NOT capture private EPC contractor details{proj_context}.{agency_info}
+
+Under public audit standards (CAG/MoSPI), PRISM reports strictly certified public governance metadata and does not fabricate private corporate contracting entities.""",
+            grounded_projects=[p_obj] if p_obj else [],
+            suggested_questions=[
+                f"Why is project {p_obj.id} high risk?" if p_obj else "Which projects have the highest risk?",
+                "Which sectors have the highest average risk?",
+                "Which projects show stagnant progress?"
+            ],
+            total_matching=1 if p_obj else 0
+        )
+
+    # 4. Explicit Project ID Query & Nonexistent ID Defense
     id_match = re.search(r'\b\d{5,7}\b', q) or re.search(r'\bprj-in-\d+\b', q) or re.search(r'\bpaimana-\d+\b', q)
     mentioned_id = id_match.group(0).lower().replace('paimana-', '') if id_match else None
+    if not mentioned_id:
+        id_named = re.search(r'\bproject\s+([a-zA-Z0-9_-]+)\b', q)
+        if id_named:
+            cand = id_named.group(1).lower()
+            if cand not in ('in', 'with', 'above', 'below', 'under', 'on', 'at', 'for', 'risk', 'progress', 'cost', 'delhi'):
+                mentioned_id = cand
 
     target_project: Optional[Project] = None
     if mentioned_id:
         target_project = paimana_repository.get_project_by_id(mentioned_id)
         if not target_project:
-            target_project = next((p for p in all_projects if p.id.lower() == mentioned_id), None)
+            target_project = next((p for p in all_projects if p.id.lower() == mentioned_id or (p.code and p.code.lower() == mentioned_id)), None)
+        if not target_project and not any(k in q for k in ['projects', 'high risk', 'low risk', 'delhi', 'maharashtra', 'railway']):
+            return FactualContext(
+                intent='PROJECT_NOT_FOUND',
+                summary_text=f"Project **'{mentioned_id}'** was not found in the authoritative MoSPI PAIMANA dataset (covering 2,059 monitored Central Sector infrastructure projects). Please verify the Project ID or search by project name.",
+                grounded_projects=[],
+                suggested_questions=DEFAULT_SUGGESTED_QUESTIONS,
+                total_matching=0
+            )
     elif active_project and any(k in q for k in [
         'this project', 'the project', 'project in focus', 'why is it',
         'how has progress changed', 'expenditure changed', 'since april'
@@ -335,11 +631,209 @@ Monthly breakdown:
             total_matching=1
         )
 
-    # 4. State Inquiries (also handles carry-forward state from conversation context)
-    matched_state = next((st for st in KNOWN_STATES if re.search(rf'\b{re.escape(st.lower())}\b', q)), None)
-    # If no state in current query, check if we can inherit one from conversation history
-    if not matched_state and inherited_state:
-        matched_state = inherited_state
+    # 5. Factual Aggregation Queries
+    if any(k in q for k in ['how many projects in', 'how many projects are in', 'number of projects in', 'how many high-risk', 'how many high risk', 'how many critical', 'percentage are high risk', 'percentage is high risk', 'percent high risk', 'how many railway projects are delayed', 'how many rail projects are delayed', 'average risk in']):
+        matched_st, _ = _extract_state_intent(q)
+        if matched_st:
+            partition = ProjectQueryService.get_state_partition(matched_st)
+            if partition:
+                # Percentage of high risk
+                if any(k in q for k in ['percentage are high risk', 'percentage is high risk', 'percent high risk']):
+                    total_p = partition['dedicatedCount'] or 1
+                    high_p = partition['dedicatedByRisk']['HIGH']
+                    pct = round((high_p / total_p) * 100, 1)
+                    return FactualContext(
+                        intent='STATE_HIGH_RISK_PERCENTAGE',
+                        summary_text=f"""Factual Risk Aggregation for **{partition['canonicalState']}**:
+- **Total Dedicated In-State Projects**: **{total_p} projects**
+- **High-Risk Projects (60–79)**: **{high_p} projects**
+- **High-Risk Proportion**: Exactly **{pct}%** ({high_p} of {total_p} projects).""",
+                        grounded_projects=[p for p in partition['dedicatedProjects'] if p.riskTier == 'HIGH'][:5],
+                        suggested_questions=[
+                            f"Show high-risk projects in {partition['canonicalState']}",
+                            f"Show low-risk projects in {partition['canonicalState']}",
+                            f"Which projects need intervention first in {partition['canonicalState']}?"
+                        ],
+                        total_matching=high_p
+                    )
+                # How many high-risk / critical projects in state
+                if any(k in q for k in ['how many high-risk', 'how many high risk', 'how many critical']):
+                    target_t = 'CRITICAL' if 'critical' in q else 'HIGH'
+                    count = partition['dedicatedByRisk'][target_t]
+                    return FactualContext(
+                        intent='STATE_TIER_COUNT',
+                        summary_text=f"""There are exactly **{count} {target_t.lower()}-risk projects** located in **{partition['canonicalState']}** (out of {partition['dedicatedCount']} total dedicated in-state projects).""",
+                        grounded_projects=sorted([p for p in partition['dedicatedProjects'] if p.riskTier == target_t], key=lambda p: (-(p.riskScore or 0), p.id))[:5],
+                        suggested_questions=[
+                            f"Show {target_t.lower()}-risk projects in {partition['canonicalState']}",
+                            f"Show low-risk projects in {partition['canonicalState']}",
+                            f"Which sector has the highest risk in {partition['canonicalState']}?"
+                        ],
+                        total_matching=count
+                    )
+                # How many projects in state
+                if any(k in q for k in ['how many projects are in', 'how many projects in', 'number of projects in']):
+                    return FactualContext(
+                        intent='STATE_PROJECT_COUNT',
+                        summary_text=f"""In the authoritative PAIMANA dataset, there are exactly **{partition['dedicatedCount']} dedicated projects** located within the state of **{partition['canonicalState']}** (with a total capital outlay of ₹{partition['dedicatedKPIs'].totalBudgetCr:,.0f} Cr). In addition, there are {partition['multiStateCount']} multi-state transit corridors crossing {partition['canonicalState']}.""",
+                        grounded_projects=sorted(partition['dedicatedProjects'], key=lambda p: (-(p.riskScore or 0), p.id))[:5],
+                        suggested_questions=[
+                            f"Show high-risk projects in {partition['canonicalState']}",
+                            f"Show low-risk projects in {partition['canonicalState']}",
+                            f"Which projects need intervention first in {partition['canonicalState']}?"
+                        ],
+                        total_matching=partition['dedicatedCount']
+                    )
+                # Average risk in state
+                if 'average risk' in q:
+                    avg_risk = partition['dedicatedKPIs'].averageRiskScore
+                    return FactualContext(
+                        intent='STATE_AVG_RISK',
+                        summary_text=f"""The average PRISM Risk Index for dedicated infrastructure projects in **{partition['canonicalState']}** is **{avg_risk} / 100** (calculated across {partition['dedicatedCount']} monitored projects).""",
+                        grounded_projects=sorted(partition['dedicatedProjects'], key=lambda p: (-(p.riskScore or 0), p.id))[:5],
+                        suggested_questions=[
+                            f"Show high-risk projects in {partition['canonicalState']}",
+                            f"Show low-risk projects in {partition['canonicalState']}",
+                            "Which sectors have the highest average risk?"
+                        ],
+                        total_matching=partition['dedicatedCount']
+                    )
+
+        sec_m, _ = _extract_sector_intent(q)
+        if sec_m and any(k in q for k in ['delayed', 'slippage']):
+            matching_sec = [
+                p for p in all_projects
+                if sec_m.lower() in p.sector.lower() or (p.derivedSector and sec_m.lower() in p.derivedSector.lower())
+            ]
+            delayed_sec = [p for p in matching_sec if (p.timeOverrunMonths or 0) > 0]
+            pct_delayed = round((len(delayed_sec) / (len(matching_sec) or 1)) * 100, 1)
+            return FactualContext(
+                intent='SECTOR_DELAY_AGGREGATION',
+                summary_text=f"""PAIMANA Schedule Slippage Aggregation: **{sec_m}**
+- **Total Monitored Projects**: **{len(matching_sec)} projects**
+- **Delayed Projects (> 0 months slippage)**: Exactly **{len(delayed_sec)} projects** ({pct_delayed}% of sector portfolio).
+- **Average Delay**: {round(sum((p.timeOverrunMonths or 0) for p in matching_sec) / (len(matching_sec) or 1), 1)} months.""",
+                grounded_projects=sorted(delayed_sec, key=lambda p: (-(p.timeOverrunMonths or 0), -(p.riskScore or 0), p.id))[:5],
+                suggested_questions=[
+                    f"Which {sec_m.lower()} projects have the highest risk?",
+                    "Which sector has the highest average risk?",
+                    "Which projects show stagnant progress?"
+                ],
+                total_matching=len(delayed_sec)
+            )
+
+    # 6. Structured Query Execution Engine (Multi-criteria, Negation, Numerical, Sorting, Limits)
+    parsed = _parse_multi_turn_query(user_query, history)
+    is_pure_state_overview = (
+        parsed['state'] and
+        not parsed['state_exclude'] and
+        not parsed['sector'] and
+        not parsed['sector_exclude'] and
+        not parsed['risk_tier'] and
+        not parsed['risk_tier_exclude'] and
+        all(parsed[k] is None for k in ['min_risk', 'max_risk', 'min_cost_cr', 'max_cost_cr', 'min_progress_pct', 'max_progress_pct', 'min_delay_months', 'max_delay_months']) and
+        not parsed['sort_by'] and
+        parsed['limit'] == 5 and
+        not any(k in q for k in ['least', 'low', 'high', 'safest', 'risky', 'top', 'bottom', 'delayed', 'cost', 'above', 'below'])
+    )
+
+    is_sector_overview = any(k in q for k in [
+        'which sector', 'which sectors', 'what sector', 'what sectors', 'highest average risk', 'highest sector risk', 'sectors with highest risk'
+    ]) or ('sector' in q and 'average risk' in q)
+    is_stagnant_query = any(k in q for k in ['stagnant', 'stagnation', 'stalled'])
+    is_intervention_priority = any(k in q for k in ['need intervention first', 'intervention first', 'attention first', 'priority queue', 'prioritized projects'])
+    is_healthy_pace = any(k in q for k in ['good pace', 'best pace', 'on track', 'healthy pace'])
+
+    if parsed['is_structured'] and not is_pure_state_overview and not is_sector_overview and not is_stagnant_query and not is_intervention_priority and not is_healthy_pace:
+        res = ProjectQueryService.query_structured(
+            state=parsed['state'],
+            state_exclude=parsed['state_exclude'],
+            sector=parsed['sector'],
+            sector_exclude=parsed['sector_exclude'],
+            risk_tier=parsed['risk_tier'],
+            risk_tier_exclude=parsed['risk_tier_exclude'],
+            min_risk=parsed['min_risk'],
+            max_risk=parsed['max_risk'],
+            min_cost_cr=parsed['min_cost_cr'],
+            max_cost_cr=parsed['max_cost_cr'],
+            min_progress_pct=parsed['min_progress_pct'],
+            max_progress_pct=parsed['max_progress_pct'],
+            min_delay_months=parsed['min_delay_months'],
+            max_delay_months=parsed['max_delay_months'],
+            sort_by=parsed['sort_by'],
+            sort_direction=parsed['sort_direction'],
+            limit=parsed['limit'],
+            offset=0,
+            include_multi_state=False
+        )
+
+        if res['totalCount'] == 0:
+            filters_desc = []
+            if parsed['state']: filters_desc.append(f"State = {parsed['state']}")
+            if parsed['state_exclude']: filters_desc.append(f"Excluding State = {', '.join(parsed['state_exclude'])}")
+            if parsed['sector']: filters_desc.append(f"Sector = {parsed['sector']}")
+            if parsed['sector_exclude']: filters_desc.append(f"Excluding Sector = {', '.join(parsed['sector_exclude'])}")
+            if parsed['risk_tier']: filters_desc.append(f"Risk Tier = {parsed['risk_tier']}")
+            if parsed['risk_tier_exclude']: filters_desc.append(f"Excluding Risk Tier = {', '.join(parsed['risk_tier_exclude'])}")
+            if parsed['min_risk'] is not None: filters_desc.append(f"Risk >= {parsed['min_risk']}")
+            if parsed['max_risk'] is not None: filters_desc.append(f"Risk <= {parsed['max_risk']}")
+            if parsed['min_cost_cr'] is not None: filters_desc.append(f"Cost >= ₹{parsed['min_cost_cr']:,.0f} Cr")
+            if parsed['max_cost_cr'] is not None: filters_desc.append(f"Cost <= ₹{parsed['max_cost_cr']:,.0f} Cr")
+            if parsed['min_progress_pct'] is not None: filters_desc.append(f"Progress >= {parsed['min_progress_pct']}%")
+            if parsed['max_progress_pct'] is not None: filters_desc.append(f"Progress <= {parsed['max_progress_pct']}%")
+            if parsed['min_delay_months'] is not None: filters_desc.append(f"Delay >= {parsed['min_delay_months']} mo")
+            if parsed['max_delay_months'] is not None: filters_desc.append(f"Delay <= {parsed['max_delay_months']} mo")
+            desc = '; '.join(filters_desc) if filters_desc else 'Specified constraints'
+
+            return FactualContext(
+                intent='EMPTY_RESULT',
+                summary_text=f"""No matching PAIMANA projects found satisfying the requested criteria:
+- **Filters Applied**: {desc}
+- **Matching Records**: Exactly **0 projects** found in the national PAIMANA database.
+
+PRISM deterministic retrieval reports zero records rather than substituting unrequested or non-conforming projects.""",
+                grounded_projects=[],
+                suggested_questions=[
+                    f"Show projects in {parsed['state']}" if parsed['state'] else "Show high risk projects in Delhi",
+                    "Which projects have the highest risk?",
+                    "Which sectors have the highest average risk?"
+                ],
+                total_matching=0
+            )
+
+        list_text = '\n\n'.join([
+            f"{i + 1}. **{p.name}** (`{p.code or p.id}`)\n"
+            f"   - **Risk Score**: **{p.riskScore}/100** [{p.riskTier}]\n"
+            f"   - **Sector & State**: {p.sector} • {p.state} | **Agency**: {p.implementingAgency}\n"
+            f"   - **Physical Progress**: {p.physicalProgressPercent}% | Cost: ₹{(p.revisedCostCr or p.originalCostCr or 0):,.0f} Cr\n"
+            f"   - **Overrun**: Schedule +{p.timeOverrunMonths} mo | Cost +{p.costOverrunPercent}%"
+            for i, p in enumerate(res['displayProjects'])
+        ])
+
+        multi_note = f"\n\n*Note on Multi-State Corridors:* {res['multiStateNotice']}" if res.get('multiStateNotice') else ''
+        sort_note = f" (ordered by {parsed['sort_by']} {parsed['sort_direction']})" if parsed['sort_by'] else ""
+        header = f"PAIMANA Query Results{sort_note}"
+        if parsed['state']:
+            header = f"PAIMANA Projects in **{res['canonicalState']}**{sort_note}"
+
+        return FactualContext(
+            intent='STRUCTURED_QUERY_RESULT',
+            summary_text=f"""{header}:
+- **Total Matching Records**: Exactly **{res['totalCount']} projects** satisfy the requested criteria.
+- **Showing**: **{len(res['displayProjects'])} of {res['totalCount']}** verified projects:
+
+{list_text}{multi_note}""",
+            grounded_projects=res['displayProjects'],
+            suggested_questions=[
+                f"Why is project {res['displayProjects'][0].id} high risk?" if res['displayProjects'] else "Which projects have the highest risk?",
+                f"Which projects need intervention first in {res['canonicalState']}?" if res.get('canonicalState') else "Which projects need intervention first?",
+                "Which sector has the highest average risk?"
+            ],
+            total_matching=res['totalCount']
+        )
+
+    # 7. State Inquiries (for pure state portfolio overviews)
+    matched_state = parsed['state']
     if matched_state:
         # 4A. State + Risk Tier — use canonical synonym detection
         target_risk_tier = _detect_risk_tier(q)
