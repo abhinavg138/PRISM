@@ -195,14 +195,14 @@ export function renderSectorCards() {
         <div class="card p-4 hover:border-blue-300 transition cursor-pointer sector-quick-filter" data-sector="${escapeHtml(sec.sector)}">
           <div class="flex items-center justify-between">
             <div class="text-xs font-bold text-slate-500 uppercase">${escapeHtml(sec.sector)}</div>
-            <span class="badge ${sec.avgRiskScore >= 60 ? 'badge-high' : 'badge-moderate'} text-[11px]">Avg ${Math.round(sec.avgRiskScore)}</span>
+            <span class="badge ${sec.avgRiskScore >= 60 ? 'badge-high' : 'badge-moderate'} text-[11px]">Avg ${Math.round(sec.avgRiskScore || 0)}</span>
           </div>
           <div class="mt-2 flex items-baseline justify-between">
-            <span class="text-xl font-bold text-slate-900">${sec.projectCount} <span class="text-xs text-slate-400 font-normal">projects</span></span>
-            <span class="text-xs font-semibold text-slate-600">${formatCurrencyCr(sec.totalCostCr)}</span>
+            <span class="text-xl font-bold text-slate-900">${sec.totalProjects || 0} <span class="text-xs text-slate-400 font-normal">projects</span></span>
+            <span class="text-xs font-semibold text-slate-600">${formatCurrencyCr(sec.totalBudgetCr || 0)}</span>
           </div>
           <div class="mt-2 text-[11px] text-slate-500 flex justify-between">
-            <span>Critical: <strong class="text-red-600">${sec.criticalCount || 0}</strong></span>
+            <span>Critical: <strong class="text-red-600">${sec.criticalProjects || 0}</strong></span>
             <span>Avg Prog: <strong>${Math.round(sec.avgPhysicalProgress || 0)}%</strong></span>
           </div>
         </div>

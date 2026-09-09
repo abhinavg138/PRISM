@@ -80,6 +80,17 @@ if FRONTEND_DIR.exists():
     if (FRONTEND_DIR / "js").exists():
         app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
 
+    # Middleware: Prevent browser caching of JS/CSS so reloads always pick up latest code
+    @app.middleware("http")
+    async def no_cache_static(request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/js/") or path.startswith("/css/") or path == "/":
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
     @app.get("/")
     async def serve_index():
         return FileResponse(FRONTEND_DIR / "index.html")

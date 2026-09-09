@@ -13,6 +13,8 @@ from backend.repositories.paimana_repository import paimana_repository
 from backend.services.project_query_service import ProjectQueryService
 
 _ai_client = None
+# gemini-2.0-flash: 1,500 req/day free tier vs gemini-3.6-flash 20 req/day
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 def get_gemini_client():
     global _ai_client
@@ -59,6 +61,39 @@ KNOWN_SECTORS: Dict[str, str] = {
     'steel': 'Steel & Heavy Industry'
 }
 
+def _detect_risk_tier(q: str) -> Optional[str]:
+    """Deterministically map query text to a PRISM risk tier.
+    Handles all semantic synonyms for HIGH/LOW/MODERATE/CRITICAL.
+    Returns 'CRITICAL', 'HIGH', 'MODERATE', 'LOW', or None.
+    """
+    # CRITICAL (check before HIGH so 'critical risk' doesn't match HIGH)
+    if any(k in q for k in ['critical risk', 'critical-risk', 'critical']):
+        return 'CRITICAL'
+    # HIGH — 'highly risky', 'risky', 'elevated risk', 'elevated' must not match 'least'
+    if any(k in q for k in [
+        'high risk', 'high-risk', 'highly risky', 'highly-risky',
+        'elevated risk', 'elevated-risk', 'severely risky'
+    ]):
+        return 'HIGH'
+    if 'high' in q and 'risk' in q and 'least' not in q and 'low' not in q:
+        return 'HIGH'
+    if 'risky' in q and 'least' not in q and 'low' not in q:
+        return 'HIGH'
+    # MODERATE
+    if any(k in q for k in ['moderate risk', 'moderate-risk', 'medium risk', 'medium-risk', 'moderate']):
+        return 'MODERATE'
+    # LOW — covers 'least risk', 'least risky', 'safest', 'lowest risk', 'low risk'
+    if any(k in q for k in [
+        'least risk', 'least-risk', 'least risky', 'least-risky',
+        'lowest risk', 'lowest-risk', 'safest', 'safe projects',
+        'low risk', 'low-risk'
+    ]):
+        return 'LOW'
+    if 'low' in q and 'risk' in q:
+        return 'LOW'
+    return None
+
+
 class FactualContext:
     def __init__(
         self,
@@ -76,12 +111,58 @@ class FactualContext:
         self.refuse_score_calc = refuse_score_calc
         self.total_matching = total_matching
 
+def _extract_context_from_history(
+    conversation_history: List[Dict[str, str]],
+    current_query: str
+) -> Dict[str, Optional[str]]:
+    """Scan conversation history to carry forward state/sector context for follow-up queries.
+    Returns dict with keys 'state' and 'risk_tier' (both may be None).
+
+    A follow-up query is detected when the current query does NOT contain a
+    state name but a recent prior turn did.  This allows:
+      'show high risk in Delhi' → 'now show least risk ones'   (carries Delhi forward)
+    A completely new query that re-specifies context discards previous context.
+    """
+    # If the current query already contains a state, don't inherit from history
+    current_q_lower = current_query.lower().strip()
+    for st in KNOWN_STATES:
+        if re.search(rf'\b{re.escape(st.lower())}\b', current_q_lower):
+            return {'state': None, 'risk_tier': None}
+
+    # Detect whether this looks like a follow-up (short, pronoun-heavy, no new entities)
+    FOLLOWUP_SIGNALS = [
+        'now show', 'show me the', 'what about', 'and the', 'instead show',
+        'least risk', 'least risky', 'safest', 'lowest risk',
+        'most risky', 'highest risk', 'now list', 'instead list',
+        'same but', 'switch to', 'change to'
+    ]
+    is_followup = any(sig in current_q_lower for sig in FOLLOWUP_SIGNALS) or len(current_q_lower.split()) <= 6
+
+    if not is_followup:
+        return {'state': None, 'risk_tier': None}
+
+    # Walk the last 6 messages in reverse to find a state mention
+    for msg in reversed(conversation_history[-6:]):
+        content = (msg.get('content') or '').lower().strip()
+        for st in KNOWN_STATES:
+            if re.search(rf'\b{re.escape(st.lower())}\b', content):
+                return {'state': st, 'risk_tier': None}
+
+    return {'state': None, 'risk_tier': None}
+
+
 def resolve_query_factual_context(
     user_query: str,
     all_projects: List[Project],
-    active_project: Optional[Project] = None
+    active_project: Optional[Project] = None,
+    conversation_history: Optional[List[Dict[str, str]]] = None
 ) -> FactualContext:
     q = user_query.lower().strip()
+    history = conversation_history or []
+
+    # Carry-forward context resolution for follow-up queries
+    inherited = _extract_context_from_history(history, user_query)
+    inherited_state = inherited.get('state')
 
     # 1. Authority Defense (Score modification, hallucination resistance, prompt injection)
     if any(k in q for k in [
@@ -254,18 +335,21 @@ Monthly breakdown:
             total_matching=1
         )
 
-    # 4. State Inquiries
+    # 4. State Inquiries (also handles carry-forward state from conversation context)
     matched_state = next((st for st in KNOWN_STATES if re.search(rf'\b{re.escape(st.lower())}\b', q)), None)
+    # If no state in current query, check if we can inherit one from conversation history
+    if not matched_state and inherited_state:
+        matched_state = inherited_state
     if matched_state:
-        # 4A. State + Risk Tier
-        target_risk_tier = None
-        if 'critical' in q: target_risk_tier = 'CRITICAL'
-        elif 'high risk' in q or 'high-risk' in q or ('high' in q and 'risk' in q): target_risk_tier = 'HIGH'
-        elif 'moderate risk' in q or 'moderate-risk' in q or 'moderate' in q: target_risk_tier = 'MODERATE'
-        elif 'low risk' in q or 'low-risk' in q or ('low' in q and 'risk' in q): target_risk_tier = 'LOW'
+        # 4A. State + Risk Tier — use canonical synonym detection
+        target_risk_tier = _detect_risk_tier(q)
 
         if target_risk_tier:
-            res = ProjectQueryService.get_projects_by_state_and_risk(matched_state, target_risk_tier, limit=5)
+            # LOW tier: sort ascending (least risky first); all others sort descending
+            sort_asc = (target_risk_tier == 'LOW')
+            res = ProjectQueryService.get_projects_by_state_and_risk(
+                matched_state, target_risk_tier, limit=5, sort_ascending=sort_asc
+            )
             list_text = (
                 '\n\n'.join([
                     f"{i + 1}. **{p.name}** (`{p.code or p.id}`)\n"
@@ -281,17 +365,21 @@ Monthly breakdown:
 
             multi_note = f"\n\n*Note on Multi-State Corridors:* {res['multiStateNotice']}" if res.get('multiStateNotice') else ''
             band_desc = '80–100' if target_risk_tier == 'CRITICAL' else ('60–79' if target_risk_tier == 'HIGH' else ('40–59' if target_risk_tier == 'MODERATE' else '0–39'))
+            sort_note = ' (sorted: least risky first)' if sort_asc else ''
+
+            # Determine the opposite tier suggestion for follow-up
+            opposite = 'high' if target_risk_tier in ('LOW', 'MODERATE') else 'low'
 
             return FactualContext(
                 intent='STATE_RISK_FILTER',
-                summary_text=f"""PAIMANA State Risk Analysis: **{res['canonicalState']}** ({target_risk_tier} Risk)
+                summary_text=f"""PAIMANA State Risk Analysis: **{res['canonicalState']}** ({target_risk_tier} Risk{sort_note})
 - **Authoritative In-State Projects**: Exactly **{res['totalCount']} projects** located in {res['canonicalState']} are classified in the **{target_risk_tier}** risk band ({band_desc}).
 
 {f"Showing **{len(res['displayProjects'])} of {res['totalCount']}** verified in-state {target_risk_tier.lower()}-risk projects:\n\n{list_text}" if res['totalCount'] > 0 else list_text}{multi_note}""",
                 grounded_projects=res['displayProjects'],
                 suggested_questions=[
                     f"Which projects need intervention first in {res['canonicalState']}?",
-                    f"Show {'low' if target_risk_tier == 'HIGH' else 'high'}-risk projects in {res['canonicalState']}",
+                    f"Show {opposite}-risk projects in {res['canonicalState']}",
                     f"What is the average risk in {res['canonicalState']}?"
                 ],
                 total_matching=res['totalCount']
@@ -655,14 +743,18 @@ class CopilotService:
         cls,
         user_query: str,
         projects: List[Project],
-        active_project_id: Optional[str] = None
+        active_project_id: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> CopilotResponse:
         active_project = (
             paimana_repository.get_project_by_id(active_project_id)
             if active_project_id else None
         )
 
-        factual = resolve_query_factual_context(user_query, projects, active_project)
+        factual = resolve_query_factual_context(
+            user_query, projects, active_project,
+            conversation_history=conversation_history or []
+        )
         grounded_entities = [map_grounded_project(p) for p in factual.grounded_projects]
 
         client = get_gemini_client()
@@ -793,7 +885,7 @@ STRUCTURED PROJECT & SCENARIO CONTEXT:
 Synthesize an official executive intervention memorandum based exclusively on these verified facts.
 """
                 response = client.models.generate_content(
-                    model='gemini-3.6-flash',
+                    model=GEMINI_MODEL,
                     contents=prompt,
                     config={
                         'system_instruction': system_instruction,

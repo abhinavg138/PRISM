@@ -113,7 +113,8 @@ class ProjectQueryService:
         state_name: str,
         risk_tier: str,
         limit: int = 5,
-        include_multi_state: bool = False
+        include_multi_state: bool = False,
+        sort_ascending: bool = False
     ) -> Dict[str, Any]:
         partition = cls.get_state_partition(state_name)
         target_tier = risk_tier.upper()
@@ -130,9 +131,13 @@ class ProjectQueryService:
                 'multiStateNotice': None
             }
 
-        # Sort deterministically: riskScore DESC, id ASC
-        def sort_fn(p: Project):
-            return (-(p.riskScore if p.riskScore is not None else -1), p.id)
+        # Sort deterministically: ascending for LOW tier (least risky first), descending for others
+        if sort_ascending:
+            def sort_fn(p: Project):
+                return ((p.riskScore if p.riskScore is not None else 999), p.id)
+        else:
+            def sort_fn(p: Project):
+                return (-(p.riskScore if p.riskScore is not None else -1), p.id)
 
         dedicated_matching = sorted(
             [p for p in partition['dedicatedProjects'] if p.riskTier == target_tier],

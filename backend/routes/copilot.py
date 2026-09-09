@@ -21,12 +21,17 @@ async def copilot_chat(request: Request):
 
     message = body.get("message")
     active_project_id = body.get("activeProjectId")
+    conversation_history = body.get("conversationHistory") or []
 
     if not message or not isinstance(message, str) or not message.strip():
         return JSONResponse(status_code=400, content={"error": "Message must be a non-empty string"})
 
     if len(message) > 2000:
         return JSONResponse(status_code=400, content={"error": "Message exceeds maximum allowed length of 2000 characters"})
+
+    # Validate conversationHistory is a list
+    if not isinstance(conversation_history, list):
+        conversation_history = []
 
     try:
         active_list = (
@@ -38,7 +43,8 @@ async def copilot_chat(request: Request):
         response = await CopilotService.chat(
             user_query=message,
             projects=active_list,
-            active_project_id=active_project_id
+            active_project_id=active_project_id,
+            conversation_history=conversation_history
         )
         return response.model_dump()
     except Exception as err:
