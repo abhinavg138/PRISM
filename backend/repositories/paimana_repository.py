@@ -731,12 +731,14 @@ class PaimanaRepository:
                     'criticalProjects': 0,
                     'totalRisk': 0.0,
                     'ratedCount': 0,
-                    'totalBudgetCr': 0.0
+                    'totalBudgetCr': 0.0,
+                    'totalExpenditureCr': 0.0
                 }
             entry = mapping[sec]
             entry['totalProjects'] += 1
             entry['totalProgress'] += (p.physicalProgressPercent or 0.0)
             entry['totalBudgetCr'] += (p.revisedCostCr or 0.0)
+            entry['totalExpenditureCr'] += (p.cumulativeExpenditureCr or 0.0)
             if p.riskTier == 'CRITICAL':
                 entry['criticalProjects'] += 1
             if p.riskTier == 'HIGH':
@@ -756,7 +758,8 @@ class PaimanaRepository:
                 criticalProjects=stats['criticalProjects'],
                 highRiskProjects=stats['highRiskProjects'],
                 avgRiskScore=round(stats['totalRisk'] / rated, 1) if rated > 0 else 0.0,
-                totalBudgetCr=round(stats['totalBudgetCr'])
+                totalBudgetCr=round(stats['totalBudgetCr']),
+                totalExpenditureCr=round(stats['totalExpenditureCr'])
             ))
 
         result.sort(key=lambda s: s.totalProjects, reverse=True)
@@ -899,6 +902,7 @@ class PaimanaRepository:
                 'portfolioPercent': round((s.totalProjects / total_projects) * 100.0, 1) if total_projects > 0 else 0.0,
                 'originalCostCr': round(orig_cost),
                 'revisedCostCr': rev_cost,
+                'totalExpenditureCr': s.totalExpenditureCr,
                 'costOverrunPercent': overrun_pct,
                 'avgPhysicalProgress': s.avgPhysicalProgress,
                 'avgRiskScore': s.avgRiskScore,

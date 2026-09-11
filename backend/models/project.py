@@ -158,3 +158,4 @@ class SectorStat(BaseModel):
     highRiskProjects: int
     avgRiskScore: float
     totalBudgetCr: int
+    totalExpenditureCr: int = 0

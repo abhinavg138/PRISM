@@ -12,7 +12,7 @@ import { renderDashboard } from './dashboard.js';
 import { initProjectsView, applyFiltersAndRender } from './projects.js';
 import { openProjectDetail } from './project-detail.js';
 import { initCopilot, openCopilot, closeCopilot } from './copilot.js';
-import { renderSectorAnalytics } from './analytics.js';
+import { renderSectorAnalytics } from './analytics.js?v=portfolio-v2';
 import { renderGISMap } from './map.js';
 import { initAlertsModal, openAlertsModal } from './alerts.js';
 import { initReports, openFlashReport } from './reports.js';
