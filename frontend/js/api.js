@@ -6,7 +6,9 @@
  * ============================================================================
  */
 
-const BASE_URL = '';
+const BASE_URL = window.location.port === '8000' 
+  ? '' 
+  : `http://${window.location.hostname || 'localhost'}:8000`;
 
 async function fetchJson(endpoint, options = {}) {
   try {

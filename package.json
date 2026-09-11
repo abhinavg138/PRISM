@@ -6,6 +6,7 @@
   "scripts": {
     "start": "python -m uvicorn backend.main:app --port 8000",
     "dev": "python -m uvicorn backend.main:app --port 8000 --reload",
+    "frontend": "python -m http.server 3000 --directory frontend",
     "test": "pytest backend/tests -v"
   }
 }
