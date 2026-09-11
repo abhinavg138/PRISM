@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PRISM Admin — Project Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/admin/static/admin.css" />
+    <script src="/assets/lucide.min.js"></script>
+  </head>
+  <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <header class="admin-navbar sticky top-0 z-40 px-6 py-3 text-white">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-6">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black shadow-sm">
+              <i data-lucide="shield" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-black tracking-tight text-white">PRISM ADMIN</span>
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">Control Plane</span>
+              </div>
+              <div class="text-[10px] text-slate-400">National Infrastructure Monitoring Operations</div>
+            </div>
+          </div>
+          <nav id="admin-header-nav" class="hidden md:flex items-center gap-1"></nav>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <a href="/" target="_blank" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded transition flex items-center gap-1">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Main App</span>
+          </a>
+          <button id="btn-admin-logout" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition flex items-center gap-1">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-5">
+      <!-- Title & Top Actions Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-bold text-slate-900 tracking-tight">Project Records Management</h1>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Authoritative registry of infrastructure projects with active override status & recalculation controls.
+          </p>
+        </div>
+        <a href="/admin/projects/new" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 self-start sm:self-auto">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>+ Add New Project</span>
+        </a>
+      </div>
+
+      <!-- Filters & Search Card -->
+      <div class="admin-card p-4 space-y-3">
+        <!-- Row 1: Search & Major Filters -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <!-- Search Bar -->
+          <div class="lg:col-span-2 relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
+              <i data-lucide="search" class="w-4 h-4"></i>
+            </span>
+            <input
+              type="text"
+              id="filter-search"
+              placeholder="Search by ID, name, sector, agency..."
+              class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800"
+            />
+          </div>
+
+          <!-- Sector Filter -->
+          <div>
+            <select id="filter-sector" class="w-full py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700 bg-white">
+              <option value="ALL">All Sectors</option>
+            </select>
+          </div>
+
+          <!-- State Filter -->
+          <div>
+            <select id="filter-state" class="w-full py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700 bg-white">
+              <option value="ALL">All States</option>
+            </select>
+          </div>
+
+          <!-- Risk Tier Filter -->
+          <div>
+            <select id="filter-risk" class="w-full py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700 bg-white">
+              <option value="ALL">All Risk Tiers</option>
+              <option value="CRITICAL">Critical Risk (80–100)</option>
+              <option value="HIGH">High Risk (60–79)</option>
+              <option value="MODERATE">Moderate Risk (40–59)</option>
+              <option value="LOW">Low Risk (0–39)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Secondary Filters & Sort -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Record Source Filter -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-500 font-medium">Record Type:</span>
+              <select id="filter-record-type" class="py-1 px-2 text-xs border border-slate-200 rounded-md bg-white text-slate-700">
+                <option value="ALL">All Records</option>
+                <option value="SOURCE">PAIMANA Baseline</option>
+                <option value="ADMIN_MODIFIED">Admin Modified</option>
+                <option value="ADMIN_ADDED">Admin Added</option>
+              </select>
+            </div>
+
+            <!-- Priority Tier Filter -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-500 font-medium">Priority:</span>
+              <select id="filter-priority" class="py-1 px-2 text-xs border border-slate-200 rounded-md bg-white text-slate-700">
+                <option value="ALL">All Priorities</option>
+                <option value="P1">P1 Immediate</option>
+                <option value="P2">P2 Scheduled</option>
+                <option value="P3">P3 Monitoring</option>
+              </select>
+            </div>
+
+            <!-- Include Archived Checkbox -->
+            <label class="flex items-center gap-1.5 text-slate-600 cursor-pointer select-none">
+              <input type="checkbox" id="filter-include-archived" class="rounded text-blue-600 focus:ring-blue-500" />
+              <span>Show Archived Projects</span>
+            </label>
+          </div>
+
+          <!-- Sort Order -->
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 font-medium">Sort by:</span>
+            <select id="sort-by" class="py-1 px-2 text-xs border border-slate-200 rounded-md bg-white text-slate-700">
+              <option value="id">Project ID</option>
+              <option value="name">Project Name</option>
+              <option value="riskScore">Risk Score</option>
+              <option value="revisedCostCr">Revised Cost</option>
+              <option value="physicalProgressPercent">Progress</option>
+            </select>
+            <select id="sort-dir" class="py-1 px-2 text-xs border border-slate-200 rounded-md bg-white text-slate-700">
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects Table Card -->
+      <div class="admin-card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="admin-table w-full text-left">
+            <thead>
+              <tr>
+                <th class="w-20">ID</th>
+                <th class="min-w-[200px]">Project Name</th>
+                <th>Sector</th>
+                <th>State</th>
+                <th class="text-right">Revised Cost</th>
+                <th class="text-right">Progress</th>
+                <th>Risk Classification</th>
+                <th>Priority</th>
+                <th>Provenance</th>
+                <th class="text-right w-24">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="projects-table-body" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="10" class="py-12 text-center text-xs text-slate-400">Loading projects...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Bar -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div class="text-slate-500">
+            Showing <strong id="page-start" class="text-slate-800">0</strong> to <strong id="page-end" class="text-slate-800">0</strong> of <strong id="page-total" class="text-slate-800">0</strong> projects
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="btn-prev-page" class="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none font-medium">
+              &larr; Previous
+            </button>
+            <span class="px-2 font-mono text-slate-500">Page <span id="current-page">1</span></span>
+            <button id="btn-next-page" class="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none font-medium">
+              Next &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Archive Confirmation Modal -->
+    <div id="archive-modal" class="admin-modal-backdrop hidden">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900" id="archive-modal-title">Archive Project</h3>
+            <p class="text-xs text-slate-500 mt-1" id="archive-modal-desc">
+              Archiving omits this project from the active PRISM portfolio while preserving historical observations and audit history.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Reason for Action (Audit Record):</label>
+          <input
+            type="text"
+            id="archive-modal-reason"
+            placeholder="e.g. Scope closed / duplicate record / statutory de-shelving"
+            class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500"
+          />
+        </div>
+
+        <div class="mt-5 flex items-center justify-end gap-2 text-xs">
+          <button id="btn-archive-cancel" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium">
+            Cancel
+          </button>
+          <button id="btn-archive-confirm" class="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold shadow-xs">
+            Confirm Action
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import {
+        adminApi, renderNavbar, showToast, escapeHtml,
+        formatCurrencyCr, getRiskBadge, getPriorityBadge, getSourceBadge
+      } from '/admin/static/admin.js';
+
+      renderNavbar('projects');
+
+      let currentPage = 1;
+      const pageSize = 15;
+      let totalProjects = 0;
+      let targetArchiveId = null;
+      let targetArchiveIsArchived = false;
+
+      // Filter elements
+      const searchInput = document.getElementById('filter-search');
+      const sectorSelect = document.getElementById('filter-sector');
+      const stateSelect = document.getElementById('filter-state');
+      const riskSelect = document.getElementById('filter-risk');
+      const prioritySelect = document.getElementById('filter-priority');
+      const recordTypeSelect = document.getElementById('filter-record-type');
+      const archivedCheckbox = document.getElementById('filter-include-archived');
+      const sortBySelect = document.getElementById('sort-by');
+      const sortDirSelect = document.getElementById('sort-dir');
+
+      // Populate filter dropdowns from metadata
+      async function initFilterDropdowns() {
+        try {
+          const meta = await adminApi.fetch('/api/metadata');
+          if (meta.sectors) {
+            sectorSelect.innerHTML = '<option value="ALL">All Sectors</option>' + meta.sectors.map(s => `
+              <option value="${escapeHtml(s)}">${escapeHtml(s)}</option>
+            `).join('');
+          }
+          if (meta.states) {
+            stateSelect.innerHTML = '<option value="ALL">All States</option>' + meta.states.map(s => `
+              <option value="${escapeHtml(s)}">${escapeHtml(s)}</option>
+            `).join('');
+          }
+        } catch (e) {
+          console.warn('Metadata load failed for dropdowns:', e);
+        }
+      }
+
+      async function fetchAndRenderProjects() {
+        const tbody = document.getElementById('projects-table-body');
+        tbody.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-xs text-slate-400">Loading projects...</td></tr>`;
+
+        const offset = (currentPage - 1) * pageSize;
+
+        try {
+          const res = await adminApi.getProjects({
+            search: searchInput.value.trim(),
+            sector: sectorSelect.value,
+            state: stateSelect.value,
+            riskTier: riskSelect.value,
+            priorityTier: prioritySelect.value,
+            recordType: recordTypeSelect.value,
+            includeArchived: archivedCheckbox.checked,
+            sortBy: sortBySelect.value,
+            sortDirection: sortDirSelect.value,
+            limit: pageSize,
+            offset: offset
+          });
+
+          totalProjects = res.totalCount;
+          const projects = res.projects || [];
+
+          if (projects.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-xs text-slate-500">No infrastructure projects match the selected filters.</td></tr>`;
+            updatePagination(0, 0, 0);
+            return;
+          }
+
+          tbody.innerHTML = projects.map(p => {
+            const isArchived = Boolean(p.isArchived);
+            const rowClass = isArchived ? 'opacity-60 bg-slate-50' : '';
+            return `
+              <tr class="${rowClass}">
+                <td class="font-mono font-bold text-slate-900">${escapeHtml(p.id)}</td>
+                <td>
+                  <div class="font-semibold text-slate-900 line-clamp-1" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+                  <div class="text-[11px] text-slate-400 line-clamp-1">${escapeHtml(p.implementingAgency || p.ministry || '')}</div>
+                </td>
+                <td class="text-slate-600">${escapeHtml(p.sector)}</td>
+                <td class="text-slate-600">${escapeHtml(p.state)}</td>
+                <td class="text-right font-mono font-bold text-slate-900">${formatCurrencyCr(p.revisedCostCr)}</td>
+                <td class="text-right font-mono font-medium text-slate-700">${Math.round(p.physicalProgressPercent || 0)}%</td>
+                <td>${getRiskBadge(p.riskTier, p.riskScore)}</td>
+                <td>${getPriorityBadge(p.priorityTier, p.priorityScore)}</td>
+                <td>${getSourceBadge(p.recordType, isArchived)}</td>
+                <td class="text-right">
+                  <div class="flex items-center justify-end gap-1">
+                    <a href="/admin/projects/${encodeURIComponent(p.id)}/edit" class="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded" title="Edit project record">
+                      <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                    </a>
+                    <button class="btn-toggle-archive p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" data-id="${escapeHtml(p.id)}" data-archived="${isArchived}" title="${isArchived ? 'Restore to active portfolio' : 'Archive project'}">
+                      <i data-lucide="${isArchived ? 'rotate-ccw' : 'archive'}" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+
+          if (window.lucide) window.lucide.createIcons();
+
+          const pageStart = offset + 1;
+          const pageEnd = Math.min(offset + pageSize, totalProjects);
+          updatePagination(pageStart, pageEnd, totalProjects);
+
+          // Attach archive buttons
+          document.querySelectorAll('.btn-toggle-archive').forEach(btn => {
+            btn.addEventListener('click', () => {
+              targetArchiveId = btn.getAttribute('data-id');
+              targetArchiveIsArchived = btn.getAttribute('data-archived') === 'true';
+              openArchiveModal(targetArchiveId, targetArchiveIsArchived);
+            });
+          });
+
+        } catch (err) {
+          tbody.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-xs text-red-600">Failed to load projects: ${escapeHtml(err.message)}</td></tr>`;
+        }
+      }
+
+      function updatePagination(start, end, total) {
+        document.getElementById('page-start').textContent = start;
+        document.getElementById('page-end').textContent = end;
+        document.getElementById('page-total').textContent = total.toLocaleString();
+        document.getElementById('current-page').textContent = currentPage;
+
+        document.getElementById('btn-prev-page').disabled = currentPage <= 1;
+        document.getElementById('btn-next-page').disabled = end >= total;
+      }
+
+      // Archive Modal Handlers
+      const archiveModal = document.getElementById('archive-modal');
+      const archiveTitle = document.getElementById('archive-modal-title');
+      const archiveDesc = document.getElementById('archive-modal-desc');
+      const archiveReason = document.getElementById('archive-modal-reason');
+
+      function openArchiveModal(id, isArchived) {
+        archiveTitle.textContent = isArchived ? `Restore Project ${id}` : `Archive Project ${id}`;
+        archiveDesc.textContent = isArchived
+          ? `Restoring project ${id} will return it to the active PRISM portfolio and include it in analytics calculations.`
+          : `Archiving project ${id} will remove it from the active PRISM portfolio without deleting historical observations or audit records.`;
+        archiveReason.value = '';
+        archiveModal.classList.remove('hidden');
+      }
+
+      document.getElementById('btn-archive-cancel').addEventListener('click', () => {
+        archiveModal.classList.add('hidden');
+      });
+
+      document.getElementById('btn-archive-confirm').addEventListener('click', async () => {
+        if (!targetArchiveId) return;
+        const reason = archiveReason.value.trim() || (targetArchiveIsArchived ? 'Restored by administrator' : 'Archived by administrator');
+        try {
+          if (targetArchiveIsArchived) {
+            await adminApi.unarchiveProject(targetArchiveId, reason);
+            showToast(`Project ${targetArchiveId} restored to active portfolio.`);
+          } else {
+            await adminApi.archiveProject(targetArchiveId, reason);
+            showToast(`Project ${targetArchiveId} archived.`);
+          }
+          archiveModal.classList.add('hidden');
+          fetchAndRenderProjects();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+
+      // Search & Filter event bindings
+      let searchTimeout = null;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          currentPage = 1;
+          fetchAndRenderProjects();
+        }, 300);
+      });
+
+      [sectorSelect, stateSelect, riskSelect, prioritySelect, recordTypeSelect, archivedCheckbox, sortBySelect, sortDirSelect].forEach(el => {
+        el.addEventListener('change', () => {
+          currentPage = 1;
+          fetchAndRenderProjects();
+        });
+      });
+
+      document.getElementById('btn-prev-page').addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          fetchAndRenderProjects();
+        }
+      });
+
+      document.getElementById('btn-next-page').addEventListener('click', () => {
+        currentPage++;
+        fetchAndRenderProjects();
+      });
+
+      initFilterDropdowns();
+      fetchAndRenderProjects();
+    </script>
+  </body>
+</html>

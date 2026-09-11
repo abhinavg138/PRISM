@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PRISM Admin — Overview Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/admin/static/admin.css" />
+    <script src="/assets/lucide.min.js"></script>
+  </head>
+  <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+    <!-- Admin Top Navbar -->
+    <header class="admin-navbar sticky top-0 z-40 px-6 py-3 text-white">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-6">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black shadow-sm">
+              <i data-lucide="shield" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-black tracking-tight text-white">PRISM ADMIN</span>
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">Control Plane</span>
+              </div>
+              <div class="text-[10px] text-slate-400">National Infrastructure Monitoring Operations</div>
+            </div>
+          </div>
+
+          <nav id="admin-header-nav" class="hidden md:flex items-center gap-1"></nav>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:flex items-center gap-2 text-xs text-slate-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg">
+            <i data-lucide="user-check" class="w-3.5 h-3.5 text-blue-400"></i>
+            <span id="admin-user-label" class="font-mono font-medium">admin</span>
+          </div>
+          <a href="/" target="_blank" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded transition flex items-center gap-1" title="Open Public PRISM Application">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Main App</span>
+          </a>
+          <button id="btn-admin-logout" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition flex items-center gap-1">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+      <!-- Welcome & Quick Actions Banner -->
+      <div class="admin-card p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white border-slate-700">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div class="inline-flex items-center gap-1.5 text-xs text-blue-400 font-semibold mb-1">
+              <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+              <span>System Operational & Synchronized</span>
+            </div>
+            <h1 class="text-xl sm:text-2xl font-black tracking-tight text-white">Administrative Operations Control</h1>
+            <p class="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+              Manage infrastructure records, audit administrative overrides, and trigger deterministic PRISM Risk & Priority engine recalculations in real time.
+            </p>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+            <a href="/admin/projects/new" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>+ Add Project</span>
+            </a>
+            <a href="/admin/projects" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/10 transition flex items-center gap-1.5">
+              <i data-lucide="folder-kanban" class="w-4 h-4"></i>
+              <span>Manage Projects</span>
+            </a>
+            <a href="/admin/validation" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/10 transition flex items-center gap-1.5">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+              <span>Data Validation</span>
+            </a>
+            <a href="/admin/audit" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/10 transition flex items-center gap-1.5">
+              <i data-lucide="history" class="w-4 h-4"></i>
+              <span>Audit Log</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overview KPI Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- 1. Active Projects -->
+        <div class="admin-card p-4">
+          <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 mb-1">
+            <i data-lucide="building-2" class="w-3.5 h-3.5 text-blue-600"></i>
+            <span>Active Projects</span>
+          </div>
+          <div id="metric-active-projects" class="text-2xl font-black text-slate-900 font-mono">--</div>
+          <div class="text-[10px] text-slate-400 mt-1">PAIMANA Live Portfolio</div>
+        </div>
+
+        <!-- 2. Admin Added -->
+        <div class="admin-card p-4">
+          <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 mb-1">
+            <i data-lucide="plus-square" class="w-3.5 h-3.5 text-purple-600"></i>
+            <span>Admin Added</span>
+          </div>
+          <div id="metric-added-projects" class="text-2xl font-black text-purple-700 font-mono">--</div>
+          <div class="text-[10px] text-slate-400 mt-1">Custom Registered</div>
+        </div>
+
+        <!-- 3. Admin Overrides -->
+        <div class="admin-card p-4">
+          <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 mb-1">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5 text-amber-600"></i>
+            <span>Modified Projects</span>
+          </div>
+          <div id="metric-modified-projects" class="text-2xl font-black text-amber-700 font-mono">--</div>
+          <div class="text-[10px] text-slate-400 mt-1">Active Overrides Layer</div>
+        </div>
+
+        <!-- 4. High / Critical Risk -->
+        <div class="admin-card p-4">
+          <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 mb-1">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-600"></i>
+            <span>High/Critical Risk</span>
+          </div>
+          <div id="metric-risk-count" class="text-2xl font-black text-red-600 font-mono">--</div>
+          <div id="metric-risk-sub" class="text-[10px] text-slate-400 mt-1">Requires Priority Focus</div>
+        </div>
+
+        <!-- 5. Priority P1 Queue -->
+        <div class="admin-card p-4">
+          <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 mb-1">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-red-600"></i>
+            <span>Priority P1</span>
+          </div>
+          <div id="metric-p1-count" class="text-2xl font-black text-red-700 font-mono">--</div>
+          <div class="text-[10px] text-slate-400 mt-1">Immediate Action Queue</div>
+        </div>
+
+        <!-- 6. Archived Projects -->
+        <div class="admin-card p-4">
+          <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 mb-1">
+            <i data-lucide="archive" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>Archived</span>
+          </div>
+          <div id="metric-archived-count" class="text-2xl font-black text-slate-600 font-mono">--</div>
+          <div class="text-[10px] text-slate-400 mt-1">Soft-Deactivated</div>
+        </div>
+      </div>
+
+      <!-- Middle Grids: Sector Breakdown & Last Modification -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Sector Distribution Card -->
+        <div class="admin-card p-5 lg:col-span-2">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Projects by Infrastructure Sector</h2>
+              <p class="text-xs text-slate-500">Live distribution of projects across monitored sectors</p>
+            </div>
+            <span class="text-xs font-mono text-slate-400" id="sector-total-badge">11 Sectors</span>
+          </div>
+
+          <div id="sector-distribution-container" class="space-y-2.5">
+            <div class="py-8 text-center text-xs text-slate-400">Loading sector analytics...</div>
+          </div>
+        </div>
+
+        <!-- Last Modification & Provenance Card -->
+        <div class="admin-card p-5 flex flex-col justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 mb-1">Latest Administrative Event</h2>
+            <p class="text-xs text-slate-500 mb-4">Most recent persistent modification recorded in SQLite</p>
+
+            <div id="last-mod-container" class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+              <div class="text-slate-400 italic">Checking audit records...</div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="text-slate-500">Integrity Protocol:</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Non-Destructive Overrides</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- State Risk Breakdown Table -->
+      <div class="admin-card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Top State Infrastructure Concentrations</h2>
+            <p class="text-xs text-slate-500">Monitored projects distributed across top states & territories</p>
+          </div>
+          <a href="/admin/projects" class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            <span>Explore All Projects</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="state-distribution-container">
+          <div class="py-6 text-center text-xs text-slate-400 col-span-full">Loading regional concentrations...</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-4 bg-white border-t border-slate-200 text-xs text-slate-500 text-center">
+      PRISM Administrative Operations Plane &bull; Deterministic Risk & Priority Intelligence &bull; SIH 2026
+    </footer>
+
+    <script type="module">
+      import { adminApi, renderNavbar, escapeHtml } from '/admin/static/admin.js';
+
+      renderNavbar('overview');
+
+      async function loadOverview() {
+        try {
+          const data = await adminApi.getOverview();
+
+          // Populate metrics
+          document.getElementById('metric-active-projects').textContent = data.totalProjects.toLocaleString();
+          document.getElementById('metric-added-projects').textContent = data.addedManuallyCount;
+          document.getElementById('metric-modified-projects').textContent = data.modifiedManuallyCount;
+
+          const critHigh = (data.riskDistribution.CRITICAL || 0) + (data.riskDistribution.HIGH || 0);
+          document.getElementById('metric-risk-count').textContent = critHigh;
+          document.getElementById('metric-p1-count').textContent = data.priorityDistribution.P1 || 0;
+          document.getElementById('metric-archived-count').textContent = data.archivedCount || 0;
+
+          // Populate Sector Bars
+          const sectorCont = document.getElementById('sector-distribution-container');
+          const sectors = Object.entries(data.sectorDistribution || {}).sort((a, b) => b[1] - a[1]);
+          const totalProj = data.totalProjects || 1;
+
+          sectorCont.innerHTML = sectors.map(([sec, count]) => {
+            const pct = ((count / totalProj) * 100).toFixed(1);
+            return `
+              <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="font-medium text-slate-700">${escapeHtml(sec)}</span>
+                  <span class="font-mono text-slate-500">${count} (${pct}%)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div class="bg-blue-600 h-2 rounded-full" style="width: ${pct}%;"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          // Populate Top States
+          const stateCont = document.getElementById('state-distribution-container');
+          stateCont.innerHTML = (data.topStates || []).map(st => `
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <div class="text-xs font-bold text-slate-900">${escapeHtml(st.state)}</div>
+              <div class="text-lg font-black text-blue-600 font-mono mt-0.5">${st.count}</div>
+              <div class="text-[10px] text-slate-400">projects</div>
+            </div>
+          `).join('');
+
+          // Last modification
+          const lastModCont = document.getElementById('last-mod-container');
+          if (data.lastModification) {
+            const lm = data.lastModification;
+            const timeStr = new Date(lm.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+            lastModCont.innerHTML = `
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800">${escapeHtml(lm.action)}</span>
+                <span class="font-mono text-[10px] text-slate-400">${escapeHtml(timeStr)}</span>
+              </div>
+              <div class="text-slate-600">
+                Project: <strong class="text-slate-900 font-mono">${escapeHtml(lm.projectId || 'N/A')}</strong>
+              </div>
+              <div class="text-slate-500">
+                User: <span class="font-mono text-slate-700">${escapeHtml(lm.adminUser)}</span>
+              </div>
+              ${lm.reason ? `<div class="text-[11px] text-slate-500 italic mt-1">"${escapeHtml(lm.reason)}"</div>` : ''}
+            `;
+          } else {
+            lastModCont.innerHTML = `<div class="text-slate-400">No manual administrative modifications recorded yet. Original PAIMANA baseline intact.</div>`;
+          }
+
+          if (window.lucide) window.lucide.createIcons();
+        } catch (err) {
+          console.error('Failed to load overview:', err);
+        }
+      }
+
+      loadOverview();
+    </script>
+  </body>
+</html>

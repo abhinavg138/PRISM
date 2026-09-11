@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRISM Admin — Audit Log</title>
+  <link rel="stylesheet" href="/admin/static/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="admin-brand">
+        <div class="admin-brand-icon"><i class="fa-solid fa-layer-group"></i></div>
+        <div class="admin-brand-text">
+          <h2>PRISM ADMIN</h2>
+          <span>Operations Control Plane</span>
+        </div>
+      </div>
+
+      <nav class="admin-nav">
+        <div class="admin-nav-section">Core Operations</div>
+        <a href="/admin" class="admin-nav-link"><i class="fa-solid fa-gauge-high"></i> Overview</a>
+        <a href="/admin/projects" class="admin-nav-link"><i class="fa-solid fa-folder-tree"></i> Projects</a>
+        <a href="/admin/projects/new" class="admin-nav-link"><i class="fa-solid fa-circle-plus"></i> Add Project</a>
+
+        <div class="admin-nav-section">Governance & Health</div>
+        <a href="/admin/validation" class="admin-nav-link"><i class="fa-solid fa-shield-halved"></i> Data Validation</a>
+        <a href="/admin/audit" class="admin-nav-link active"><i class="fa-solid fa-clipboard-list"></i> Audit Log</a>
+        <a href="/admin/system" class="admin-nav-link"><i class="fa-solid fa-server"></i> System Diagnostics</a>
+
+        <div class="admin-nav-section">Public System</div>
+        <a href="/" target="_blank" class="admin-nav-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open PRISM Portal</a>
+      </nav>
+
+      <div class="admin-sidebar-footer">
+        <div class="admin-user-pill">
+          <div class="admin-avatar" id="sidebar-avatar">A</div>
+          <div class="admin-user-info">
+            <span class="admin-username" id="sidebar-user">Admin</span>
+            <span class="admin-role">Super Admin</span>
+          </div>
+          <button class="admin-logout-btn" onclick="AdminAPI.logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-breadcrumb">
+          <a href="/admin">PRISM Admin</a>
+          <span class="sep">/</span>
+          <span class="cur">Audit Log</span>
+        </div>
+        <div class="admin-topbar-actions">
+          <button class="btn btn-secondary" onclick="loadAuditLogs()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+      </header>
+
+      <div class="admin-content-scroll">
+        <div class="admin-page-header">
+          <div>
+            <h1 class="admin-page-title">Immutable Administrative Audit Log</h1>
+            <p class="admin-page-desc">Chronological, tamper-evident ledger recording all authentication sessions, project modifications, diffs, and lifecycle states.</p>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="admin-card mb-4" style="padding: 1rem 1.25rem;">
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 1; min-width: 220px;">
+              <input type="text" id="filter-project-id" class="admin-input" placeholder="Search by Project ID..." oninput="filterLogs()">
+            </div>
+            <div style="width: 200px;">
+              <select id="filter-action" class="admin-select" onchange="filterLogs()">
+                <option value="">All Actions</option>
+                <option value="CREATE_PROJECT">CREATE_PROJECT</option>
+                <option value="UPDATE_PROJECT">UPDATE_PROJECT</option>
+                <option value="ARCHIVE_PROJECT">ARCHIVE_PROJECT</option>
+                <option value="UNARCHIVE_PROJECT">UNARCHIVE_PROJECT</option>
+                <option value="LOGIN">LOGIN</option>
+                <option value="LOGOUT">LOGOUT</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audit Table -->
+        <div class="admin-card">
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th style="width: 170px;">Timestamp</th>
+                  <th style="width: 100px;">Admin User</th>
+                  <th style="width: 150px;">Action</th>
+                  <th style="width: 110px;">Project ID</th>
+                  <th style="width: 140px;">Field Modified</th>
+                  <th>Transformation (Old &rarr; New)</th>
+                  <th>Reason / Context</th>
+                </tr>
+              </thead>
+              <tbody id="audit-tbody">
+                <tr><td colspan="7" style="text-align:center; padding: 2rem;">Loading audit records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/admin/static/admin.js"></script>
+  <script>
+    let rawLogs = [];
+
+    async function loadAuditLogs() {
+      const tbody = document.getElementById('audit-tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading audit entries...</td></tr>';
+
+      try {
+        const data = await AdminAPI.getAuditLog(100);
+        rawLogs = data.entries || [];
+        filterLogs();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--admin-danger); padding: 2rem;">Failed to fetch audit log: ${err.message}</td></tr>`;
+      }
+    }
+
+    function filterLogs() {
+      const pidQuery = (document.getElementById('filter-project-id').value || '').trim().toLowerCase();
+      const actionQuery = document.getElementById('filter-action').value;
+
+      const filtered = rawLogs.filter(log => {
+        if (pidQuery && !String(log.project_id || '').toLowerCase().includes(pidQuery)) return false;
+        if (actionQuery && log.action !== actionQuery) return false;
+        return true;
+      });
+
+      renderTable(filtered);
+    }
+
+    function renderTable(logs) {
+      const tbody = document.getElementById('audit-tbody');
+      tbody.innerHTML = '';
+
+      if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2.5rem; color: var(--admin-muted);">No audit entries match the current filter.</td></tr>';
+        return;
+      }
+
+      logs.forEach(log => {
+        const tr = document.createElement('tr');
+        const dt = new Date(log.timestamp).toLocaleString('en-IN', {
+          year: 'numeric', month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+
+        let actionBadge = 'badge-primary';
+        if (log.action === 'CREATE_PROJECT') actionBadge = 'badge-success';
+        else if (log.action === 'UPDATE_PROJECT') actionBadge = 'badge-info';
+        else if (log.action === 'ARCHIVE_PROJECT') actionBadge = 'badge-danger';
+        else if (log.action === 'UNARCHIVE_PROJECT') actionBadge = 'badge-warning';
+
+        let transformCell = '-';
+        if (log.old_value !== null || log.new_value !== null) {
+          transformCell = `
+            <div style="font-size: 0.82rem; font-family: monospace;">
+              <span style="color: var(--admin-danger); text-decoration: line-through;">${escapeHtml(String(log.old_value || 'null'))}</span>
+              &nbsp;&rarr;&nbsp;
+              <span style="color: var(--admin-success); font-weight: 600;">${escapeHtml(String(log.new_value || 'null'))}</span>
+            </div>
+          `;
+        }
+
+        tr.innerHTML = `
+          <td style="font-size: 0.8rem; color: var(--admin-muted); font-family: monospace;">${dt}</td>
+          <td><strong style="color: var(--admin-navy);">${escapeHtml(log.admin_user || 'system')}</strong></td>
+          <td><span class="badge ${actionBadge}" style="font-size: 0.72rem;">${log.action}</span></td>
+          <td>${log.project_id ? `<strong style="font-family: monospace;">#${escapeHtml(log.project_id)}</strong>` : '<span style="color:var(--admin-muted);">-</span>'}</td>
+          <td>${log.field_changed ? `<code style="background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.78rem;">${escapeHtml(log.field_changed)}</code>` : '-'}</td>
+          <td>${transformCell}</td>
+          <td style="font-size: 0.82rem; color: var(--admin-muted);">${escapeHtml(log.reason || '-')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await AdminAPI.checkAuth();
+      if (user) {
+        loadAuditLogs();
+      }
+    });
+  </script>
+</body>
+</html>

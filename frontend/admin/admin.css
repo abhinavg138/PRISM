@@ -1,0 +1,159 @@
+/**
+ * PRISM Admin Operations — Design System & Component Stylesheet
+ */
+
+:root {
+  --admin-navy-950: #070d18;
+  --admin-navy-900: #0a1629;
+  --admin-navy-800: #10223f;
+  --admin-blue-600: #1d4ed8;
+  --admin-blue-500: #2563eb;
+  --admin-blue-50: #eff6ff;
+  --admin-slate-50: #f8fafc;
+  --admin-slate-100: #f1f5f9;
+  --admin-slate-200: #e2e8f0;
+  --admin-slate-300: #cbd5e1;
+  --admin-slate-600: #475569;
+  --admin-slate-800: #1e293b;
+  --admin-slate-900: #0f172a;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Header & Navigation */
+.admin-navbar {
+  background-color: var(--admin-navy-900);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-nav-link {
+  color: #94a3b8;
+  transition: all 0.15s ease;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-nav-link:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-nav-link.active {
+  color: #ffffff;
+  background-color: var(--admin-blue-600);
+  font-weight: 600;
+}
+
+/* Cards & Surfaces */
+.admin-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Badges */
+.badge-tier-critical {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.badge-tier-high {
+  background-color: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+}
+.badge-tier-moderate {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fef3c7;
+}
+.badge-tier-low {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-source-source {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.badge-source-modified {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+}
+.badge-source-added {
+  background-color: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ede9fe;
+}
+.badge-source-archived {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Diff Modal Styling */
+.diff-row-before {
+  background-color: #fef2f2;
+  color: #991b1b;
+  text-decoration: line-through;
+}
+.diff-row-after {
+  background-color: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+/* Table styling */
+.admin-table th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  background-color: #f8fafc;
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-table td {
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.75rem;
+}
+
+.admin-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Modal Backdrop */
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 22, 41, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}

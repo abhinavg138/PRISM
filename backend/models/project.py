@@ -131,6 +131,11 @@ class Project(BaseModel):
     dataSource: Optional[str] = 'PAIMANA'
     rawPaimana: Optional[PaimanaObservation] = None
     simulationFactors: Optional[Dict[str, Any]] = None
+    recordType: Optional[str] = 'SOURCE'  # 'SOURCE' | 'ADMIN_MODIFIED' | 'ADMIN_ADDED'
+    isArchived: bool = False
+    adminOverrides: Optional[Dict[str, Any]] = None
+    updatedBy: Optional[str] = None
+    updatedAt: Optional[str] = None
 
 class PortfolioKPIs(BaseModel):
     totalProjects: int

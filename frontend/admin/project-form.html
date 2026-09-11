@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRISM Admin — Project Form</title>
+  <link rel="stylesheet" href="/admin/static/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="admin-brand">
+        <div class="admin-brand-icon"><i class="fa-solid fa-layer-group"></i></div>
+        <div class="admin-brand-text">
+          <h2>PRISM ADMIN</h2>
+          <span>Operations Control Plane</span>
+        </div>
+      </div>
+
+      <nav class="admin-nav">
+        <div class="admin-nav-section">Core Operations</div>
+        <a href="/admin" class="admin-nav-link"><i class="fa-solid fa-gauge-high"></i> Overview</a>
+        <a href="/admin/projects" class="admin-nav-link active"><i class="fa-solid fa-folder-tree"></i> Projects</a>
+        <a href="/admin/projects/new" class="admin-nav-link" id="nav-new-project"><i class="fa-solid fa-circle-plus"></i> Add Project</a>
+
+        <div class="admin-nav-section">Governance & Health</div>
+        <a href="/admin/validation" class="admin-nav-link"><i class="fa-solid fa-shield-halved"></i> Data Validation</a>
+        <a href="/admin/audit" class="admin-nav-link"><i class="fa-solid fa-clipboard-list"></i> Audit Log</a>
+        <a href="/admin/system" class="admin-nav-link"><i class="fa-solid fa-server"></i> System Diagnostics</a>
+
+        <div class="admin-nav-section">Public System</div>
+        <a href="/" target="_blank" class="admin-nav-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open PRISM Portal</a>
+      </nav>
+
+      <div class="admin-sidebar-footer">
+        <div class="admin-user-pill">
+          <div class="admin-avatar" id="sidebar-avatar">A</div>
+          <div class="admin-user-info">
+            <span class="admin-username" id="sidebar-user">Admin</span>
+            <span class="admin-role">Super Admin</span>
+          </div>
+          <button class="admin-logout-btn" onclick="AdminAPI.logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-breadcrumb">
+          <a href="/admin">PRISM Admin</a>
+          <span class="sep">/</span>
+          <a href="/admin/projects">Projects</a>
+          <span class="sep">/</span>
+          <span class="cur" id="breadcrumb-current">New Project</span>
+        </div>
+        <div class="admin-topbar-actions">
+          <a href="/admin/projects" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back to Projects</a>
+        </div>
+      </header>
+
+      <div class="admin-content-scroll">
+        <div style="max-width: 1000px; margin: 0 auto;">
+          <div class="admin-page-header">
+            <div>
+              <h1 class="admin-page-title" id="form-title">Create New Project</h1>
+              <p class="admin-page-desc" id="form-subtitle">Register a new capital infrastructure project into PRISM with full intelligence indexing.</p>
+            </div>
+          </div>
+
+          <!-- Provenance Header (Edit Mode only) -->
+          <div id="provenance-banner" style="display:none; background: #f8fafc; border: 1px solid var(--admin-border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <span class="badge" id="banner-record-type" style="font-size: 0.75rem; margin-right: 0.5rem;">SOURCE</span>
+                <span style="font-size: 0.85rem; color: var(--admin-muted);">Project ID: <strong id="banner-proj-id" style="color: var(--admin-text);">--</strong></span>
+              </div>
+              <div style="font-size: 0.82rem; color: var(--admin-muted); display: flex; gap: 1.5rem;">
+                <div>Last Updated: <strong id="banner-updated-at" style="color: var(--admin-text);">--</strong></div>
+                <div>Updated By: <strong id="banner-updated-by" style="color: var(--admin-text);">--</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <form id="project-form" onsubmit="handleFormSubmit(event)">
+            <!-- Group 1: Project Identity -->
+            <div class="admin-card mb-4">
+              <div class="admin-card-header">
+                <h3 class="admin-card-title"><i class="fa-solid fa-id-card"></i> 1. Project Identity</h3>
+              </div>
+              <div class="admin-grid-2">
+                <div class="admin-form-group">
+                  <label class="admin-label">Project ID <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="text" id="project_id" class="admin-input" placeholder="e.g. 709999" required>
+                  <small style="color: var(--admin-muted); font-size: 0.75rem;">Unique numerical or alphanumeric identifier.</small>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Project Name <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="text" id="name" class="admin-input" placeholder="e.g. Delhi-Mumbai Expressway Package 4" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Ministry / Department <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="text" id="ministry" class="admin-input" placeholder="e.g. Ministry of Road Transport and Highways" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Sector <span style="color:var(--admin-danger);">*</span></label>
+                  <select id="sector" class="admin-select" required>
+                    <option value="">-- Select Sector --</option>
+                    <option value="Road Transport and Highways">Road Transport and Highways</option>
+                    <option value="Railways">Railways</option>
+                    <option value="Petroleum and Natural Gas">Petroleum and Natural Gas</option>
+                    <option value="Power">Power</option>
+                    <option value="Coal">Coal</option>
+                    <option value="Water Resources">Water Resources</option>
+                    <option value="Shipping and Ports">Shipping and Ports</option>
+                    <option value="Civil Aviation">Civil Aviation</option>
+                    <option value="Telecommunications">Telecommunications</option>
+                    <option value="Heavy Industry">Heavy Industry</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">State / Location <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="text" id="state" class="admin-input" placeholder="e.g. Maharashtra or Multi-State" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Implementing Agency</label>
+                  <input type="text" id="agency" class="admin-input" placeholder="e.g. NHAI, RVNL, NTPC">
+                </div>
+              </div>
+            </div>
+
+            <!-- Group 2: Financial Metrics -->
+            <div class="admin-card mb-4">
+              <div class="admin-card-header">
+                <h3 class="admin-card-title"><i class="fa-solid fa-indian-rupee-sign"></i> 2. Financial Metrics (₹ Crore)</h3>
+              </div>
+              <div class="admin-grid-3">
+                <div class="admin-form-group">
+                  <label class="admin-label">Original Sanctioned Cost (₹ Cr) <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="number" step="0.01" min="0" id="original_cost" class="admin-input" placeholder="0.00" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Revised Cost (₹ Cr) <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="number" step="0.01" min="0" id="revised_cost" class="admin-input" placeholder="0.00" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Cumulative Expenditure (₹ Cr)</label>
+                  <input type="number" step="0.01" min="0" id="cumulative_expenditure" class="admin-input" placeholder="0.00">
+                </div>
+              </div>
+            </div>
+
+            <!-- Group 3: Schedule & Timeline -->
+            <div class="admin-card mb-4">
+              <div class="admin-card-header">
+                <h3 class="admin-card-title"><i class="fa-solid fa-calendar-days"></i> 3. Schedule & Timeline</h3>
+              </div>
+              <div class="admin-grid-3">
+                <div class="admin-form-group">
+                  <label class="admin-label">Original Completion Date <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="date" id="original_date" class="admin-input" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Revised Completion Date <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="date" id="revised_date" class="admin-input" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Date of Commissioning</label>
+                  <input type="date" id="doc" class="admin-input">
+                </div>
+              </div>
+            </div>
+
+            <!-- Group 4: Progress & Monitoring -->
+            <div class="admin-card mb-4">
+              <div class="admin-card-header">
+                <h3 class="admin-card-title"><i class="fa-solid fa-chart-line"></i> 4. Progress & Monitoring</h3>
+              </div>
+              <div class="admin-grid-3">
+                <div class="admin-form-group">
+                  <label class="admin-label">Physical Progress (%) <span style="color:var(--admin-danger);">*</span></label>
+                  <input type="number" step="0.01" min="0" max="100" id="physical_progress" class="admin-input" placeholder="0 - 100" required>
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Financial Progress (%)</label>
+                  <input type="number" step="0.01" min="0" max="100" id="financial_progress" class="admin-input" placeholder="0 - 100">
+                </div>
+                <div class="admin-form-group">
+                  <label class="admin-label">Monitoring Status</label>
+                  <select id="status" class="admin-select">
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Stagnant">Stagnant</option>
+                    <option value="Under Review">Under Review</option>
+                  </select>
+                </div>
+              </div>
+              <div class="admin-form-group">
+                <label class="admin-label">Remarks / Operational Notes</label>
+                <textarea id="remarks" class="admin-input" rows="3" placeholder="Key bottlenecks, land acquisition status, environmental clearance updates..."></textarea>
+              </div>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div style="display:flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+              <a href="/admin/projects" class="btn btn-secondary">Cancel</a>
+              <button type="submit" id="save-btn" class="btn btn-primary">
+                <i class="fa-solid fa-check"></i> <span id="submit-btn-text">Save Project</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Diff & Confirmation Modal -->
+  <div id="diff-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--admin-navy);">
+          <i class="fa-solid fa-code-compare" style="color: var(--admin-blue);"></i> Confirm Changes & Audit Diff
+        </h3>
+        <button class="modal-close" onclick="closeDiffModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.875rem; color: var(--admin-muted); margin-bottom: 1rem;">
+          Please review the modifications below before committing to the persistent PRISM intelligence layer.
+        </p>
+
+        <div id="diff-container" style="max-height: 280px; overflow-y: auto; margin-bottom: 1.25rem;">
+          <!-- Injected diff rows -->
+        </div>
+
+        <div class="admin-form-group">
+          <label class="admin-label">Reason for Modification <span style="color:var(--admin-danger);">*</span></label>
+          <input type="text" id="edit-reason-input" class="admin-input" placeholder="e.g. Updated sanction from MoRTH Q2 revision" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeDiffModal()">Cancel</button>
+        <button type="button" id="confirm-save-btn" class="btn btn-primary" onclick="executeSaveWithDiff()">
+          <i class="fa-solid fa-floppy-disk"></i> Confirm & Commit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin/static/admin.js"></script>
+  <script>
+    let isEditMode = false;
+    let originalProject = null;
+    let targetProjectId = null;
+    let pendingPayload = null;
+
+    // Detect if we are in edit mode: URL matches /admin/projects/:id/edit
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    if (pathParts.length >= 4 && pathParts[1] === 'projects' && pathParts[3] === 'edit') {
+      isEditMode = true;
+      targetProjectId = pathParts[2];
+    }
+
+    async function initForm() {
+      const user = await AdminAPI.checkAuth();
+      if (!user) return;
+
+      if (isEditMode) {
+        document.getElementById('breadcrumb-current').textContent = `Edit #${targetProjectId}`;
+        document.getElementById('form-title').textContent = `Edit Project #${targetProjectId}`;
+        document.getElementById('form-subtitle').textContent = 'Modify project parameters. Changes will update PRISM risk intelligence while preserving the official source record.';
+        document.getElementById('submit-btn-text').textContent = 'Review & Save Changes';
+        document.getElementById('project_id').readOnly = true;
+        document.getElementById('project_id').style.backgroundColor = '#f1f5f9';
+
+        await loadExistingProject(targetProjectId);
+      } else {
+        document.getElementById('breadcrumb-current').textContent = 'New Project';
+        document.getElementById('form-title').textContent = 'Create New Project';
+        document.getElementById('form-subtitle').textContent = 'Register a new capital infrastructure project into PRISM with full intelligence indexing.';
+        document.getElementById('submit-btn-text').textContent = 'Add Project';
+      }
+    }
+
+    async function loadExistingProject(pid) {
+      try {
+        const p = await AdminAPI.getProject(pid);
+        originalProject = p;
+
+        document.getElementById('provenance-banner').style.display = 'block';
+        document.getElementById('banner-proj-id').textContent = p.id;
+        document.getElementById('banner-record-type').textContent = p.recordType || 'SOURCE';
+        document.getElementById('banner-record-type').className = 'badge ' + (p.recordType === 'ADMIN_ADDED' ? 'badge-added' : (p.recordType === 'ADMIN_MODIFIED' ? 'badge-modified' : 'badge-source'));
+        document.getElementById('banner-updated-at').textContent = p.updatedAt ? new Date(p.updatedAt).toLocaleString('en-IN') : 'PAIMANA Snapshot';
+        document.getElementById('banner-updated-by').textContent = p.updatedBy || 'System Ingestion';
+
+        // Fill form fields
+        document.getElementById('project_id').value = p.id || '';
+        document.getElementById('name').value = p.name || '';
+        document.getElementById('ministry').value = p.ministry || '';
+        document.getElementById('sector').value = p.sector || '';
+        document.getElementById('state').value = p.state || '';
+        document.getElementById('agency').value = p.agency || '';
+
+        document.getElementById('original_cost').value = p.originalCost != null ? p.originalCost : '';
+        document.getElementById('revised_cost').value = p.revisedCost != null ? p.revisedCost : '';
+        document.getElementById('cumulative_expenditure').value = p.cumulativeExpenditure != null ? p.cumulativeExpenditure : '';
+
+        document.getElementById('original_date').value = p.originalDate || '';
+        document.getElementById('revised_date').value = p.revisedDate || '';
+        document.getElementById('doc').value = p.doc || '';
+
+        document.getElementById('physical_progress').value = p.physicalProgress != null ? p.physicalProgress : '';
+        document.getElementById('financial_progress').value = p.financialProgress != null ? p.financialProgress : '';
+        document.getElementById('status').value = p.status || 'Ongoing';
+        document.getElementById('remarks').value = p.remarks || '';
+      } catch (err) {
+        AdminAPI.showToast('Failed to load project details: ' + err.message, 'error');
+      }
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        ministry: document.getElementById('ministry').value.trim(),
+        sector: document.getElementById('sector').value,
+        state: document.getElementById('state').value.trim(),
+        agency: document.getElementById('agency').value.trim(),
+        original_cost: parseFloat(document.getElementById('original_cost').value) || 0,
+        revised_cost: parseFloat(document.getElementById('revised_cost').value) || 0,
+        cumulative_expenditure: parseFloat(document.getElementById('cumulative_expenditure').value) || 0,
+        original_date: document.getElementById('original_date').value,
+        revised_date: document.getElementById('revised_date').value,
+        doc: document.getElementById('doc').value || null,
+        physical_progress: parseFloat(document.getElementById('physical_progress').value) || 0,
+        financial_progress: parseFloat(document.getElementById('financial_progress').value) || 0,
+        status: document.getElementById('status').value,
+        remarks: document.getElementById('remarks').value.trim()
+      };
+
+      // Client validations
+      if (payload.physical_progress < 0 || payload.physical_progress > 100) {
+        AdminAPI.showToast('Physical progress must be between 0 and 100%', 'error');
+        return;
+      }
+      if (payload.financial_progress < 0 || payload.financial_progress > 100) {
+        AdminAPI.showToast('Financial progress must be between 0 and 100%', 'error');
+        return;
+      }
+      if (payload.original_cost < 0 || payload.revised_cost < 0) {
+        AdminAPI.showToast('Costs cannot be negative', 'error');
+        return;
+      }
+
+      if (!isEditMode) {
+        payload.id = document.getElementById('project_id').value.trim();
+        if (!payload.id) {
+          AdminAPI.showToast('Project ID is required', 'error');
+          return;
+        }
+        createProject(payload);
+      } else {
+        // Edit mode: compute diff and open confirmation modal
+        computeDiffAndShowModal(payload);
+      }
+    }
+
+    async function createProject(payload) {
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+      try {
+        const res = await AdminAPI.createProject(payload);
+        AdminAPI.showToast('Project created successfully! Intelligence recalculated.', 'success');
+        setTimeout(() => {
+          window.location.href = '/admin/projects';
+        }, 1200);
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Save Project</span>';
+        AdminAPI.showToast(err.message, 'error');
+      }
+    }
+
+    function computeDiffAndShowModal(payload) {
+      pendingPayload = payload;
+      const diffContainer = document.getElementById('diff-container');
+      diffContainer.innerHTML = '';
+
+      const fieldLabels = {
+        name: 'Project Name',
+        ministry: 'Ministry',
+        sector: 'Sector',
+        state: 'State',
+        agency: 'Agency',
+        original_cost: 'Original Cost (₹ Cr)',
+        revised_cost: 'Revised Cost (₹ Cr)',
+        cumulative_expenditure: 'Cumulative Expenditure (₹ Cr)',
+        original_date: 'Original Date',
+        revised_date: 'Revised Date',
+        doc: 'Date of Commissioning',
+        physical_progress: 'Physical Progress (%)',
+        financial_progress: 'Financial Progress (%)',
+        status: 'Status',
+        remarks: 'Remarks'
+      };
+
+      const originalMapping = {
+        name: originalProject.name,
+        ministry: originalProject.ministry,
+        sector: originalProject.sector,
+        state: originalProject.state,
+        agency: originalProject.agency || '',
+        original_cost: originalProject.originalCost,
+        revised_cost: originalProject.revisedCost,
+        cumulative_expenditure: originalProject.cumulativeExpenditure || 0,
+        original_date: originalProject.originalDate,
+        revised_date: originalProject.revisedDate,
+        doc: originalProject.doc || '',
+        physical_progress: originalProject.physicalProgress,
+        financial_progress: originalProject.financialProgress || 0,
+        status: originalProject.status,
+        remarks: originalProject.remarks || ''
+      };
+
+      let changedCount = 0;
+      for (const [key, label] of Object.entries(fieldLabels)) {
+        let oldVal = originalMapping[key];
+        let newVal = payload[key];
+
+        // Format floats if numeric
+        if (typeof oldVal === 'number' || typeof newVal === 'number') {
+          if (Math.abs((parseFloat(oldVal) || 0) - (parseFloat(newVal) || 0)) > 0.001) {
+            changedCount++;
+            diffContainer.appendChild(createDiffItem(label, oldVal, newVal));
+          }
+        } else {
+          if (String(oldVal || '').trim() !== String(newVal || '').trim()) {
+            changedCount++;
+            diffContainer.appendChild(createDiffItem(label, oldVal || '(empty)', newVal || '(empty)'));
+          }
+        }
+      }
+
+      if (changedCount === 0) {
+        AdminAPI.showToast('No fields were changed.', 'info');
+        return;
+      }
+
+      document.getElementById('edit-reason-input').value = '';
+      document.getElementById('diff-modal').style.display = 'flex';
+    }
+
+    function createDiffItem(label, before, after) {
+      const card = document.createElement('div');
+      card.className = 'diff-card';
+      card.innerHTML = `
+        <div class="diff-field">${label}</div>
+        <div class="diff-row">
+          <div class="diff-val diff-val-before"><i class="fa-solid fa-minus"></i> ${before}</div>
+          <div class="diff-val diff-val-after"><i class="fa-solid fa-plus"></i> ${after}</div>
+        </div>
+      `;
+      return card;
+    }
+
+    function closeDiffModal() {
+      document.getElementById('diff-modal').style.display = 'none';
+      pendingPayload = null;
+    }
+
+    async function executeSaveWithDiff() {
+      const reason = document.getElementById('edit-reason-input').value.trim();
+      if (!reason) {
+        AdminAPI.showToast('Please provide a reason for the modification.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('confirm-save-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Committing...';
+
+      pendingPayload.reason = reason;
+
+      try {
+        const res = await AdminAPI.updateProject(targetProjectId, pendingPayload);
+        closeDiffModal();
+        AdminAPI.showToast('Project updated successfully! Intelligence recalculated.', 'success');
+        setTimeout(() => {
+          window.location.href = '/admin/projects';
+        }, 1200);
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Confirm & Commit';
+        AdminAPI.showToast(err.message, 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initForm);
+  </script>
+</body>
+</html>

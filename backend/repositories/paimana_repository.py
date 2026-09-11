@@ -1,4 +1,5 @@
 import math
+import json
 import os
 import re
 from pathlib import Path
@@ -150,8 +151,8 @@ class PaimanaRepository:
         self.months_set: Set[str] = set()
         self.is_loaded: bool = False
 
-    def load(self) -> None:
-        if self.is_loaded:
+    def load(self, force: bool = False) -> None:
+        if self.is_loaded and not force:
             return
 
         loaded_rows: List[Dict[str, Any]] = []
@@ -182,9 +183,12 @@ class PaimanaRepository:
             raise RuntimeError(f"[PaimanaRepository] Could not load PAIMANA dataset from {self.excel_path} or {self.csv_path}")
 
         self.observations = []
+        self.projects_map.clear()
+        self.project_observations_map.clear()
         self.months_set.clear()
         self.states_set.clear()
         self.agencies_set.clear()
+        self.sectors_set.clear()
 
         def clean_val(val: Any) -> Any:
             if pd.isna(val):
@@ -439,6 +443,9 @@ class PaimanaRepository:
         self.is_loaded = True
         print(f"[PaimanaRepository] Successfully initialized {len(self.projects_map)} PAIMANA projects from {len(self.observations)} observations. Risk & Priority assessed: {rated_count}. Early Warning Alerts: {len(self.alerts_list)}.")
 
+        # Apply persistent SQLite admin additions, overrides, and archives
+        self.apply_admin_layer()
+
     def ensure_loaded(self) -> None:
         if not self.is_loaded:
             self.load()
@@ -454,10 +461,20 @@ class PaimanaRepository:
         sort_by: str = 'id',
         sort_direction: str = 'asc',
         limit: Optional[int] = None,
-        offset: Optional[int] = None
+        offset: Optional[int] = None,
+        include_archived: bool = False,
+        record_type: Optional[str] = None
     ) -> Dict[str, Any]:
         self.ensure_loaded()
         proj_list = list(self.projects_map.values())
+
+        # Filter out archived projects unless explicitly requested
+        if not include_archived:
+            proj_list = [p for p in proj_list if not getattr(p, 'isArchived', False)]
+
+        # Record type filter (SOURCE, ADMIN_MODIFIED, ADMIN_ADDED)
+        if record_type and record_type != 'ALL':
+            proj_list = [p for p in proj_list if getattr(p, 'recordType', 'SOURCE') == record_type]
 
         # 1. Search Filter
         if search and isinstance(search, str):
@@ -468,7 +485,9 @@ class PaimanaRepository:
                    q in p.code.lower() or
                    q in p.id.lower() or
                    q in p.implementingAgency.lower() or
-                   q in p.state.lower()
+                   q in p.state.lower() or
+                   (p.ministry and q in p.ministry.lower()) or
+                   (p.sector and q in p.sector.lower())
             ]
 
         # 2. State Filter
@@ -576,9 +595,320 @@ class PaimanaRepository:
             'totalCount': total_count
         }
 
-    def get_project_by_id(self, proj_id: str) -> Optional[Project]:
+    def get_project_by_id(self, proj_id: str, include_archived: bool = True) -> Optional[Project]:
         self.ensure_loaded()
-        return self.projects_map.get(proj_id)
+        p = self.projects_map.get(str(proj_id).strip())
+        if p and not include_archived and getattr(p, 'isArchived', False):
+            return None
+        return p
+
+    def apply_admin_layer(self) -> None:
+        """
+        Applies persistent SQLite admin additions, overrides, and archive status
+        on top of the base official PAIMANA dataset without mutating source files.
+        """
+        from backend.services.admin_service import AdminService
+
+        # 1. Apply Added Projects
+        added_list = AdminService.get_all_added_projects()
+        for pdata in added_list:
+            pid = str(pdata.get("id", "")).strip()
+            if not pid:
+                continue
+
+            orig_cost = float(pdata.get("originalCostCr") or 0.0)
+            rev_cost = float(pdata.get("revisedCostCr") or orig_cost)
+            cum_exp = float(pdata.get("cumulativeExpenditureCr") or 0.0)
+            phys_prog = float(pdata.get("physicalProgressPercent") or 0.0)
+            fin_prog = round((cum_exp / rev_cost * 100.0), 1) if rev_cost > 0 else 0.0
+
+            orig_date = pdata.get("originalCompletionDate") or ""
+            rev_date = pdata.get("revisedCompletionDate") or orig_date
+            time_overrun = calc_month_difference(orig_date, rev_date)
+            cost_overrun = round(((rev_cost - orig_cost) / orig_cost) * 100.0, 1) if orig_cost > 0 else 0.0
+
+            obs = PaimanaObservation(
+                report_month="2026-07",
+                project_id=pid,
+                project_name=pdata.get("name") or f"Project {pid}",
+                agency=pdata.get("implementingAgency") or "Admin Registered",
+                state=pdata.get("state") or "Unspecified",
+                original_cost_cr=orig_cost,
+                revised_cost_cr=rev_cost,
+                cumulative_expenditure_cr=cum_exp,
+                physical_progress_pct=phys_prog,
+                original_target_completion_mm_yyyy=orig_date,
+                revised_target_completion_mm_yyyy=rev_date,
+                source="PRISM_ADMIN"
+            )
+            self.project_observations_map[pid] = [obs]
+
+            proj = Project(
+                id=pid,
+                name=pdata.get("name") or f"Project {pid}",
+                code=pdata.get("code") or f"ADM-{pid}",
+                sector=pdata.get("sector") or "Other Infrastructure",
+                derivedSector=pdata.get("sector") or "Other Infrastructure",
+                ministry=pdata.get("ministry") or "Central Sector Oversight",
+                state=pdata.get("state") or "Unspecified",
+                implementingAgency=pdata.get("implementingAgency") or "Admin Registered",
+                location=LocationGeo(lat=None, lng=None, city="", state=pdata.get("state") or "Unspecified"),
+                originalCostCr=orig_cost,
+                revisedCostCr=rev_cost,
+                cumulativeExpenditureCr=cum_exp,
+                costOverrunPercent=cost_overrun,
+                expenditurePctOfRevisedCost=fin_prog,
+                originalStartDate=pdata.get("originalStartDate") or "",
+                originalCompletionDate=orig_date,
+                revisedCompletionDate=rev_date,
+                timeOverrunMonths=time_overrun,
+                physicalProgressPercent=phys_prog,
+                financialProgressPercent=fin_prog,
+                lastUpdated="2026-07",
+                recordType="ADMIN_ADDED",
+                dataSource="PRISM_ADMIN",
+                updatedBy=pdata.get("createdBy") or "admin",
+                updatedAt=pdata.get("updatedAt")
+            )
+            self.projects_map[pid] = proj
+            self.recompute_project_intelligence(pid)
+
+        # 2. Apply Overrides to existing projects
+        all_overrides = AdminService.get_all_overrides()
+        for pid, field_map in all_overrides.items():
+            proj = self.projects_map.get(pid)
+            if not proj:
+                continue
+
+            if proj.recordType != "ADMIN_ADDED":
+                proj.recordType = "ADMIN_MODIFIED"
+            proj.adminOverrides = field_map
+
+            for field, data in field_map.items():
+                val = data.get("override")
+                proj.updatedBy = data.get("updatedBy")
+                proj.updatedAt = data.get("updatedAt")
+
+                if field == "name" and val:
+                    proj.name = str(val)
+                elif field == "ministry" and val:
+                    proj.ministry = str(val)
+                elif field == "sector" and val:
+                    proj.sector = str(val)
+                    proj.derivedSector = str(val)
+                elif field == "state" and val:
+                    proj.state = str(val)
+                    if proj.location:
+                        proj.location.state = str(val)
+                elif field == "implementingAgency" and val:
+                    proj.implementingAgency = str(val)
+                elif field == "originalCostCr" and val is not None:
+                    try:
+                        proj.originalCostCr = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                elif field == "revisedCostCr" and val is not None:
+                    try:
+                        proj.revisedCostCr = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                elif field == "cumulativeExpenditureCr" and val is not None:
+                    try:
+                        proj.cumulativeExpenditureCr = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                elif field == "physicalProgressPercent" and val is not None:
+                    try:
+                        proj.physicalProgressPercent = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                elif field == "originalCompletionDate" and val:
+                    proj.originalCompletionDate = str(val)
+                elif field == "revisedCompletionDate" and val:
+                    proj.revisedCompletionDate = str(val)
+
+            # Recompute dependent calculations
+            if proj.originalCostCr > 0:
+                proj.costOverrunPercent = round(((proj.revisedCostCr - proj.originalCostCr) / proj.originalCostCr) * 100.0, 1)
+            if proj.revisedCostCr > 0:
+                proj.expenditurePctOfRevisedCost = round((proj.cumulativeExpenditureCr / proj.revisedCostCr) * 100.0, 1)
+                proj.financialProgressPercent = proj.expenditurePctOfRevisedCost
+            proj.timeOverrunMonths = calc_month_difference(proj.originalCompletionDate, proj.revisedCompletionDate)
+
+            obs_list = self.project_observations_map.get(pid, [])
+            if obs_list:
+                latest = obs_list[-1]
+                latest.project_name = proj.name
+                latest.state = proj.state
+                latest.agency = proj.implementingAgency
+                latest.original_cost_cr = proj.originalCostCr
+                latest.revised_cost_cr = proj.revisedCostCr
+                latest.cumulative_expenditure_cr = proj.cumulativeExpenditureCr
+                latest.physical_progress_pct = proj.physicalProgressPercent
+                latest.expenditure_pct_of_revised_cost = proj.expenditurePctOfRevisedCost
+                latest.original_target_completion_mm_yyyy = proj.originalCompletionDate
+                latest.revised_target_completion_mm_yyyy = proj.revisedCompletionDate
+
+            self.recompute_project_intelligence(pid)
+
+        # 3. Apply Archived status
+        archived_ids = AdminService.get_archived_ids()
+        for pid in archived_ids:
+            if pid in self.projects_map:
+                self.projects_map[pid].isArchived = True
+
+        self.refresh_alerts()
+
+    def recompute_project_intelligence(self, project_id: str) -> None:
+        """
+        Authoritatively recalculates PRISM Risk Score, Tier, Priority, Drivers,
+        and Alerts for a single project using the core deterministic engines.
+        """
+        obs_list = self.project_observations_map.get(project_id)
+        project = self.projects_map.get(project_id)
+        if not obs_list or not project:
+            return
+
+        try:
+            assessment = PRISMRiskEngine.assess(obs_list)
+            self.risk_assessments_map[project_id] = assessment
+
+            priority_assessment = PRISMPriorityEngine.assess(obs_list, assessment)
+            priority_assessment.sector = project.sector
+            if priority_assessment.evidence:
+                priority_assessment.evidence.timeOverrunMonths = project.timeOverrunMonths
+            self.priority_assessments_map[project_id] = priority_assessment
+
+            project.riskScore = assessment.riskScore
+            project.riskTier = assessment.riskTier
+            project.priorityScore = priority_assessment.priorityScore
+            project.priorityTier = priority_assessment.priorityTier
+            project.primaryRiskDriver = priority_assessment.primaryRiskDriver
+            project.recommendedAction = priority_assessment.recommendedAction
+            project.priorityReason = priority_assessment.priorityReason
+            project.urgency = priority_assessment.urgency
+            project.evidenceConfidence = priority_assessment.evidenceConfidence
+
+            sorted_inds = sorted(
+                [ind for ind in assessment.indicators if ind.normalisedScore >= 25],
+                key=lambda ind: ind.weightedContribution,
+                reverse=True
+            )[:5]
+
+            cat_map = {
+                'Schedule': 'Clearances & Approvals',
+                'Cost': 'Contractor & Cashflow',
+                'Execution': 'Contractor & Cashflow',
+                'Trend': 'Scope & Design'
+            }
+
+            project.topRiskDrivers = [
+                RiskDriver(
+                    id=ind.id,
+                    feature=ind.id,
+                    label=ind.label,
+                    shapValue=round(ind.weightedContribution, 2),
+                    description=ind.description,
+                    category=cat_map.get(ind.category, 'Coordination'),
+                    severity='low' if ind.severity == 'none' else ind.severity
+                )
+                for ind in sorted_inds
+            ]
+
+            if assessment.primaryConcerns:
+                project.primaryDelayCause = assessment.primaryConcerns[0]
+
+            delay_pred, cost_pred = compute_forward_looking_forecast(obs_list, project)
+            project.predictedDelayMonths = delay_pred
+            project.predictedCostEscalationCr = cost_pred
+        except Exception as err:
+            print(f"[PaimanaRepository] Recomputing intelligence failed for {project_id}: {err}")
+
+    def refresh_alerts(self) -> None:
+        """Regenerates Early Warning Alerts for active projects."""
+        active_projects = [p for p in self.projects_map.values() if not getattr(p, 'isArchived', False)]
+        self.alerts_list = PRISMAlertEngine.generate_alerts(
+            active_projects,
+            self.project_observations_map
+        )
+        self.alerts_map.clear()
+        for alert in self.alerts_list:
+            self.alerts_map[alert.projectId] = alert
+            proj = self.projects_map.get(alert.projectId)
+            if proj:
+                proj.alert = alert
+
+    def add_admin_project(self, project_data: Dict[str, Any], user: str) -> Project:
+        from backend.services.admin_service import AdminService
+        pid = str(project_data.get("id", "")).strip()
+        if not pid:
+            raise ValueError("Project ID cannot be empty.")
+        if pid in self.projects_map:
+            raise ValueError(f"Project with ID '{pid}' already exists.")
+
+        AdminService.save_added_project(project_data, user)
+        AdminService.log_audit(
+            admin_user=user,
+            action="CREATE_PROJECT",
+            project_id=pid,
+            new_value=json.dumps(project_data),
+            reason=project_data.get("reason") or "New project added by administrator",
+            source_type="ADMIN_ADDED"
+        )
+        self.apply_admin_layer()
+        return self.projects_map[pid]
+
+    def update_admin_project(self, project_id: str, updates: Dict[str, Any], user: str, reason: Optional[str] = None) -> Project:
+        from backend.services.admin_service import AdminService
+        pid = str(project_id).strip()
+        proj = self.projects_map.get(pid)
+        if not proj:
+            raise KeyError(f"Project '{pid}' not found.")
+
+        for field, new_val in updates.items():
+            if field in ("id", "code", "recordType", "dataSource", "isArchived", "alert", "topRiskDrivers"):
+                continue
+            old_val = getattr(proj, field, None)
+            if str(old_val) != str(new_val):
+                AdminService.save_override(
+                    project_id=pid,
+                    field_name=field,
+                    original_value=old_val,
+                    override_value=new_val,
+                    user=user,
+                    reason=reason
+                )
+                AdminService.log_audit(
+                    admin_user=user,
+                    action="UPDATE_PROJECT",
+                    project_id=pid,
+                    field_changed=field,
+                    old_value=str(old_val),
+                    new_value=str(new_val),
+                    reason=reason,
+                    source_type="ADMIN_MODIFIED"
+                )
+
+        self.apply_admin_layer()
+        return self.projects_map[pid]
+
+    def archive_admin_project(self, project_id: str, user: str, reason: Optional[str] = None) -> bool:
+        from backend.services.admin_service import AdminService
+        pid = str(project_id).strip()
+        if pid not in self.projects_map:
+            raise KeyError(f"Project '{pid}' not found.")
+        AdminService.archive_project(pid, user, reason)
+        self.apply_admin_layer()
+        return True
+
+    def unarchive_admin_project(self, project_id: str, user: str, reason: Optional[str] = None) -> bool:
+        from backend.services.admin_service import AdminService
+        pid = str(project_id).strip()
+        if pid not in self.projects_map:
+            raise KeyError(f"Project '{pid}' not found.")
+        AdminService.unarchive_project(pid, user, reason)
+        self.apply_admin_layer()
+        return True
 
     def get_project_observations(self, proj_id: str) -> List[PaimanaObservation]:
         self.ensure_loaded()

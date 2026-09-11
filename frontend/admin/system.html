@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRISM Admin — System Diagnostics</title>
+  <link rel="stylesheet" href="/admin/static/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="admin-brand">
+        <div class="admin-brand-icon"><i class="fa-solid fa-layer-group"></i></div>
+        <div class="admin-brand-text">
+          <h2>PRISM ADMIN</h2>
+          <span>Operations Control Plane</span>
+        </div>
+      </div>
+
+      <nav class="admin-nav">
+        <div class="admin-nav-section">Core Operations</div>
+        <a href="/admin" class="admin-nav-link"><i class="fa-solid fa-gauge-high"></i> Overview</a>
+        <a href="/admin/projects" class="admin-nav-link"><i class="fa-solid fa-folder-tree"></i> Projects</a>
+        <a href="/admin/projects/new" class="admin-nav-link"><i class="fa-solid fa-circle-plus"></i> Add Project</a>
+
+        <div class="admin-nav-section">Governance & Health</div>
+        <a href="/admin/validation" class="admin-nav-link"><i class="fa-solid fa-shield-halved"></i> Data Validation</a>
+        <a href="/admin/audit" class="admin-nav-link"><i class="fa-solid fa-clipboard-list"></i> Audit Log</a>
+        <a href="/admin/system" class="admin-nav-link active"><i class="fa-solid fa-server"></i> System Diagnostics</a>
+
+        <div class="admin-nav-section">Public System</div>
+        <a href="/" target="_blank" class="admin-nav-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open PRISM Portal</a>
+      </nav>
+
+      <div class="admin-sidebar-footer">
+        <div class="admin-user-pill">
+          <div class="admin-avatar" id="sidebar-avatar">A</div>
+          <div class="admin-user-info">
+            <span class="admin-username" id="sidebar-user">Admin</span>
+            <span class="admin-role">Super Admin</span>
+          </div>
+          <button class="admin-logout-btn" onclick="AdminAPI.logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-breadcrumb">
+          <a href="/admin">PRISM Admin</a>
+          <span class="sep">/</span>
+          <span class="cur">System Diagnostics</span>
+        </div>
+        <div class="admin-topbar-actions">
+          <button class="btn btn-secondary" onclick="loadSystemInfo()"><i class="fa-solid fa-rotate"></i> Refresh Telemetry</button>
+        </div>
+      </header>
+
+      <div class="admin-content-scroll">
+        <div class="admin-page-header">
+          <div>
+            <h1 class="admin-page-title">System Runtime & Layer Provenance</h1>
+            <p class="admin-page-desc">Telemetry on FastAPI engine status, SQLite admin datastore, base PAIMANA dataset, and active intelligence indexing.</p>
+          </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="admin-grid-4 mb-4">
+          <div class="metric-card">
+            <div class="metric-title">Engine Health</div>
+            <div class="metric-value" style="color: var(--admin-success);"><i class="fa-solid fa-circle-check"></i> <span id="sys-status">Healthy</span></div>
+            <div class="metric-sub" id="sys-version">PRISM v2.0.0</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Effective Projects</div>
+            <div class="metric-value" id="sys-projects">--</div>
+            <div class="metric-sub" id="sys-obs">-- observations</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Admin Overrides</div>
+            <div class="metric-value" id="sys-overrides" style="color: var(--admin-info);">--</div>
+            <div class="metric-sub">Layered on PAIMANA</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Admin Added Projects</div>
+            <div class="metric-value" id="sys-added" style="color: var(--admin-primary);">--</div>
+            <div class="metric-sub">Self-indexed additions</div>
+          </div>
+        </div>
+
+        <!-- Detail Cards -->
+        <div class="admin-grid-2">
+          <!-- Left: Datastore & Architecture -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h3 class="admin-card-title"><i class="fa-solid fa-database"></i> Persistence Layer</h3>
+            </div>
+            <div style="font-size: 0.875rem;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Datastore Type</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;" id="sys-db-type">SQLite (Persistent)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Database Location</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-family: monospace; font-size: 0.8rem;" id="sys-db-path">data/prism_admin.db</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Database Size</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;" id="sys-db-size">-- KB</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Archived Projects</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;" id="sys-archived">0</td>
+                </tr>
+                <tr>
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Isolation Architecture</td>
+                  <td style="padding: 0.75rem 0; text-align: right; color: var(--admin-success); font-weight: 600;">Non-destructive Overlay</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right: PAIMANA & Intelligence -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h3 class="admin-card-title"><i class="fa-solid fa-brain"></i> Analytical Intelligence</h3>
+            </div>
+            <div style="font-size: 0.875rem;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Base Snapshot</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;" id="sys-snapshot">MoSPI PAIMANA (Apr-Jul 2026)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Base Project Records</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;">2,054 (Immutable)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Monthly Observations</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;">7,499 Records</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--admin-border);">
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Risk Calculation Engine</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600; color: var(--admin-blue);">PRISMRiskEngine (Deterministic)</td>
+                </tr>
+                <tr>
+                  <td style="padding: 0.75rem 0; color: var(--admin-muted); font-weight: 500;">Last Data Refresh</td>
+                  <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;" id="sys-last-refresh">--</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Provenance Flow Diagram Card -->
+        <div class="admin-card mt-4">
+          <div class="admin-card-header">
+            <h3 class="admin-card-title"><i class="fa-solid fa-diagram-project"></i> Architecture Pipeline</h3>
+          </div>
+          <div style="background: #f8fafc; border-radius: 8px; padding: 1.5rem; text-align: center;">
+            <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 1rem; font-size: 0.85rem; font-weight: 600;">
+              <div style="background: #fff; padding: 0.85rem 1.25rem; border-radius: 8px; border: 1px solid var(--admin-border); box-shadow: var(--admin-shadow-sm);">
+                <i class="fa-solid fa-file-excel" style="color: #107c41; margin-right: 0.35rem;"></i> Official PAIMANA
+                <div style="font-size: 0.75rem; color: var(--admin-muted); font-weight: normal;">Reference Snapshot</div>
+              </div>
+              <div style="color: var(--admin-muted);"><i class="fa-solid fa-arrow-right"></i></div>
+              <div style="background: #fff; padding: 0.85rem 1.25rem; border-radius: 8px; border: 1px solid var(--admin-border); box-shadow: var(--admin-shadow-sm);">
+                <i class="fa-solid fa-database" style="color: var(--admin-blue); margin-right: 0.35rem;"></i> SQLite Admin Layer
+                <div style="font-size: 0.75rem; color: var(--admin-muted); font-weight: normal;">Overrides & Additions</div>
+              </div>
+              <div style="color: var(--admin-muted);"><i class="fa-solid fa-arrow-right"></i></div>
+              <div style="background: #fff; padding: 0.85rem 1.25rem; border-radius: 8px; border: 1px solid var(--admin-border); box-shadow: var(--admin-shadow-sm);">
+                <i class="fa-solid fa-brain" style="color: #8b5cf6; margin-right: 0.35rem;"></i> PRISM Risk Engine
+                <div style="font-size: 0.75rem; color: var(--admin-muted); font-weight: normal;">Deterministic Recalculation</div>
+              </div>
+              <div style="color: var(--admin-muted);"><i class="fa-solid fa-arrow-right"></i></div>
+              <div style="background: #fff; padding: 0.85rem 1.25rem; border-radius: 8px; border: 1px solid var(--admin-border); box-shadow: var(--admin-shadow-sm);">
+                <i class="fa-solid fa-desktop" style="color: var(--admin-navy); margin-right: 0.35rem;"></i> PRISM Portal & Copilot
+                <div style="font-size: 0.75rem; color: var(--admin-muted); font-weight: normal;">Effective Truth Layer</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/admin/static/admin.js"></script>
+  <script>
+    async function loadSystemInfo() {
+      try {
+        const data = await AdminAPI.getSystemInfo();
+        document.getElementById('sys-status').textContent = data.backend_status || 'Healthy';
+        document.getElementById('sys-version').textContent = `PRISM v${data.prism_version || '2.0.0'}`;
+        document.getElementById('sys-projects').textContent = (data.effective_projects || 0).toLocaleString();
+        document.getElementById('sys-obs').textContent = `${(data.total_observations || 0).toLocaleString()} observations`;
+        document.getElementById('sys-overrides').textContent = data.admin_overrides_count || 0;
+        document.getElementById('sys-added').textContent = data.admin_added_projects_count || 0;
+        document.getElementById('sys-archived').textContent = data.admin_archived_count || 0;
+
+        document.getElementById('sys-db-type').textContent = data.database_status || 'SQLite (Persistent)';
+        document.getElementById('sys-db-path').textContent = data.database_path || 'data/prism_admin.db';
+        document.getElementById('sys-db-size').textContent = `${((data.database_size_bytes || 0) / 1024).toFixed(1)} KB`;
+        document.getElementById('sys-snapshot').textContent = data.dataset_snapshot || 'PAIMANA (Apr-Jul 2026)';
+        document.getElementById('sys-last-refresh').textContent = data.last_data_refresh ? new Date(data.last_data_refresh).toLocaleString('en-IN') : 'Runtime Init';
+      } catch (err) {
+        AdminAPI.showToast('Failed to load system diagnostics: ' + err.message, 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await AdminAPI.checkAuth();
+      if (user) {
+        loadSystemInfo();
+      }
+    });
+  </script>
+</body>
+</html>

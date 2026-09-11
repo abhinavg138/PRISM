@@ -14,6 +14,50 @@ import { initScenarioLab } from './scenario.js';
 
 let longitudinalChartInstance = null;
 
+function getProvenanceBannerHtml(p) {
+  if (p.recordType === 'ADMIN_MODIFIED') {
+    const overrides = p.adminOverrides || {};
+    let overrideRows = '';
+    for (const [k, v] of Object.entries(overrides)) {
+      overrideRows += `<div class="text-[11px] text-slate-700 py-0.5"><span class="font-semibold">${escapeHtml(k)}:</span> <span class="line-through text-slate-400 mr-1">${escapeHtml(String(v.original ?? ''))}</span> &rarr; <span class="font-bold text-blue-700">${escapeHtml(String(v.override ?? ''))}</span> <span class="text-slate-400 text-[10px]">(${escapeHtml(v.reason || 'Admin override')})</span></div>`;
+    }
+    return `
+      <div class="mt-3 p-3 bg-amber-50/80 border border-amber-200 rounded-lg text-xs">
+        <div class="flex items-center justify-between font-semibold text-amber-900 mb-1">
+          <span class="flex items-center gap-1.5"><i data-lucide="shield-alert" class="w-4 h-4 text-amber-600"></i> Provenance: MoSPI PAIMANA (Admin Modified)</span>
+          <span class="badge bg-amber-100 text-amber-800 border border-amber-300 text-[10px]">ADMIN OVERRIDE ACTIVE</span>
+        </div>
+        <div class="text-[11px] text-slate-600 mb-2">
+          Base record preserved from official PAIMANA dataset. Intelligence recalculated from authorized admin overrides updated by <strong>${escapeHtml(p.updatedBy || 'admin')}</strong> on ${p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : 'recent'}.
+        </div>
+        ${overrideRows ? `<div class="p-2 bg-white/90 rounded border border-amber-100 mt-1">${overrideRows}</div>` : ''}
+      </div>
+    `;
+  } else if (p.recordType === 'ADMIN_ADDED') {
+    return `
+      <div class="mt-3 p-3 bg-blue-50/80 border border-blue-200 rounded-lg text-xs">
+        <div class="flex items-center justify-between font-semibold text-blue-900 mb-1">
+          <span class="flex items-center gap-1.5"><i data-lucide="plus-circle" class="w-4 h-4 text-blue-600"></i> Provenance: PRISM Admin Registered</span>
+          <span class="badge bg-blue-100 text-blue-800 border border-blue-300 text-[10px]">ADMIN ADDED</span>
+        </div>
+        <div class="text-[11px] text-slate-600">
+          Direct administrative capital project registration by <strong>${escapeHtml(p.updatedBy || 'admin')}</strong>. Indexed deterministically into PRISM Risk & Priority engines.
+        </div>
+      </div>
+    `;
+  } else {
+    return `
+      <div class="mt-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs flex items-center justify-between">
+        <div class="flex items-center gap-2 text-slate-600 text-[11px]">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <span><strong>Provenance:</strong> Official MoSPI PAIMANA Flash Report Snapshot (Apr–Jul 2026)</span>
+        </div>
+        <span class="badge bg-slate-100 text-slate-600 border border-slate-200 text-[10px]">OFFICIAL SOURCE RECORD</span>
+      </div>
+    `;
+  }
+}
+
 export async function openProjectDetail(projectId) {
   const modal = document.getElementById('project-detail-modal');
   if (!modal) return;
@@ -93,6 +137,9 @@ function renderDossierContent(p, observations) {
         </button>
       </div>
     </div>
+
+    <!-- Data Trust & Provenance Bar -->
+    ${getProvenanceBannerHtml(p)}
 
     <!-- Core Metrics Grid -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">

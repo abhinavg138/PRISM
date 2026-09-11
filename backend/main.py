@@ -52,7 +52,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.detail}
+        content={"error": exc.detail, "detail": exc.detail}
     )
 
 @app.exception_handler(Exception)
@@ -79,13 +79,15 @@ if FRONTEND_DIR.exists():
         app.mount("/css", StaticFiles(directory=str(FRONTEND_DIR / "css")), name="css")
     if (FRONTEND_DIR / "js").exists():
         app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
+    if (FRONTEND_DIR / "admin").exists():
+        app.mount("/admin/static", StaticFiles(directory=str(FRONTEND_DIR / "admin")), name="admin-static")
 
     # Middleware: Prevent browser caching of JS/CSS so reloads always pick up latest code
     @app.middleware("http")
     async def no_cache_static(request, call_next):
         response = await call_next(request)
         path = request.url.path
-        if path.startswith("/js/") or path.startswith("/css/") or path == "/":
+        if path.startswith("/js/") or path.startswith("/css/") or path.startswith("/admin/") or path == "/":
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"

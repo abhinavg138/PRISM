@@ -8,6 +8,7 @@ from backend.routes.analytics import router as analytics_router
 from backend.routes.simulation import router as simulation_router
 from backend.routes.copilot import router as copilot_router
 from backend.routes.demo import router as demo_router
+from backend.routes.admin import admin_router, admin_views_router
 
 routers = [
     health_router,
@@ -19,5 +20,7 @@ routers = [
     analytics_router,
     simulation_router,
     copilot_router,
-    demo_router
+    demo_router,
+    admin_router,
+    admin_views_router
 ]

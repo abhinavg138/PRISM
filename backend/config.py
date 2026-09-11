@@ -44,3 +44,10 @@ else:
 
 # App URL
 APP_URL = os.getenv("APP_URL", f"http://localhost:{API_PORT}")
+
+# Admin Panel Configuration
+ADMIN_USERNAME = os.getenv("PRISM_ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("PRISM_ADMIN_PASSWORD", "prismadmin2026")
+ADMIN_SECRET_KEY = os.getenv("PRISM_ADMIN_SECRET", "prism-secret-key-sih-2026-production")
+ADMIN_DB_PATH = str(DATA_DIR / "prism_admin.db")
+
