@@ -5,6 +5,20 @@
   "uniqueProjects": 2054,
   "validationStrategy": "GroupShuffleSplit (80% train, 20% test by Project ID)",
   "testSetObservations": 1497,
+  "conventionalBaselineMetrics": {
+    "modelName": "Ordinary Least Squares (OLS) Linear Regression",
+    "featureSet": "Native CUF Fields Only (4 fields)",
+    "meanAbsoluteErrorMonths": 16.82,
+    "rootMeanSquaredErrorMonths": 26.41,
+    "r2Score": 0.188,
+    "coefficients": {
+      "original_cost_cr": -0.000288,
+      "revised_cost_cr": 0.000236,
+      "cumulative_expenditure_cr": 0.000406,
+      "physical_progress_pct": 0.333865
+    },
+    "intercept": -1.257
+  },
   "cufOnlyMetrics": {
     "meanAbsoluteErrorMonths": 16.52,
     "rootMeanSquaredErrorMonths": 25.46,
@@ -20,6 +34,22 @@
     "maeRelativeImprovementPct": 6.4,
     "rmseReductionMonths": 0.57,
     "r2Improvement": 0.033
+  },
+  "mlVsConventionalBaselineComparison": {
+    "requirement": "SIH26103 Technical Dimension (b)",
+    "description": "Assessment of AI/ML techniques vs conventional statistical methods",
+    "olsVsModelA_CUF": {
+      "maeGainMonths": 0.3,
+      "maeRelativeImprovementPct": 1.8,
+      "rmseGainMonths": 0.95,
+      "r2Gain": 0.058
+    },
+    "olsVsModelB_Full": {
+      "maeGainMonths": 1.35,
+      "maeRelativeImprovementPct": 8.0,
+      "rmseGainMonths": 1.52,
+      "r2Gain": 0.091
+    }
   },
   "cufFields": [
     "original_cost_cr",
@@ -46,6 +76,7 @@
   "methodology": {
     "target": "time_overrun_months (revised_target_completion - original_target_completion)",
     "grouping": "project_id (prevents temporal observation leakage across monthly snapshots)",
+    "baselineAlgorithm": "LinearRegression() (Ordinary Least Squares on native CUF fields)",
     "algorithm": "GradientBoostingRegressor(n_estimators=100, max_depth=4, learning_rate=0.08, random_state=42)",
     "causalDisclaimer": "The ablation indicates incremental associative predictive contribution under this evaluation setup; it does not claim causal attribution."
   },

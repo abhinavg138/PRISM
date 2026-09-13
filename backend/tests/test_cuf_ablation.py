@@ -65,3 +65,25 @@ def test_cuf_methodology_has_causal_disclaimer():
     meth = data.get("methodology", {})
     assert "causalDisclaimer" in meth
     assert "causal" in meth["causalDisclaimer"].lower()
+
+
+def test_ml_vs_conventional_baseline_metrics():
+    """Verify presence and validity of conventional statistical baseline metrics for SIH26103 (b)."""
+    with open(METADATA_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert "conventionalBaselineMetrics" in data, "Missing conventionalBaselineMetrics in metadata"
+    base = data["conventionalBaselineMetrics"]
+    assert "meanAbsoluteErrorMonths" in base
+    assert "rootMeanSquaredErrorMonths" in base
+    assert "r2Score" in base
+    assert isinstance(base["meanAbsoluteErrorMonths"], (int, float))
+    assert base["meanAbsoluteErrorMonths"] > 0
+    assert "coefficients" in base
+    assert "intercept" in base
+
+    assert "mlVsConventionalBaselineComparison" in data
+    comp = data["mlVsConventionalBaselineComparison"]
+    assert "olsVsModelA_CUF" in comp
+    assert "olsVsModelB_Full" in comp
+
