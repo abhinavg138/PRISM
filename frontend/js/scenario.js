@@ -147,10 +147,12 @@ async function runSimulation(project) {
   try {
     const payload = {
       projectId: project.id,
-      landClearanceWeeksExpedited: landVal,
-      workingCapitalAdvancePercent: capitalVal,
-      geotechnicalMitigationLevel: geoVal,
-      fastTrackHighPowerCommittee: hpcVal
+      params: {
+        landClearanceAccelerationWeeks: landVal,
+        contractorLiquidityInjectionPercent: capitalVal,
+        weatherGeologicalMitigationLevel: geoVal,
+        fastTrackHighPowerCommittee: hpcVal
+      }
     };
 
     const res = await api.simulateScenario(payload);

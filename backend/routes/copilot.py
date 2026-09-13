@@ -20,7 +20,12 @@ async def copilot_chat(request: Request):
         return JSONResponse(status_code=400, content={"error": "Invalid request body"})
 
     message = body.get("message")
-    active_project_id = body.get("activeProjectId")
+    active_project_id = (
+        body.get("activeProjectId") or
+        body.get("project_id") or
+        body.get("projectId") or
+        body.get("active_project_id")
+    )
     conversation_history = body.get("conversationHistory") or []
 
     if not message or not isinstance(message, str) or not message.strip():

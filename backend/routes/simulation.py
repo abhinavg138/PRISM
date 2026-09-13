@@ -45,7 +45,9 @@ async def simulate_scenario(request: Request):
     if not project:
         return JSONResponse(status_code=404, content={"error": "Project not found"})
 
-    raw_params = body.get("params") or {}
+    raw_params = body.get("params")
+    if not isinstance(raw_params, dict):
+        raw_params = {}
     sim_params = SimulationParams(
         projectId=project_id,
         landClearanceAccelerationWeeks=sanitize_num(raw_params.get("landClearanceAccelerationWeeks"), 0.0, 52.0, 0.0),

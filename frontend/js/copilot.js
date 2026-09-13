@@ -8,7 +8,7 @@
 
 import { state } from './state.js';
 import { api } from './api.js';
-import { renderMarkdown, renderIcons, escapeHtml } from './utils.js';
+import { renderMarkdown, renderIcons, escapeHtml, getRiskBadgeHtml } from './utils.js';
 
 const DEFAULT_SUGGESTIONS = [
   'Show high-risk projects in Delhi',
@@ -27,16 +27,28 @@ export function openCopilot(project = null) {
   const drawer = document.getElementById('copilot-drawer-backdrop');
   if (!drawer) return;
 
-  state.copilotProject = project;
+  // Project context switching: detect switch to another project
+  if (project) {
+    const isNewProject = !state.copilotProject || (state.copilotProject.id !== project.id);
+    if (isNewProject) {
+      // Clear stale conversation history from prior project
+      state.copilotMessages = [];
+      const chatContainer = document.getElementById('copilot-chat-container');
+      if (chatContainer) chatContainer.innerHTML = '';
+    }
+    state.copilotProject = project;
+  }
+
   updateCopilotContextBanner();
   drawer.classList.add('active');
 
   if (state.copilotMessages.length === 0) {
     // Initial welcome message
+    const p = state.copilotProject;
     addCopilotMessage({
       role: 'copilot',
-      text: project 
-        ? `Hello! I am PRISM Copilot. I have loaded context for **${project.name}** (${project.id}). How can I assist you with this project's risk profile, statutory hurdles, or potential interventions?`
+      text: p 
+        ? `Hello! I am PRISM Copilot. I have loaded active project context for **${p.name}** (\`${p.code || `PAIMANA-${p.id}`}\`).\n\nHow can I assist you with this project's risk profile, risk drivers, schedule slippage, sector peer comparison, or potential interventions?`
         : `Hello! I am PRISM Copilot, your national infrastructure risk intelligence assistant grounded in the MoSPI PAIMANA dataset (2,054 projects). Ask me about regional bottlenecks, high-risk sectors, stagnant milestones, or specific project IDs.`,
       sources: ['MoSPI PAIMANA April–July 2026 Authoritative Flash Reports']
     });
@@ -44,6 +56,11 @@ export function openCopilot(project = null) {
 
   renderSuggestions();
   renderIcons();
+
+  // Auto-focus input for quick follow-up
+  setTimeout(() => {
+    document.getElementById('copilot-input')?.focus();
+  }, 200);
 }
 
 export function closeCopilot() {
@@ -58,20 +75,38 @@ function updateCopilotContextBanner() {
   if (state.copilotProject) {
     const p = state.copilotProject;
     banner.innerHTML = `
-      <div class="p-2.5 bg-blue-50 border-b border-blue-100 flex items-center justify-between text-xs">
-        <div class="flex items-center gap-2 truncate">
-          <span class="badge badge-primary bg-blue-600 text-white text-[10px]">Active Project</span>
-          <span class="font-bold text-slate-900 truncate">${escapeHtml(p.name)}</span>
-          <span class="text-slate-400 font-mono">(${escapeHtml(p.id)})</span>
+      <div class="p-3 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border-b border-blue-200 text-xs shadow-xs">
+        <div class="flex items-start justify-between gap-2">
+          <div class="space-y-1 min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white uppercase tracking-wider">
+                <i data-lucide="crosshair" class="w-3 h-3"></i> Project Context
+              </span>
+              <span class="font-mono text-[11px] font-bold text-slate-700 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs">
+                ${escapeHtml(p.code || `PAIMANA-${p.id}`)}
+              </span>
+              ${getRiskBadgeHtml(p.riskTier, p.riskScore)}
+            </div>
+            <div class="font-bold text-slate-900 text-xs truncate leading-snug" title="${escapeHtml(p.name)}">
+              ${escapeHtml(p.name)}
+            </div>
+            <div class="text-[10.5px] text-slate-500 flex items-center gap-2">
+              <span><strong class="text-slate-600">Sector:</strong> ${escapeHtml(p.sector)}</span>
+              <span>&bull;</span>
+              <span><strong class="text-slate-600">State:</strong> ${escapeHtml(p.state)}</span>
+            </div>
+          </div>
+          <button id="btn-clear-project-context" class="text-[11px] font-semibold text-slate-500 hover:text-red-600 px-2 py-1 rounded bg-white hover:bg-red-50 border border-slate-200 transition shrink-0 flex items-center gap-1 shadow-2xs" title="Clear project context and return to portfolio mode">
+            <i data-lucide="x" class="w-3 h-3"></i> Clear
+          </button>
         </div>
-        <button id="btn-clear-project-context" class="text-[11px] text-blue-700 hover:text-blue-900 font-semibold underline shrink-0 ml-2">
-          Clear
-        </button>
       </div>
     `;
     document.getElementById('btn-clear-project-context')?.addEventListener('click', () => {
       state.copilotProject = null;
       updateCopilotContextBanner();
+      renderSuggestions();
+      renderIcons();
     });
   } else {
     banner.innerHTML = '';
@@ -84,12 +119,14 @@ function renderSuggestions() {
 
   let suggestions = DEFAULT_SUGGESTIONS;
   if (state.copilotProject) {
-    const pid = state.copilotProject.id;
+    const p = state.copilotProject;
+    const isHighRisk = (p.riskScore || 0) >= 60 || p.riskTier === 'HIGH' || p.riskTier === 'CRITICAL';
     suggestions = [
-      `Why is project ${pid} high risk?`,
-      `What are the statutory clearance bottlenecks for project ${pid}?`,
-      `What interventions could recover time for project ${pid}?`,
-      'Show high-risk projects in Delhi'
+      isHighRisk ? 'Why is this project currently high risk?' : 'What is this project\'s current risk level?',
+      'What are the main risk drivers?',
+      'How severe is the schedule risk?',
+      'How does this project compare with its peers?',
+      'What intervention should be prioritized?'
     ];
   }
 

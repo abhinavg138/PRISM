@@ -73,10 +73,15 @@ export const api = {
   getAnalytics: () => fetchJson('/api/analytics'),
 
   // Scenario Simulation
-  simulateScenario: (simulationData) => fetchJson('/api/simulate', {
-    method: 'POST',
-    body: JSON.stringify(simulationData)
-  }),
+  simulateScenario: (projectIdOrData, params = null) => {
+    const payload = params !== null
+      ? { projectId: projectIdOrData, params }
+      : projectIdOrData;
+    return fetchJson('/api/simulate', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
 
   // AI Copilot
   askCopilot: (question, projectId = null, conversationHistory = []) => fetchJson('/api/copilot/chat', {
@@ -84,6 +89,8 @@ export const api = {
     body: JSON.stringify({
       message: question,
       activeProjectId: projectId,
+      projectId: projectId,
+      project_id: projectId,
       conversationHistory
     })
   })

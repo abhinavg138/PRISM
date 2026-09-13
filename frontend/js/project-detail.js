@@ -58,6 +58,11 @@ function getProvenanceBannerHtml(p) {
   }
 }
 
+export function closeProjectDetail() {
+  const modal = document.getElementById('project-detail-modal');
+  if (modal) modal.classList.remove('active');
+}
+
 export async function openProjectDetail(projectId) {
   const modal = document.getElementById('project-detail-modal');
   if (!modal) return;
@@ -291,7 +296,7 @@ function renderDossierContent(p, observations) {
 
   // Wire Copilot button
   document.getElementById('btn-dossier-copilot')?.addEventListener('click', () => {
-    modal.classList.remove('active');
+    closeProjectDetail();
     notify('OPEN_COPILOT_WITH_PROJECT', p);
   });
 
