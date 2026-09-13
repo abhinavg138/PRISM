@@ -527,7 +527,7 @@ backend/tests/test_paimana_counts.py ...                                 [ 93%]
 backend/tests/test_priority_parity.py .....                              [ 97%]
 backend/tests/test_risk_parity.py ...                                    [100%]
 
-====================== 124 passed, 2 warnings in 58.09s =======================
+====================== 124 passed, 3 warnings in 46.19s =======================
 ```
 
 * **Total Test Cases:** **124**
