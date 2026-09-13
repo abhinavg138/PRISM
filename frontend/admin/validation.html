@@ -125,8 +125,13 @@
     </main>
   </div>
 
-  <script src="/admin/static/admin.js"></script>
-  <script>
+  <script type="module">
+    import { adminApi, escapeHtml } from '/admin/static/admin.js';
+
+    window.AdminAPI = adminApi;
+    window.adminApi = adminApi;
+    window.escapeHtml = escapeHtml;
+
     let allIssues = [];
     let currentSeverity = 'ALL';
 
@@ -135,7 +140,7 @@
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Scanning dataset...</td></tr>';
 
       try {
-        const data = await AdminAPI.getDataValidation();
+        const data = await adminApi.getDataValidation();
         allIssues = data.issues || [];
 
         document.getElementById('val-total').textContent = (data.total_projects || 0).toLocaleString();
@@ -151,7 +156,7 @@
 
         renderIssues();
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--admin-danger); padding: 2rem;">Scan failed: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--admin-danger); padding: 2rem;">Scan failed: ${escapeHtml(err.message || String(err))}</td></tr>`;
       }
     }
 
@@ -182,8 +187,8 @@
         const badgeIcon = issue.severity === 'ERROR' ? 'fa-triangle-exclamation' : 'fa-circle-exclamation';
 
         tr.innerHTML = `
-          <td><span class="badge ${badgeClass}"><i class="fa-solid ${badgeIcon}"></i> ${issue.severity}</span></td>
-          <td><strong style="font-family: monospace;">#${issue.project_id}</strong></td>
+          <td><span class="badge ${badgeClass}"><i class="fa-solid ${badgeIcon}"></i> ${escapeHtml(issue.severity || '')}</span></td>
+          <td><strong style="font-family: monospace;">#${escapeHtml(issue.project_id || '')}</strong></td>
           <td style="max-width: 260px;" class="truncate" title="${escapeHtml(issue.project_name || '')}">${escapeHtml(issue.project_name || 'Unknown')}</td>
           <td><code style="background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.78rem;">${escapeHtml(issue.field || 'General')}</code></td>
           <td style="font-size: 0.85rem; color: var(--admin-text);">${escapeHtml(issue.message || '')}</td>
@@ -197,8 +202,11 @@
       });
     }
 
+    window.runValidationScan = runValidationScan;
+    window.filterSeverity = filterSeverity;
+
     document.addEventListener('DOMContentLoaded', async () => {
-      const user = await AdminAPI.checkAuth();
+      const user = await adminApi.checkAuth();
       if (user) {
         runValidationScan();
       }

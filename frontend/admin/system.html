@@ -190,11 +190,17 @@
     </main>
   </div>
 
-  <script src="/admin/static/admin.js"></script>
-  <script>
+  <script type="module">
+    import { adminApi, showToast, escapeHtml } from '/admin/static/admin.js';
+
+    window.AdminAPI = adminApi;
+    window.adminApi = adminApi;
+    window.showToast = showToast;
+    window.escapeHtml = escapeHtml;
+
     async function loadSystemInfo() {
       try {
-        const data = await AdminAPI.getSystemInfo();
+        const data = await adminApi.getSystemInfo();
         document.getElementById('sys-status').textContent = data.backend_status || 'Healthy';
         document.getElementById('sys-version').textContent = `PRISM v${data.prism_version || '2.0.0'}`;
         document.getElementById('sys-projects').textContent = (data.effective_projects || 0).toLocaleString();

@@ -145,6 +145,10 @@ class PaimanaRepository:
         self.priority_assessments_map: Dict[str, PriorityAssessment] = {}
         self.alerts_map: Dict[str, EarlyWarningAlert] = {}
         self.alerts_list: List[EarlyWarningAlert] = []
+        self.base_projects_map: Dict[str, Project] = {}
+        self.base_project_observations_map: Dict[str, List[PaimanaObservation]] = {}
+        self.base_risk_assessments_map: Dict[str, RiskAssessment] = {}
+        self.base_priority_assessments_map: Dict[str, PriorityAssessment] = {}
         self.states_set: Set[str] = set()
         self.agencies_set: Set[str] = set()
         self.sectors_set: Set[str] = set()
@@ -443,6 +447,12 @@ class PaimanaRepository:
         self.is_loaded = True
         print(f"[PaimanaRepository] Successfully initialized {len(self.projects_map)} PAIMANA projects from {len(self.observations)} observations. Risk & Priority assessed: {rated_count}. Early Warning Alerts: {len(self.alerts_list)}.")
 
+        # Cache baseline official PAIMANA state before applying persistent admin layer
+        self.base_projects_map = {pid: p.model_copy(deep=True) for pid, p in self.projects_map.items()}
+        self.base_project_observations_map = {pid: [obs.model_copy(deep=True) for obs in obs_list] for pid, obs_list in self.project_observations_map.items()}
+        self.base_risk_assessments_map = {pid: a.model_copy(deep=True) for pid, a in self.risk_assessments_map.items()}
+        self.base_priority_assessments_map = {pid: a.model_copy(deep=True) for pid, a in self.priority_assessments_map.items()}
+
         # Apply persistent SQLite admin additions, overrides, and archives
         self.apply_admin_layer()
 
@@ -606,11 +616,42 @@ class PaimanaRepository:
         """
         Applies persistent SQLite admin additions, overrides, and archive status
         on top of the base official PAIMANA dataset without mutating source files.
+        When an override is removed, authoritatively restores the base PAIMANA state.
+        Ensures persisted archive state is authoritative across all projects.
         """
         from backend.services.admin_service import AdminService
 
-        # 1. Apply Added Projects
+        if not self.base_projects_map:
+            self.base_projects_map = {pid: p.model_copy(deep=True) for pid, p in self.projects_map.items()}
+            self.base_project_observations_map = {pid: [obs.model_copy(deep=True) for obs in obs_list] for pid, obs_list in self.project_observations_map.items()}
+            self.base_risk_assessments_map = {pid: a.model_copy(deep=True) for pid, a in self.risk_assessments_map.items()}
+            self.base_priority_assessments_map = {pid: a.model_copy(deep=True) for pid, a in self.priority_assessments_map.items()}
+
         added_list = AdminService.get_all_added_projects()
+        added_pids = {str(pdata.get("id", "")).strip() for pdata in added_list if pdata.get("id")}
+
+        # Purge deleted admin-added projects
+        for pid in list(self.projects_map.keys()):
+            if pid not in self.base_projects_map and pid not in added_pids:
+                del self.projects_map[pid]
+                if pid in self.project_observations_map:
+                    del self.project_observations_map[pid]
+                if pid in self.risk_assessments_map:
+                    del self.risk_assessments_map[pid]
+                if pid in self.priority_assessments_map:
+                    del self.priority_assessments_map[pid]
+
+        # Authoritatively restore base official PAIMANA records
+        for pid, base_proj in self.base_projects_map.items():
+            self.projects_map[pid] = base_proj.model_copy(deep=True)
+            if pid in self.base_project_observations_map:
+                self.project_observations_map[pid] = [obs.model_copy(deep=True) for obs in self.base_project_observations_map[pid]]
+            if pid in self.base_risk_assessments_map:
+                self.risk_assessments_map[pid] = self.base_risk_assessments_map[pid].model_copy(deep=True)
+            if pid in self.base_priority_assessments_map:
+                self.priority_assessments_map[pid] = self.base_priority_assessments_map[pid].model_copy(deep=True)
+
+        # 1. Apply Added Projects
         for pdata in added_list:
             pid = str(pdata.get("id", "")).strip()
             if not pid:
@@ -751,11 +792,10 @@ class PaimanaRepository:
 
             self.recompute_project_intelligence(pid)
 
-        # 3. Apply Archived status
-        archived_ids = AdminService.get_archived_ids()
-        for pid in archived_ids:
-            if pid in self.projects_map:
-                self.projects_map[pid].isArchived = True
+        # 3. Apply Archived status authoritatively (resetting isArchived from persisted set)
+        archived_ids = set(AdminService.get_archived_ids())
+        for pid, proj in self.projects_map.items():
+            proj.isArchived = (pid in archived_ids)
 
         self.refresh_alerts()
 
@@ -909,6 +949,33 @@ class PaimanaRepository:
         AdminService.unarchive_project(pid, user, reason)
         self.apply_admin_layer()
         return True
+
+    def remove_admin_override(
+        self,
+        project_id: str,
+        field_name: Optional[str] = None,
+        user: str = "admin",
+        reason: Optional[str] = None
+    ) -> Project:
+        """
+        Removes administrative override(s) from persistent SQLite storage
+        and authoritatively restores original PAIMANA source values and calculations.
+        """
+        from backend.services.admin_service import AdminService
+        pid = str(project_id).strip()
+        if pid not in self.projects_map:
+            raise KeyError(f"Project '{pid}' not found.")
+        AdminService.remove_override(pid, field_name)
+        AdminService.log_audit(
+            admin_user=user,
+            action="REMOVE_OVERRIDE",
+            project_id=pid,
+            field_changed=field_name or "ALL",
+            reason=reason or "Admin override removed; restored to original PAIMANA source value",
+            source_type="OFFICIAL"
+        )
+        self.apply_admin_layer()
+        return self.projects_map[pid]
 
     def get_project_observations(self, proj_id: str) -> List[PaimanaObservation]:
         self.ensure_loaded()

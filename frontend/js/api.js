@@ -6,9 +6,26 @@
  * ============================================================================
  */
 
-const BASE_URL = window.location.port === '8000' 
-  ? '' 
-  : `http://${window.location.hostname || 'localhost'}:8000`;
+function getBaseUrl() {
+  if (typeof window === 'undefined') return '';
+
+  // 1. Explicit runtime configuration via global variable or meta tag
+  if (window.__PRISM_API_BASE__ !== undefined) return window.__PRISM_API_BASE__;
+  if (window.PRISM_API_URL !== undefined) return window.PRISM_API_URL;
+  const metaApiBase = document.querySelector('meta[name="prism-api-base"]')?.getAttribute('content');
+  if (metaApiBase) return metaApiBase;
+
+  // 2. Local frontend dev server ports where static UI is served separately from backend
+  const devPorts = ['3000', '5173', '8080', '4200'];
+  if (devPorts.includes(window.location.port)) {
+    return `http://${window.location.hostname || 'localhost'}:8000`;
+  }
+
+  // 3. Same-origin deployment (FastAPI serving frontend, custom port, reverse proxy, HTTPS)
+  return '';
+}
+
+const BASE_URL = getBaseUrl();
 
 async function fetchJson(endpoint, options = {}) {
   try {

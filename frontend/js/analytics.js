@@ -29,9 +29,10 @@ export async function renderSectorAnalytics() {
       <div class="flex flex-col items-center justify-center py-24 text-slate-400">
         <div class="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
         <div class="text-sm font-medium text-slate-600">Loading Portfolio Analytics...</div>
-        <div class="text-xs text-slate-400 mt-1">Aggregating 2,054 Central Sector infrastructure projects</div>
+        <div class="text-xs text-slate-400 mt-1">Aggregating Central Sector infrastructure projects</div>
       </div>
     `;
+    let fetchError = null;
     try {
       if (!state.allProjects || state.allProjects.length === 0) {
         const projData = await api.getProjects();
@@ -44,11 +45,35 @@ export async function renderSectorAnalytics() {
       }
     } catch (err) {
       console.error('[PRISM] Failed to load analytics data:', err);
+      fetchError = err;
+    }
+
+    if (fetchError || !state.allProjects || state.allProjects.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 max-w-xl mx-auto my-16 bg-white rounded-2xl border border-red-200 shadow-sm text-center">
+          <div class="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-base font-bold text-slate-900 mb-1">Unable to Load Portfolio Analytics</h3>
+          <p class="text-xs text-slate-500 mb-6 max-w-md mx-auto leading-relaxed">
+            ${escapeHtml(fetchError?.message || 'Failed to retrieve projects or sector intelligence from the server. Please verify network connectivity.')}
+          </p>
+          <button id="btn-retry-analytics" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition inline-flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Retry Loading Analytics</span>
+          </button>
+        </div>
+      `;
+      document.getElementById('btn-retry-analytics')?.addEventListener('click', () => {
+        renderSectorAnalytics();
+      });
+      renderIcons();
+      return;
     }
   }
 
   const projects = state.allProjects || [];
-  const totalProjects = projects.length || 2054;
+  const totalProjects = projects.length;
   const sectorStats = state.sectorStats || [];
 
   // 1. Calculate Risk Tier Breakdown

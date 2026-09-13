@@ -113,8 +113,13 @@
     </main>
   </div>
 
-  <script src="/admin/static/admin.js"></script>
-  <script>
+  <script type="module">
+    import { adminApi, escapeHtml } from '/admin/static/admin.js';
+
+    window.AdminAPI = adminApi;
+    window.adminApi = adminApi;
+    window.escapeHtml = escapeHtml;
+
     let rawLogs = [];
 
     async function loadAuditLogs() {
@@ -122,11 +127,11 @@
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading audit entries...</td></tr>';
 
       try {
-        const data = await AdminAPI.getAuditLog(100);
-        rawLogs = data.entries || [];
+        const data = await adminApi.getAuditLog(100);
+        rawLogs = data.logs || data.entries || [];
         filterLogs();
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--admin-danger); padding: 2rem;">Failed to fetch audit log: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--admin-danger); padding: 2rem;">Failed to fetch audit log: ${escapeHtml(err.message || String(err))}</td></tr>`;
       }
     }
 
@@ -135,12 +140,19 @@
       const actionQuery = document.getElementById('filter-action').value;
 
       const filtered = rawLogs.filter(log => {
-        if (pidQuery && !String(log.project_id || '').toLowerCase().includes(pidQuery)) return false;
+        const pid = log.projectId !== undefined ? log.projectId : log.project_id;
+        if (pidQuery && !String(pid || '').toLowerCase().includes(pidQuery)) return false;
         if (actionQuery && log.action !== actionQuery) return false;
         return true;
       });
 
       renderTable(filtered);
+    }
+
+    function formatAuditValue(val) {
+      if (val === null || val === undefined) return 'null';
+      if (val === '') return '""';
+      return String(val);
     }
 
     function renderTable(logs) {
@@ -165,23 +177,29 @@
         else if (log.action === 'ARCHIVE_PROJECT') actionBadge = 'badge-danger';
         else if (log.action === 'UNARCHIVE_PROJECT') actionBadge = 'badge-warning';
 
+        const adminUser = log.adminUser !== undefined ? log.adminUser : (log.admin_user || 'system');
+        const projectId = log.projectId !== undefined ? log.projectId : log.project_id;
+        const fieldChanged = log.fieldChanged !== undefined ? log.fieldChanged : log.field_changed;
+        const oldValue = log.oldValue !== undefined ? log.oldValue : log.old_value;
+        const newValue = log.newValue !== undefined ? log.newValue : log.new_value;
+
         let transformCell = '-';
-        if (log.old_value !== null || log.new_value !== null) {
+        if ((oldValue !== null && oldValue !== undefined) || (newValue !== null && newValue !== undefined)) {
           transformCell = `
             <div style="font-size: 0.82rem; font-family: monospace;">
-              <span style="color: var(--admin-danger); text-decoration: line-through;">${escapeHtml(String(log.old_value || 'null'))}</span>
+              <span style="color: var(--admin-danger); text-decoration: line-through;">${escapeHtml(formatAuditValue(oldValue))}</span>
               &nbsp;&rarr;&nbsp;
-              <span style="color: var(--admin-success); font-weight: 600;">${escapeHtml(String(log.new_value || 'null'))}</span>
+              <span style="color: var(--admin-success); font-weight: 600;">${escapeHtml(formatAuditValue(newValue))}</span>
             </div>
           `;
         }
 
         tr.innerHTML = `
           <td style="font-size: 0.8rem; color: var(--admin-muted); font-family: monospace;">${dt}</td>
-          <td><strong style="color: var(--admin-navy);">${escapeHtml(log.admin_user || 'system')}</strong></td>
-          <td><span class="badge ${actionBadge}" style="font-size: 0.72rem;">${log.action}</span></td>
-          <td>${log.project_id ? `<strong style="font-family: monospace;">#${escapeHtml(log.project_id)}</strong>` : '<span style="color:var(--admin-muted);">-</span>'}</td>
-          <td>${log.field_changed ? `<code style="background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.78rem;">${escapeHtml(log.field_changed)}</code>` : '-'}</td>
+          <td><strong style="color: var(--admin-navy);">${escapeHtml(adminUser)}</strong></td>
+          <td><span class="badge ${actionBadge}" style="font-size: 0.72rem;">${escapeHtml(log.action || '')}</span></td>
+          <td>${projectId ? `<strong style="font-family: monospace;">#${escapeHtml(projectId)}</strong>` : '<span style="color:var(--admin-muted);">-</span>'}</td>
+          <td>${fieldChanged ? `<code style="background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.78rem;">${escapeHtml(fieldChanged)}</code>` : '-'}</td>
           <td>${transformCell}</td>
           <td style="font-size: 0.82rem; color: var(--admin-muted);">${escapeHtml(log.reason || '-')}</td>
         `;
@@ -189,8 +207,11 @@
       });
     }
 
+    window.loadAuditLogs = loadAuditLogs;
+    window.filterLogs = filterLogs;
+
     document.addEventListener('DOMContentLoaded', async () => {
-      const user = await AdminAPI.checkAuth();
+      const user = await adminApi.checkAuth();
       if (user) {
         loadAuditLogs();
       }

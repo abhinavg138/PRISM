@@ -88,8 +88,27 @@ export const adminApi = {
 
   getDataValidation: () => adminApi.fetch('/api/admin/data-validation'),
 
-  getSystemInfo: () => adminApi.fetch('/api/admin/system')
+  getSystemInfo: () => adminApi.fetch('/api/admin/system'),
+
+  checkAuth: async () => {
+    try {
+      const res = await adminApi.getMe();
+      return res.username || res;
+    } catch {
+      return null;
+    }
+  },
+
+  getAuditLog: (limit = 100) => adminApi.getAuditLogs({ limit }),
+
+  showToast: (message, type = 'success') => showToast(message, type),
+
+  escapeHtml: (str) => escapeHtml(str),
+
+  formatCurrency: (val) => formatCurrencyCr(val)
 };
+
+export const AdminAPI = adminApi;
 
 export function showToast(message, type = 'success') {
   let toastContainer = document.getElementById('admin-toast-container');
@@ -212,3 +231,17 @@ export function renderNavbar(activeView) {
     window.lucide.createIcons();
   }
 }
+
+if (typeof window !== 'undefined') {
+  window.adminApi = adminApi;
+  window.AdminAPI = adminApi;
+  window.showToast = showToast;
+  window.escapeHtml = escapeHtml;
+  window.renderNavbar = renderNavbar;
+  window.getRiskBadge = getRiskBadge;
+  window.getPriorityBadge = getPriorityBadge;
+  window.getSourceBadge = getSourceBadge;
+  window.formatCurrencyCr = formatCurrencyCr;
+  window.formatPercent = formatPercent;
+}
+

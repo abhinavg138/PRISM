@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response, Depends
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 
-from backend.config import ROOT_DIR, ADMIN_DB_PATH
+import backend.config as config
+from backend.config import ROOT_DIR
 from backend.repositories.paimana_repository import paimana_repository
 from backend.services.admin_service import AdminService
 from backend.models.project import Project
@@ -127,14 +128,14 @@ def admin_login(payload: LoginRequest, request: Request, response: Response):
     AdminService.reset_failed_attempts(client_ip)
     token, expires_at = AdminService.create_session(payload.username.strip())
 
-    # Set secure HttpOnly cookie
+    # Set secure HttpOnly cookie (environment-driven)
     response.set_cookie(
         key="prism_admin_session",
         value=token,
         max_age=86400,
         httponly=True,
         samesite="lax",
-        secure=False,  # Allow localhost development
+        secure=config.SESSION_COOKIE_SECURE,
         path="/"
     )
 
@@ -150,7 +151,13 @@ def admin_logout(request: Request, response: Response):
     token = request.cookies.get("prism_admin_session")
     if token:
         AdminService.delete_session(token)
-    response.delete_cookie("prism_admin_session", path="/")
+    response.delete_cookie(
+        "prism_admin_session",
+        path="/",
+        secure=config.SESSION_COOKIE_SECURE,
+        httponly=True,
+        samesite="lax"
+    )
     return {"status": "success", "message": "Administrative session terminated."}
 
 @admin_router.get("/auth/me")
@@ -427,6 +434,8 @@ def admin_update_project(
             "message": f"Project '{pid}' updated and PRISM intelligence recalculated.",
             "project": updated.model_dump()
         }
+    except (KeyError, ValueError) as err:
+        raise HTTPException(status_code=404, detail=str(err))
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Failed to update project: {str(err)}")
 
@@ -444,8 +453,8 @@ def admin_archive_project(
             "success": True,
             "message": f"Project '{pid}' successfully archived."
         }
-    except ValueError as val_err:
-        raise HTTPException(status_code=404, detail=str(val_err))
+    except (KeyError, ValueError) as err:
+        raise HTTPException(status_code=404, detail=str(err))
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Failed to archive project: {str(err)}")
 
@@ -463,10 +472,59 @@ def admin_unarchive_project(
             "success": True,
             "message": f"Project '{pid}' successfully unarchived."
         }
-    except ValueError as val_err:
-        raise HTTPException(status_code=404, detail=str(val_err))
+    except (KeyError, ValueError) as err:
+        raise HTTPException(status_code=404, detail=str(err))
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Failed to unarchive project: {str(err)}")
+
+@admin_router.delete("/projects/{proj_id}/overrides")
+def admin_delete_all_overrides(
+    proj_id: str,
+    reason: Optional[str] = Query(None),
+    admin: Dict[str, Any] = Depends(get_current_admin)
+):
+    pid = proj_id.strip()
+    try:
+        restored = paimana_repository.remove_admin_override(
+            project_id=pid,
+            field_name=None,
+            user=admin["username"],
+            reason=reason or "Admin removed all overrides; restored to original PAIMANA source"
+        )
+        return {
+            "status": "success",
+            "message": f"All overrides for project '{pid}' removed. Original PAIMANA source values restored.",
+            "project": restored.model_dump()
+        }
+    except (KeyError, ValueError) as err:
+        raise HTTPException(status_code=404, detail=str(err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Failed to remove overrides: {str(err)}")
+
+@admin_router.delete("/projects/{proj_id}/overrides/{field_name}")
+def admin_delete_single_override(
+    proj_id: str,
+    field_name: str,
+    reason: Optional[str] = Query(None),
+    admin: Dict[str, Any] = Depends(get_current_admin)
+):
+    pid = proj_id.strip()
+    try:
+        restored = paimana_repository.remove_admin_override(
+            project_id=pid,
+            field_name=field_name.strip(),
+            user=admin["username"],
+            reason=reason or f"Admin removed override for '{field_name}'; restored to original PAIMANA source"
+        )
+        return {
+            "status": "success",
+            "message": f"Override for '{field_name}' removed. Original PAIMANA source value restored.",
+            "project": restored.model_dump()
+        }
+    except (KeyError, ValueError) as err:
+        raise HTTPException(status_code=404, detail=str(err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Failed to remove override: {str(err)}")
 
 # =============================================================================
 # Audit Log & Data Validation APIs
@@ -508,7 +566,7 @@ def admin_get_system_info(
     admin: Dict[str, Any] = Depends(get_current_admin)
 ):
     paimana_repository.ensure_loaded()
-    db_file = Path(ADMIN_DB_PATH)
+    db_file = Path(config.ADMIN_DB_PATH)
     db_size_kb = round(db_file.stat().st_size / 1024, 1) if db_file.exists() else 0
     db_size_bytes = db_file.stat().st_size if db_file.exists() else 0
 

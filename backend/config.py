@@ -42,12 +42,19 @@ else:
         "*"
     ]
 
+# Environment checks
+IS_PRODUCTION = ENVIRONMENT == "production"
+
 # App URL
 APP_URL = os.getenv("APP_URL", f"http://localhost:{API_PORT}")
 
-# Admin Panel Configuration
-ADMIN_USERNAME = os.getenv("PRISM_ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("PRISM_ADMIN_PASSWORD", "prismadmin2026")
-ADMIN_SECRET_KEY = os.getenv("PRISM_ADMIN_SECRET", "prism-secret-key-sih-2026-production")
-ADMIN_DB_PATH = str(DATA_DIR / "prism_admin.db")
+# Admin Panel Configuration:
+# In production, require explicit environment configuration (do not ship working default credentials or secret).
+# For local development and testing, fallback to safe development defaults.
+ADMIN_USERNAME = os.getenv("PRISM_ADMIN_USERNAME", "" if IS_PRODUCTION else "admin")
+ADMIN_PASSWORD = os.getenv("PRISM_ADMIN_PASSWORD", "" if IS_PRODUCTION else "prismadmin2026")
+ADMIN_SECRET_KEY = os.getenv("PRISM_ADMIN_SECRET", "" if IS_PRODUCTION else "prism-secret-key-dev-local")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true" if IS_PRODUCTION else "false").lower() == "true"
+ADMIN_DB_PATH = os.getenv("PRISM_ADMIN_DB_PATH", str(DATA_DIR / "prism_admin.db"))
+
 

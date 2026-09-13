@@ -250,8 +250,14 @@
     </div>
   </div>
 
-  <script src="/admin/static/admin.js"></script>
-  <script>
+  <script type="module">
+    import { adminApi, escapeHtml, showToast } from '/admin/static/admin.js';
+
+    window.AdminAPI = adminApi;
+    window.adminApi = adminApi;
+    window.escapeHtml = escapeHtml;
+    window.showToast = showToast;
+
     let isEditMode = false;
     let originalProject = null;
     let targetProjectId = null;
@@ -461,10 +467,10 @@
       const card = document.createElement('div');
       card.className = 'diff-card';
       card.innerHTML = `
-        <div class="diff-field">${label}</div>
+        <div class="diff-field">${escapeHtml(label)}</div>
         <div class="diff-row">
-          <div class="diff-val diff-val-before"><i class="fa-solid fa-minus"></i> ${before}</div>
-          <div class="diff-val diff-val-after"><i class="fa-solid fa-plus"></i> ${after}</div>
+          <div class="diff-val diff-val-before"><i class="fa-solid fa-minus"></i> ${escapeHtml(before)}</div>
+          <div class="diff-val diff-val-after"><i class="fa-solid fa-plus"></i> ${escapeHtml(after)}</div>
         </div>
       `;
       return card;
@@ -478,7 +484,7 @@
     async function executeSaveWithDiff() {
       const reason = document.getElementById('edit-reason-input').value.trim();
       if (!reason) {
-        AdminAPI.showToast('Please provide a reason for the modification.', 'error');
+        showToast('Please provide a reason for the modification.', 'error');
         return;
       }
 
@@ -489,18 +495,22 @@
       pendingPayload.reason = reason;
 
       try {
-        const res = await AdminAPI.updateProject(targetProjectId, pendingPayload);
+        const res = await adminApi.updateProject(targetProjectId, pendingPayload);
         closeDiffModal();
-        AdminAPI.showToast('Project updated successfully! Intelligence recalculated.', 'success');
+        showToast('Project updated successfully! Intelligence recalculated.', 'success');
         setTimeout(() => {
           window.location.href = '/admin/projects';
         }, 1200);
       } catch (err) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Confirm & Commit';
-        AdminAPI.showToast(err.message, 'error');
+        showToast(err.message, 'error');
       }
     }
+
+    window.handleFormSubmit = handleFormSubmit;
+    window.closeDiffModal = closeDiffModal;
+    window.executeSaveWithDiff = executeSaveWithDiff;
 
     document.addEventListener('DOMContentLoaded', initForm);
   </script>

@@ -8,9 +8,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List, Set, Tuple
 from pathlib import Path
 
-from backend.config import (
-    ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY, ADMIN_DB_PATH
-)
+import backend.config as config
 from backend.models.project import Project
 
 # Thread-local storage for SQLite connections
@@ -22,21 +20,35 @@ _failed_login_lock = threading.Lock()
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_WINDOW_SECONDS = 300  # 5 minutes lockout
 
+def close_db_connection():
+    if hasattr(_local, "conn") and _local.conn is not None:
+        try:
+            _local.conn.close()
+        except Exception:
+            pass
+        _local.conn = None
+        _local.db_path = None
+
 def get_db_connection() -> sqlite3.Connection:
     """Returns a thread-safe SQLite connection with WAL mode enabled."""
-    if not hasattr(_local, "conn") or _local.conn is None:
-        db_path = Path(ADMIN_DB_PATH)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(
-            str(db_path),
-            check_same_thread=False,
-            timeout=30.0
-        )
-        conn.row_factory = sqlite3.Row
-        # Enable WAL mode for high concurrency
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA busy_timeout=5000;")
-        _local.conn = conn
+    db_path = Path(config.ADMIN_DB_PATH)
+    if hasattr(_local, "conn") and _local.conn is not None:
+        if getattr(_local, "db_path", None) == str(db_path):
+            return _local.conn
+        close_db_connection()
+
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(
+        str(db_path),
+        check_same_thread=False,
+        timeout=30.0
+    )
+    conn.row_factory = sqlite3.Row
+    # Enable WAL mode for high concurrency
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout=5000;")
+    _local.conn = conn
+    _local.db_path = str(db_path)
     return _local.conn
 
 class AdminService:
@@ -141,13 +153,19 @@ class AdminService:
     @classmethod
     def verify_credentials(cls, username: str, password: str) -> bool:
         """Constant-time verification of admin credentials against env config."""
+        expected_user = config.ADMIN_USERNAME
+        expected_pass = config.ADMIN_PASSWORD
+        if not expected_user or not expected_pass:
+            return False
+        if not username or not password:
+            return False
         user_match = hmac.compare_digest(
             (username or "").strip().encode('utf-8'),
-            ADMIN_USERNAME.encode('utf-8')
+            expected_user.encode('utf-8')
         )
         pass_match = hmac.compare_digest(
             (password or "").encode('utf-8'),
-            ADMIN_PASSWORD.encode('utf-8')
+            expected_pass.encode('utf-8')
         )
         return user_match and pass_match
 
@@ -394,6 +412,22 @@ class AdminService:
                 now_str,
                 reason
             ))
+
+    @classmethod
+    def remove_override(cls, project_id: str, field_name: Optional[str] = None):
+        """Deletes admin override record(s) from persistent SQLite storage."""
+        conn = get_db_connection()
+        with conn:
+            if field_name:
+                conn.execute(
+                    "DELETE FROM admin_overrides WHERE project_id = ? AND field_name = ?",
+                    (project_id, field_name)
+                )
+            else:
+                conn.execute(
+                    "DELETE FROM admin_overrides WHERE project_id = ?",
+                    (project_id,)
+                )
 
     @classmethod
     def get_all_added_projects(cls) -> List[Dict[str, Any]]:
