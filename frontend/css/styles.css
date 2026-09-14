@@ -76,6 +76,11 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+
+  /* Sidebar Layout Dimensions */
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 68px;
+  --topbar-height: 60px;
 }
 
 /* Global Reset */
@@ -265,3 +270,226 @@ button, input, select, textarea {
 .view-section.active {
   display: block;
 }
+
+/* ============================================================================
+ * Sidebar & Application Layout
+ * ============================================================================ */
+
+/* Main Wrapper layout */
+.app-main-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 768px) {
+  .app-main-wrapper {
+    margin-left: var(--sidebar-width);
+  }
+  body.sidebar-collapsed .app-main-wrapper {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+}
+
+/* Sidebar Shell */
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background-color: #ffffff;
+  border-right: 1px solid var(--color-slate-200);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Desktop Collapsed Sidebar */
+body.sidebar-collapsed .app-sidebar {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* Mobile Off-canvas Drawer */
+@media (max-width: 767px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    width: var(--sidebar-width) !important;
+    box-shadow: var(--shadow-xl);
+  }
+  .app-sidebar.open {
+    transform: translateX(0);
+  }
+  .app-main-wrapper {
+    margin-left: 0 !important;
+  }
+}
+
+/* Backdrop for Mobile Drawer */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Sidebar Navigation Items */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-slate-700);
+  min-height: 44px;
+  border-left: 4px solid transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+  position: relative;
+  text-decoration: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.sidebar-nav-item:hover {
+  background-color: var(--color-slate-100);
+  color: var(--color-slate-900);
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--color-blue-50);
+  color: var(--color-blue-700);
+  font-weight: 700;
+  border-left-color: var(--color-blue-600);
+}
+
+.sidebar-nav-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+/* Secondary Actions inside Sidebar */
+.sidebar-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.875rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-slate-700);
+  min-height: 42px;
+  transition: all 0.15s ease;
+  user-select: none;
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-action-btn:hover {
+  background-color: var(--color-slate-100);
+  color: var(--color-slate-900);
+}
+
+.sidebar-action-btn.copilot-action {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(37, 99, 235, 0.08) 100%);
+  border-color: rgba(79, 70, 229, 0.18);
+  color: var(--color-indigo-700);
+  font-weight: 600;
+}
+.sidebar-action-btn.copilot-action:hover {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%);
+  border-color: rgba(79, 70, 229, 0.3);
+}
+
+/* Section Header */
+.sidebar-section-header {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-slate-400);
+  padding: 0.6rem 0.875rem 0.25rem;
+  white-space: nowrap;
+}
+
+/* Collapsed state hiding labels & text */
+body.sidebar-collapsed .sidebar-label,
+body.sidebar-collapsed .sidebar-section-header,
+body.sidebar-collapsed .sidebar-brand-text,
+body.sidebar-collapsed .sidebar-collapse-text {
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+
+body.sidebar-collapsed .sidebar-nav-item,
+body.sidebar-collapsed .sidebar-action-btn {
+  padding-left: 0;
+  padding-right: 0;
+  justify-content: center;
+}
+
+body.sidebar-collapsed .sidebar-header {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  justify-content: center;
+}
+
+/* Collapsed floating tooltip */
+@media (min-width: 768px) {
+  body.sidebar-collapsed .sidebar-nav-item[data-tooltip]:hover::after,
+  body.sidebar-collapsed .sidebar-action-btn[data-tooltip]:hover::after,
+  body.sidebar-collapsed #sidebar-collapse-btn[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(var(--sidebar-collapsed-width) + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--color-slate-900);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+    z-index: 60;
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+  }
+}
+

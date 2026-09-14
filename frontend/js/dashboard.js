@@ -73,10 +73,10 @@ export function renderKPIs() {
       </div>
       <div class="mt-3 flex items-baseline gap-2">
         <span class="text-2xl font-bold text-slate-900">${formatCurrencyCr(totalCost)}</span>
-        <span class="text-xs text-slate-500 font-medium">Sanctioned</span>
+        <span class="text-xs text-slate-500 font-medium">Sanctioned Outlay</span>
       </div>
-      <div class="mt-2 text-xs text-slate-500">
-        Cum. Outlay: ${formatCurrencyCr(totalExpenditure)}
+      <div class="mt-2 text-xs text-slate-600">
+        Cumulative Expenditure (₹ Cr): <strong class="text-slate-900 font-semibold">${formatCurrencyCr(totalExpenditure)}</strong>
       </div>
     </div>
 
@@ -276,7 +276,7 @@ export function renderPriorityQueue() {
                   ${escapeHtml(p.priorityReason || p.primaryRiskDriver || 'Progress stagnation / schedule pressure')}
                 </td>
                 <td class="py-3 px-3 text-right">
-                  <button class="btn btn-secondary text-xs py-1 px-2.5 btn-open-detail" data-project-id="${escapeHtml(p.id)}">
+                  <button class="btn btn-secondary text-xs py-1 px-2.5 btn-open-detail" data-project-id="${escapeHtml(p.id)}" title="Inspect Project Details Dossier" aria-label="Inspect dossier for project ${escapeHtml(p.name)}">
                     Inspect
                   </button>
                 </td>

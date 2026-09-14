@@ -22,85 +22,135 @@
     <script src="/assets/chart.umd.min.js"></script>
     <script src="/assets/lucide.min.js"></script>
   </head>
-  <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+  <body class="bg-slate-50 text-slate-800 antialiased min-h-screen font-sans">
     
-    <!-- Top Navigation Header -->
-    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-      <div class="container flex items-center justify-between h-16">
-        <!-- Logo & Branding -->
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+    <!-- Left Navigation Sidebar -->
+    <aside id="app-sidebar" class="app-sidebar" aria-label="Primary Navigation">
+      <!-- Sidebar Brand Header -->
+      <div class="sidebar-header p-4 border-b border-slate-100 flex items-center justify-between min-h-[64px]">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
-          <div>
+          <div class="sidebar-brand-text">
             <div class="flex items-center gap-2">
               <span class="text-base font-black tracking-tight text-slate-900">PRISM</span>
-              <span class="badge bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">PAIMANA v1.0</span>
+              <span class="badge bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">PAIMANA</span>
             </div>
-            <div class="text-[10.5px] text-slate-500 font-medium hidden sm:block">Predictive Risk Intelligence & Smart Monitoring</div>
+            <div class="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">Predictive Risk Intelligence</div>
           </div>
         </div>
+        <!-- Mobile drawer close button -->
+        <button id="btn-sidebar-mobile-close" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" aria-label="Close navigation menu">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
 
-        <!-- Navigation Tabs -->
-        <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200">
-          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-blue-50 text-blue-700" data-view="dashboard">
-            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 inline mr-1"></i> Dashboard
-          </button>
-          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all" data-view="projects">
-            <i data-lucide="folder-kanban" class="w-3.5 h-3.5 inline mr-1"></i> Projects Directory
-          </button>
-          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all" data-view="gis">
-            <i data-lucide="map" class="w-3.5 h-3.5 inline mr-1"></i> GIS Map & States
-          </button>
-          <button class="nav-tab py-1.5 px-3 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all" data-view="analytics">
-            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 inline mr-1"></i> Sector Analytics
-          </button>
-        </nav>
+      <!-- Navigation Content -->
+      <div class="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        <!-- Primary Views Section -->
+        <div>
+          <div class="sidebar-section-header">Primary Views</div>
+          <nav class="space-y-1" aria-label="Main Views">
+            <button class="sidebar-nav-item active nav-tab" data-view="dashboard" data-tooltip="Dashboard Overview" title="Dashboard Overview">
+              <span class="sidebar-nav-icon"><i data-lucide="layout-dashboard" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">Dashboard</span>
+            </button>
+            <button class="sidebar-nav-item nav-tab" data-view="projects" data-tooltip="Projects Directory" title="Projects Directory">
+              <span class="sidebar-nav-icon"><i data-lucide="folder-kanban" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">Projects Directory</span>
+            </button>
+            <button class="sidebar-nav-item nav-tab" data-view="gis" data-tooltip="GIS Map & State Registry" title="GIS Map & State Registry">
+              <span class="sidebar-nav-icon"><i data-lucide="map" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">GIS Map &amp; States</span>
+            </button>
+            <button class="sidebar-nav-item nav-tab" data-view="analytics" data-tooltip="Sector Analytics" title="Sector Analytics">
+              <span class="sidebar-nav-icon"><i data-lucide="bar-chart-3" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">Sector Analytics</span>
+            </button>
+          </nav>
+        </div>
 
-        <!-- Right Header Actions -->
-        <div class="flex items-center gap-2 sm:gap-3">
-          <!-- Role Switcher -->
-          <div class="hidden lg:flex items-center gap-1.5 text-xs bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg">
-            <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-500"></i>
-            <select id="user-role-select" class="bg-transparent font-medium text-slate-800 text-xs border-none focus:outline-none cursor-pointer">
-              <!-- Injected by app.js -->
-            </select>
+        <!-- Intelligence Tools Section -->
+        <div>
+          <div class="sidebar-section-header">Intelligence Tools</div>
+          <div class="space-y-1" aria-label="Intelligence Tools">
+            <button id="nav-btn-provenance" class="sidebar-action-btn" data-tooltip="Data Trust & Provenance" title="MoSPI PAIMANA Data Provenance & Integrity">
+              <span class="sidebar-nav-icon text-blue-600"><i data-lucide="shield-check" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">Data Trust</span>
+            </button>
+            <button id="nav-btn-report" class="sidebar-action-btn" data-tooltip="Executive Flash Report" title="Executive Flash Report">
+              <span class="sidebar-nav-icon text-slate-600"><i data-lucide="file-text" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">Flash Report</span>
+            </button>
+            <button id="nav-btn-alerts" class="sidebar-action-btn relative" data-tooltip="Early Warning Radar" title="Early Warning Alerts Radar">
+              <span class="sidebar-nav-icon text-slate-600"><i data-lucide="bell" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">Alerts Radar</span>
+              <span id="nav-alerts-badge" class="badge badge-critical text-[9px] py-0 px-1.5 ml-auto hidden">0</span>
+            </button>
+            <button id="nav-btn-copilot" class="sidebar-action-btn copilot-action" data-tooltip="AI Copilot Assistant" title="MoSPI PAIMANA Grounded AI Assistant">
+              <span class="sidebar-nav-icon text-indigo-600"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
+              <span class="sidebar-label">AI Copilot</span>
+            </button>
           </div>
-
-          <!-- Data Trust & Provenance Trigger -->
-          <button id="nav-btn-provenance" class="btn btn-secondary text-xs py-1.5 px-2.5" title="MoSPI PAIMANA Data Provenance & Integrity">
-            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-600"></i>
-            <span class="hidden sm:inline">Data Trust</span>
-          </button>
-
-          <!-- Flash Report Trigger -->
-          <button id="nav-btn-report" class="btn btn-secondary text-xs py-1.5 px-2.5" title="Executive Flash Report">
-            <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-600"></i>
-            <span class="hidden sm:inline">Flash Report</span>
-          </button>
-
-          <!-- Early Warning Alerts Trigger -->
-          <button id="nav-btn-alerts" class="btn btn-secondary text-xs py-1.5 px-2.5 relative" title="Early Warning Alerts Radar">
-            <i data-lucide="bell" class="w-3.5 h-3.5 text-slate-600"></i>
-            <span id="nav-alerts-badge" class="badge badge-critical text-[9px] py-0 px-1.5 absolute -top-1.5 -right-1.5 hidden">0</span>
-          </button>
-
-          <!-- AI Copilot Trigger -->
-          <button id="nav-btn-copilot" class="btn btn-copilot text-xs py-1.5 px-3">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-            <span>Copilot</span>
-          </button>
         </div>
       </div>
-    </header>
 
-    <!-- Mobile Sub-Nav -->
-    <div class="md:hidden bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between overflow-x-auto gap-2">
-      <button class="nav-tab text-xs font-bold py-1 px-2.5 rounded bg-blue-50 text-blue-700 whitespace-nowrap" data-view="dashboard">Dashboard</button>
-      <button class="nav-tab text-xs font-medium py-1 px-2.5 rounded text-slate-600 whitespace-nowrap" data-view="projects">Projects</button>
-      <button class="nav-tab text-xs font-medium py-1 px-2.5 rounded text-slate-600 whitespace-nowrap" data-view="gis">GIS Map</button>
-      <button class="nav-tab text-xs font-medium py-1 px-2.5 rounded text-slate-600 whitespace-nowrap" data-view="analytics">Analytics</button>
-    </div>
+      <!-- Sidebar Footer with Collapse Toggle -->
+      <div class="p-3 border-t border-slate-100 mt-auto bg-slate-50/50">
+        <button id="sidebar-collapse-btn" class="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-between w-full transition" data-tooltip="Collapse / Expand Sidebar (Ctrl+B)" title="Toggle Sidebar Width">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <i data-lucide="panel-left-close" id="sidebar-collapse-icon" class="w-4 h-4 shrink-0 text-slate-500"></i>
+            <span class="sidebar-collapse-text text-xs font-semibold text-slate-600">Collapse Sidebar</span>
+          </div>
+          <kbd class="sidebar-collapse-text text-[10px] font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-400">Ctrl+B</kbd>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile Drawer Dimming Backdrop -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main Application Wrapper (Pushed by sidebar on desktop) -->
+    <div class="app-main-wrapper">
+      
+      <!-- Streamlined Top Header -->
+      <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+        <div class="container flex items-center justify-between h-14 sm:h-16">
+          <!-- Left: Hamburger (Mobile) + Breadcrumb / Active View Title -->
+          <div class="flex items-center gap-3">
+            <button id="btn-sidebar-hamburger" class="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100" aria-label="Open navigation menu" title="Open Navigation Menu">
+              <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="header-view-title" class="text-sm sm:text-base font-black tracking-tight text-slate-900">Dashboard</span>
+                <span class="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hidden sm:inline-flex">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1"></span>Live Monitoring
+                </span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-medium hidden sm:block">MoSPI PAIMANA April&ndash;July 2026 Reporting Cycle</div>
+            </div>
+          </div>
+
+          <!-- Right Header Controls: Role Switcher & Admin Portal Link -->
+          <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Role Switcher -->
+            <div class="flex items-center gap-1.5 text-xs bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg" title="Simulated Administrative Role Profile">
+              <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-500"></i>
+              <select id="user-role-select" class="bg-transparent font-medium text-slate-800 text-xs border-none focus:outline-none cursor-pointer" aria-label="Select administrative role">
+                <!-- Injected by app.js -->
+              </select>
+            </div>
+
+            <!-- Admin Link -->
+            <a href="/admin" target="_blank" class="text-xs text-slate-500 hover:text-blue-700 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-blue-200 hover:bg-blue-50/50 transition hidden lg:inline-flex items-center gap-1.5 font-medium" title="Open PRISM Admin Operations Plane">
+              <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+              <span>Admin Plane</span>
+            </a>
+          </div>
+        </div>
+      </header>
 
     <!-- Main Content Container -->
     <main class="flex-1 container py-6">
@@ -249,6 +299,21 @@
         <div id="analytics-content"></div>
       </section>
     </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 mt-auto">
+      <div class="container flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-slate-700">PRISM v2.1.0-sih2026</span>
+          <span>&bull;</span>
+          <span>MoSPI PAIMANA Central Sector Project Oversight</span>
+        </div>
+        <div class="text-slate-400">
+          Powered by Python / FastAPI + Vanilla HTML/CSS/JavaScript
+        </div>
+      </div>
+    </footer>
+  </div><!-- End .app-main-wrapper -->
 
     <!-- Project Detail Dossier Modal -->
     <div id="project-detail-modal" class="modal-backdrop">
@@ -516,20 +581,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 mt-auto">
-      <div class="container flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-slate-700">PRISM v2.1.0-sih2026</span>
-          <span>&bull;</span>
-          <span>MoSPI PAIMANA Central Sector Project Oversight</span>
-        </div>
-        <div class="text-slate-400">
-          Powered by Python / FastAPI + Vanilla HTML/CSS/JavaScript
-        </div>
-      </div>
-    </footer>
 
     <!-- Main Controller Module -->
     <script type="module" src="/js/app.js?v=portfolio-v2"></script>

@@ -206,7 +206,7 @@ export function renderProjectsTable() {
       </td>
       <td class="py-3 px-3 text-xs">
         <div class="font-semibold text-slate-800">${formatCurrencyCr(p.revisedCostCr || p.originalCostCr)}</div>
-        <div class="text-slate-500">Exp: ${formatCurrencyCr(p.cumulativeExpenditureCr)}</div>
+        <div class="text-slate-500" title="Cumulative Expenditure (₹ Cr)">Expenditure: ${formatCurrencyCr(p.cumulativeExpenditureCr)}</div>
       </td>
       <td class="py-3 px-3">
         <div class="flex items-center gap-2">
@@ -218,10 +218,10 @@ export function renderProjectsTable() {
       </td>
       <td class="py-3 px-4 text-right">
         <div class="flex items-center justify-end gap-1.5" onclick="event.stopPropagation()">
-          <button class="btn btn-secondary py-1 px-2 text-xs btn-open-copilot" data-project-id="${escapeHtml(p.id)}" title="Ask AI Copilot">
+          <button class="btn btn-secondary py-1 px-2 text-xs btn-open-copilot" data-project-id="${escapeHtml(p.id)}" title="Ask AI Copilot about this project" aria-label="Ask AI Copilot about project ${escapeHtml(p.id)}">
             <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-600"></i>
           </button>
-          <button class="btn btn-secondary py-1 px-2.5 text-xs btn-inspect-project" data-project-id="${escapeHtml(p.id)}">
+          <button class="btn btn-secondary py-1 px-2.5 text-xs btn-inspect-project" data-project-id="${escapeHtml(p.id)}" title="View Project Dossier" aria-label="View dossier for project ${escapeHtml(p.id)}">
             View
           </button>
         </div>

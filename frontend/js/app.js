@@ -36,39 +36,96 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initNavbar() {
-  // Navigation tabs
-  document.querySelectorAll('.nav-tab').forEach(tab => {
+  // 1. Navigation items (supports .sidebar-nav-item and .nav-tab)
+  document.querySelectorAll('.sidebar-nav-item, .nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       e.preventDefault();
       const view = tab.getAttribute('data-view');
-      if (view) switchView(view);
+      if (view) {
+        switchView(view);
+        closeMobileSidebar();
+      }
     });
   });
 
-  // Copilot drawer toggle
+  // 2. Sidebar Collapse / Expand Persistence & Toggle
+  const collapseBtn = document.getElementById('sidebar-collapse-btn');
+  const collapseIcon = document.getElementById('sidebar-collapse-icon');
+  
+  // Restore saved collapse state from localStorage
+  const savedCollapsed = localStorage.getItem('prism_sidebar_collapsed') === 'true';
+  if (savedCollapsed) {
+    document.body.classList.add('sidebar-collapsed');
+    if (collapseIcon) collapseIcon.setAttribute('data-lucide', 'panel-left-open');
+  }
+
+  function toggleSidebarCollapse() {
+    const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('prism_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+    if (collapseIcon) {
+      collapseIcon.setAttribute('data-lucide', isCollapsed ? 'panel-left-open' : 'panel-left-close');
+    }
+    renderIcons();
+  }
+
+  collapseBtn?.addEventListener('click', toggleSidebarCollapse);
+
+  // Keyboard shortcut Ctrl+B / Cmd+B for sidebar toggle
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+      e.preventDefault();
+      toggleSidebarCollapse();
+    }
+  });
+
+  // 3. Mobile Off-Canvas Drawer Toggles
+  const hamburgerBtn = document.getElementById('btn-sidebar-hamburger');
+  const mobileCloseBtn = document.getElementById('btn-sidebar-mobile-close');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const sidebar = document.getElementById('app-sidebar');
+
+  function openMobileSidebar() {
+    sidebar?.classList.add('open');
+    backdrop?.classList.add('active');
+  }
+
+  function closeMobileSidebar() {
+    sidebar?.classList.remove('open');
+    backdrop?.classList.remove('active');
+  }
+
+  hamburgerBtn?.addEventListener('click', openMobileSidebar);
+  mobileCloseBtn?.addEventListener('click', closeMobileSidebar);
+  backdrop?.addEventListener('click', closeMobileSidebar);
+
+  // 4. Copilot drawer toggle
   document.getElementById('nav-btn-copilot')?.addEventListener('click', () => {
+    closeMobileSidebar();
     openCopilot();
   });
 
-  // Alerts modal toggle
+  // 5. Alerts modal toggle
   document.getElementById('nav-btn-alerts')?.addEventListener('click', () => {
+    closeMobileSidebar();
     openAlertsModal();
   });
 
-  // Flash report toggle
+  // 6. Flash report toggle
   document.getElementById('nav-btn-report')?.addEventListener('click', () => {
+    closeMobileSidebar();
     openFlashReport();
   });
 
-  // Data trust & provenance modal toggle
+  // 7. Data trust & provenance modal toggle
   document.getElementById('nav-btn-provenance')?.addEventListener('click', () => {
+    closeMobileSidebar();
     openProvenanceModal();
   });
   document.getElementById('btn-close-provenance-modal')?.addEventListener('click', () => {
     document.getElementById('provenance-modal')?.classList.remove('active');
   });
 
-  // Role selector
+  // 8. Role selector
   const roleSelect = document.getElementById('user-role-select');
   if (roleSelect) {
     roleSelect.innerHTML = DEMO_USER_ROLES.map(r => `
@@ -89,14 +146,27 @@ function initNavbar() {
 function switchView(viewName) {
   state.activeView = viewName;
 
-  // Update tabs UI
-  document.querySelectorAll('.nav-tab').forEach(tab => {
+  // View title label mapping
+  const viewTitles = {
+    dashboard: 'Dashboard',
+    projects: 'Projects Directory',
+    gis: 'GIS Map & States',
+    analytics: 'Sector Analytics'
+  };
+
+  const headerTitle = document.getElementById('header-view-title');
+  if (headerTitle && viewTitles[viewName]) {
+    headerTitle.textContent = viewTitles[viewName];
+  }
+
+  // Update tabs & sidebar navigation UI
+  document.querySelectorAll('.sidebar-nav-item, .nav-tab').forEach(tab => {
     const isCurrent = tab.getAttribute('data-view') === viewName;
     if (isCurrent) {
-      tab.classList.add('bg-blue-50', 'text-blue-700', 'font-bold');
+      tab.classList.add('active', 'bg-blue-50', 'text-blue-700', 'font-bold');
       tab.classList.remove('text-slate-600', 'font-medium');
     } else {
-      tab.classList.remove('bg-blue-50', 'text-blue-700', 'font-bold');
+      tab.classList.remove('active', 'bg-blue-50', 'text-blue-700', 'font-bold');
       tab.classList.add('text-slate-600', 'font-medium');
     }
   });

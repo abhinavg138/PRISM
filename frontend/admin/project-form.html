@@ -1,65 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PRISM Admin — Project Form</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/admin/static/admin.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="/assets/lucide.min.js"></script>
 </head>
-<body class="admin-body">
-  <div class="admin-layout">
-    <!-- Sidebar -->
-    <aside class="admin-sidebar">
-      <div class="admin-brand">
-        <div class="admin-brand-icon"><i class="fa-solid fa-layer-group"></i></div>
-        <div class="admin-brand-text">
-          <h2>PRISM ADMIN</h2>
-          <span>Operations Control Plane</span>
-        </div>
-      </div>
-
-      <nav class="admin-nav">
-        <div class="admin-nav-section">Core Operations</div>
-        <a href="/admin" class="admin-nav-link"><i class="fa-solid fa-gauge-high"></i> Overview</a>
-        <a href="/admin/projects" class="admin-nav-link active"><i class="fa-solid fa-folder-tree"></i> Projects</a>
-        <a href="/admin/projects/new" class="admin-nav-link" id="nav-new-project"><i class="fa-solid fa-circle-plus"></i> Add Project</a>
-
-        <div class="admin-nav-section">Governance & Health</div>
-        <a href="/admin/validation" class="admin-nav-link"><i class="fa-solid fa-shield-halved"></i> Data Validation</a>
-        <a href="/admin/audit" class="admin-nav-link"><i class="fa-solid fa-clipboard-list"></i> Audit Log</a>
-        <a href="/admin/system" class="admin-nav-link"><i class="fa-solid fa-server"></i> System Diagnostics</a>
-
-        <div class="admin-nav-section">Public System</div>
-        <a href="/" target="_blank" class="admin-nav-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open PRISM Portal</a>
-      </nav>
-
-      <div class="admin-sidebar-footer">
-        <div class="admin-user-pill">
-          <div class="admin-avatar" id="sidebar-avatar">A</div>
-          <div class="admin-user-info">
-            <span class="admin-username" id="sidebar-user">Admin</span>
-            <span class="admin-role">Super Admin</span>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+  <!-- Admin Top Navbar -->
+  <header class="admin-navbar sticky top-0 z-40 px-6 py-3 text-white">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black shadow-sm">
+            <i data-lucide="shield" class="w-4 h-4"></i>
           </div>
-          <button class="admin-logout-btn" onclick="AdminAPI.logout()" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-black tracking-tight text-white">PRISM ADMIN</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">Control Plane</span>
+            </div>
+            <div class="text-[10px] text-slate-400">National Infrastructure Monitoring Operations</div>
+          </div>
         </div>
+        <nav id="admin-header-nav" class="hidden md:flex items-center gap-1"></nav>
       </div>
-    </aside>
 
-    <!-- Main Content -->
-    <main class="admin-main">
-      <header class="admin-topbar">
-        <div class="admin-breadcrumb">
-          <a href="/admin">PRISM Admin</a>
-          <span class="sep">/</span>
-          <a href="/admin/projects">Projects</a>
-          <span class="sep">/</span>
-          <span class="cur" id="breadcrumb-current">New Project</span>
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 text-xs text-slate-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg">
+          <i data-lucide="user-check" class="w-3.5 h-3.5 text-blue-400"></i>
+          <span id="admin-user-label" class="font-mono font-medium">admin</span>
         </div>
-        <div class="admin-topbar-actions">
-          <a href="/admin/projects" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back to Projects</a>
-        </div>
-      </header>
+        <a href="/" target="_blank" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded transition flex items-center gap-1" title="Open Public PRISM Application">
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Main App</span>
+        </a>
+        <button id="btn-admin-logout" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+    <div class="flex items-center justify-between gap-4">
+      <div class="admin-breadcrumb flex items-center gap-2 text-xs text-slate-500">
+        <a href="/admin" class="hover:text-blue-600">PRISM Admin</a>
+        <span class="sep">/</span>
+        <a href="/admin/projects" class="hover:text-blue-600">Projects</a>
+        <span class="sep">/</span>
+        <span class="cur text-slate-900 font-semibold" id="breadcrumb-current">New Project</span>
+      </div>
+      <a href="/admin/projects" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition flex items-center gap-1.5">
+        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+        <span>Back to Projects</span>
+      </a>
+    </div>
 
       <div class="admin-content-scroll">
         <div style="max-width: 1000px; margin: 0 auto;">
@@ -216,7 +219,6 @@
         </div>
       </div>
     </main>
-  </div>
 
   <!-- Diff & Confirmation Modal -->
   <div id="diff-modal" class="modal-overlay" style="display:none;">
@@ -251,7 +253,9 @@
   </div>
 
   <script type="module">
-    import { adminApi, escapeHtml, showToast } from '/admin/static/admin.js';
+    import { adminApi, renderNavbar, escapeHtml, showToast } from '/admin/static/admin.js';
+
+    renderNavbar('projects');
 
     window.AdminAPI = adminApi;
     window.adminApi = adminApi;
