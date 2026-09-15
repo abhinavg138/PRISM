@@ -30,23 +30,46 @@ def close_db_connection():
         _local.db_path = None
 
 def get_db_connection() -> sqlite3.Connection:
-    """Returns a thread-safe SQLite connection with WAL mode enabled."""
+    """Returns a thread-safe SQLite connection with WAL mode enabled, with serverless fallback."""
     db_path = Path(config.ADMIN_DB_PATH)
     if hasattr(_local, "conn") and _local.conn is not None:
         if getattr(_local, "db_path", None) == str(db_path):
             return _local.conn
         close_db_connection()
 
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(
-        str(db_path),
-        check_same_thread=False,
-        timeout=30.0
-    )
-    conn.row_factory = sqlite3.Row
-    # Enable WAL mode for high concurrency
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA busy_timeout=5000;")
+    target_path = db_path
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+    except (OSError, PermissionError):
+        target_path = Path("/tmp/prism_admin.db")
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # If running on ephemeral /tmp and seed DB exists, copy seed data on initial load
+    seed_db = config.DATA_DIR / "prism_admin.db"
+    if str(target_path).startswith("/tmp") and seed_db.exists() and not target_path.exists():
+        try:
+            import shutil
+            shutil.copy2(str(seed_db), str(target_path))
+        except Exception:
+            pass
+
+    try:
+        conn = sqlite3.connect(
+            str(target_path),
+            check_same_thread=False,
+            timeout=30.0
+        )
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("PRAGMA journal_mode=WAL;")
+        except sqlite3.OperationalError:
+            pass
+        conn.execute("PRAGMA busy_timeout=5000;")
+    except Exception as err:
+        print(f"[PRISM Admin] Database fallback to in-memory SQLite: {err}")
+        conn = sqlite3.connect(":memory:", check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+
     _local.conn = conn
     _local.db_path = str(db_path)
     return _local.conn

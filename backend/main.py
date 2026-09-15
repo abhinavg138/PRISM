@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from backend.config import API_HOST, API_PORT, CORS_ORIGINS
+from backend.config import API_HOST, API_PORT, CORS_ORIGINS, IS_PRODUCTION
 from backend.repositories.paimana_repository import paimana_repository
 from backend.routes import routers
 
@@ -31,10 +31,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for local development across multiple dev ports (e.g. 5173, 3000, 8000)
+# Enable CORS for local development and production domains (including Vercel deployment domains)
+cors_origin_regex = r"^https:\/\/.*\.vercel\.app$" if IS_PRODUCTION else None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

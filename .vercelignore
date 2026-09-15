@@ -1,0 +1,12 @@
+.venv
+venv
+.pytest_cache
+backend/tests
+scratch
+__pycache__
+*.pyc
+.git
+.github
+ml/artifacts
+data/prism_admin.db-wal
+data/prism_admin.db-shm

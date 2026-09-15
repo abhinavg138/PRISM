@@ -365,7 +365,7 @@ export async function renderSectorAnalytics() {
           <div class="flex items-start justify-between gap-4 mb-3">
             <div class="flex items-start gap-3">
               <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-                <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                <i data-lucide="line-chart" class="w-4 h-4"></i>
               </div>
               <div>
                 <h2 id="sector-capital-title" class="text-sm sm:text-base font-bold text-slate-900 leading-snug">Capital Allocation by Sector (Top 8)</h2>
@@ -385,11 +385,11 @@ export async function renderSectorAnalytics() {
           <!-- Chart Custom Legend -->
           <div class="flex items-center justify-center gap-6 text-xs text-slate-600 mb-3 pt-1">
             <div class="flex items-center gap-2">
-              <span class="w-3.5 h-3 rounded-xs bg-[#2563eb]"></span>
+              <span class="inline-flex items-center"><span class="w-2.5 h-0.5 bg-[#2563eb]"></span><span class="w-2 h-2 rounded-full bg-[#2563eb] border border-white -mx-0.5"></span><span class="w-2.5 h-0.5 bg-[#2563eb]"></span></span>
               <span class="font-medium text-slate-700">Revised Sanctioned Budget (₹ Cr)</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="w-3.5 h-3 rounded-xs bg-[#10b981]"></span>
+              <span class="inline-flex items-center"><span class="w-2.5 h-0.5 bg-[#10b981]"></span><span class="w-2 h-2 rounded-full bg-[#10b981] border border-white -mx-0.5"></span><span class="w-2.5 h-0.5 bg-[#10b981]"></span></span>
               <span class="font-medium text-slate-700">Cumulative Expenditure (₹ Cr)</span>
             </div>
           </div>
@@ -563,7 +563,7 @@ function initDonutCharts(riskCounts, priorityCounts, totalProjects) {
 }
 
 /**
- * Render or update Capital Allocation by Sector Chart
+ * Render or update Capital Allocation by Sector Chart (Line Chart)
  */
 function renderSectorCapitalChart(sectorStats, totalPortfolioBudget) {
   if (!window.Chart) return;
@@ -597,62 +597,55 @@ function renderSectorCapitalChart(sectorStats, totalPortfolioBudget) {
     calloutTextEl.textContent = `${label} account for ${pctOfTotal}% of total sanctioned outlay (₹${Math.round(selectedBudget).toLocaleString('en-IN')} Cr).`;
   }
 
-  // Value Labels inline plugin for vertical bars
-  const barValueLabelsPlugin = {
-    id: 'sectorBarValueLabels',
-    afterDatasetsDraw(chart) {
-      const { ctx, scales: { y } } = chart;
-      ctx.save();
-      ctx.font = '600 8.5px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-
-      chart.data.datasets.forEach((dataset, datasetIndex) => {
-        const meta = chart.getDatasetMeta(datasetIndex);
-        if (meta.hidden) return;
-
-        meta.data.forEach((element, index) => {
-          const val = dataset.data[index];
-          if (val == null || val <= 0) return;
-          
-          let displayVal = `₹${Math.round(val).toLocaleString('en-IN')}`;
-          if (val >= 100000) {
-            displayVal = `₹${(val / 1000).toFixed(0)}k`;
-          }
-
-          ctx.fillStyle = datasetIndex === 0 ? '#1d4ed8' : '#047857';
-          ctx.fillText(displayVal, element.x, element.y - 3);
-        });
-      });
-      ctx.restore();
-    }
+  // Sector name formatter for clean X-axis labels
+  const formatSectorLabel = (name) => {
+    const abbreviations = {
+      'Road Transport & Highways': 'Road Transport',
+      'Urban Affairs & Metro': 'Urban & Metro',
+      'Steel & Heavy Industry': 'Steel & Industry',
+      'Telecommunications': 'Telecom',
+      'Other Infrastructure': 'Other Infra'
+    };
+    if (abbreviations[name]) return abbreviations[name];
+    return name.length > 15 ? name.slice(0, 14) + '…' : name;
   };
 
   if (chartInstances.capital) chartInstances.capital.destroy();
 
   chartInstances.capital = new window.Chart(canvas.getContext('2d'), {
-    type: 'bar',
+    type: 'line',
     data: {
-      labels: selectedSectors.map(s => {
-        const name = s.sector || '';
-        return name.length > 14 ? name.slice(0, 13) + '…' : name;
-      }),
+      labels: selectedSectors.map(s => formatSectorLabel(s.sector || '')),
       datasets: [
         {
           label: 'Revised Sanctioned Budget (₹ Cr)',
           data: selectedSectors.map(s => s.totalBudgetCr || 0),
-          backgroundColor: '#2563eb',
-          borderRadius: 3,
-          barPercentage: 0.7,
-          categoryPercentage: 0.8
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.08)',
+          borderWidth: 2.5,
+          tension: 0.25,
+          fill: true,
+          pointRadius: 4.5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#2563eb',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointHitRadius: 10
         },
         {
           label: 'Cumulative Expenditure (₹ Cr)',
           data: selectedSectors.map(s => s.totalExpenditureCr || 0),
-          backgroundColor: '#10b981',
-          borderRadius: 3,
-          barPercentage: 0.7,
-          categoryPercentage: 0.8
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.08)',
+          borderWidth: 2.5,
+          tension: 0.25,
+          fill: true,
+          pointRadius: 4.5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#10b981',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointHitRadius: 10
         }
       ]
     },
@@ -665,19 +658,22 @@ function renderSectorCapitalChart(sectorStats, totalPortfolioBudget) {
       },
       scales: {
         x: {
-          grid: { display: false },
+          grid: {
+            display: false
+          },
           ticks: {
-            font: { size: 9.5, family: 'Inter' },
+            font: { size: 9.5, family: 'Inter, sans-serif' },
             color: '#475569',
             maxRotation: 25,
-            minRotation: 0
+            minRotation: 0,
+            autoSkip: false
           }
         },
         y: {
           beginAtZero: true,
           grid: { color: '#f1f5f9' },
           ticks: {
-            font: { size: 9, family: 'Inter' },
+            font: { size: 9, family: 'Inter, sans-serif' },
             color: '#64748b',
             callback: (v) => `₹${(v >= 1000 ? (v / 1000).toLocaleString() + 'k' : v)}`
           }
@@ -687,12 +683,15 @@ function renderSectorCapitalChart(sectorStats, totalPortfolioBudget) {
         legend: { display: false },
         tooltip: {
           backgroundColor: '#0f172a',
-          titleFont: { size: 12, weight: 'bold' },
-          bodyFont: { size: 11 },
+          titleFont: { size: 12, weight: 'bold', family: 'Inter, sans-serif' },
+          bodyFont: { size: 11, family: 'Inter, sans-serif' },
           padding: 10,
           cornerRadius: 8,
+          usePointStyle: true,
+          boxPadding: 4,
           callbacks: {
             title: (items) => {
+              if (!items.length) return '';
               const idx = items[0].dataIndex;
               return selectedSectors[idx]?.sector || '';
             },
@@ -702,15 +701,14 @@ function renderSectorCapitalChart(sectorStats, totalPortfolioBudget) {
               const sec = selectedSectors[idx];
               if (ctx.datasetIndex === 1 && sec && sec.totalBudgetCr > 0) {
                 const expPct = ((val / sec.totalBudgetCr) * 100).toFixed(1);
-                return ` ${ctx.dataset.label}: ₹${val.toLocaleString('en-IN')} Cr (${expPct}% of Budget)`;
+                return ` ${ctx.dataset.label}: ₹${Math.round(val).toLocaleString('en-IN')} Cr (${expPct}% of Budget)`;
               }
-              return ` ${ctx.dataset.label}: ₹${val.toLocaleString('en-IN')} Cr`;
+              return ` ${ctx.dataset.label}: ₹${Math.round(val).toLocaleString('en-IN')} Cr`;
             }
           }
         }
       }
-    },
-    plugins: [barValueLabelsPlugin]
+    }
   });
 }
 

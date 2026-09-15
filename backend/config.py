@@ -20,12 +20,18 @@ CSV_PATH = str(DATA_DIR / "PRISM_ML_features_v1.csv")
 
 # Environment & CORS configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+IS_PRODUCTION = ENVIRONMENT == "production"
+IS_VERCEL = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
+# App URL
+APP_URL = os.getenv("APP_URL", f"http://localhost:{API_PORT}")
+
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
 if allowed_origins_env:
     CORS_ORIGINS = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
-elif ENVIRONMENT == "production":
+elif IS_PRODUCTION:
     CORS_ORIGINS = [
+        APP_URL,
         f"http://localhost:{API_PORT}",
         f"http://127.0.0.1:{API_PORT}",
         "http://localhost:3000",
@@ -41,12 +47,7 @@ else:
         "http://127.0.0.1:3000",
         "*"
     ]
-
-# Environment checks
-IS_PRODUCTION = ENVIRONMENT == "production"
-
-# App URL
-APP_URL = os.getenv("APP_URL", f"http://localhost:{API_PORT}")
+CORS_ORIGINS = list(dict.fromkeys([o for o in CORS_ORIGINS if o]))
 
 # Admin Panel Configuration:
 # In production, require explicit environment configuration (do not ship working default credentials or secret).
@@ -55,6 +56,7 @@ ADMIN_USERNAME = os.getenv("PRISM_ADMIN_USERNAME", "" if IS_PRODUCTION else "adm
 ADMIN_PASSWORD = os.getenv("PRISM_ADMIN_PASSWORD", "" if IS_PRODUCTION else "prismadmin2026")
 ADMIN_SECRET_KEY = os.getenv("PRISM_ADMIN_SECRET", "" if IS_PRODUCTION else "prism-secret-key-dev-local")
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true" if IS_PRODUCTION else "false").lower() == "true"
-ADMIN_DB_PATH = os.getenv("PRISM_ADMIN_DB_PATH", str(DATA_DIR / "prism_admin.db"))
+default_admin_db_path = "/tmp/prism_admin.db" if IS_VERCEL else str(DATA_DIR / "prism_admin.db")
+ADMIN_DB_PATH = os.getenv("PRISM_ADMIN_DB_PATH", default_admin_db_path)
 
 

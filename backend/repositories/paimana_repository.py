@@ -2,6 +2,7 @@ import math
 import json
 import os
 import re
+import threading
 from pathlib import Path
 from typing import List, Dict, Optional, Set, Any, Tuple
 import pandas as pd
@@ -153,12 +154,19 @@ class PaimanaRepository:
         self.agencies_set: Set[str] = set()
         self.sectors_set: Set[str] = set()
         self.months_set: Set[str] = set()
+        self._load_lock = threading.Lock()
         self.is_loaded: bool = False
 
     def load(self, force: bool = False) -> None:
         if self.is_loaded and not force:
             return
 
+        with self._load_lock:
+            if self.is_loaded and not force:
+                return
+            self._do_load()
+
+    def _do_load(self) -> None:
         loaded_rows: List[Dict[str, Any]] = []
 
         # Primary load: Excel workbook

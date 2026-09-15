@@ -25,6 +25,7 @@ An integrated, explainable project-monitoring platform transforming longitudinal
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started & Setup](#getting-started--setup)
+- [Vercel Deployment Guide](#vercel-deployment-guide)
 - [API Reference](#api-reference)
 - [Testing](#testing)
 - [Screenshots](#screenshots)
@@ -469,6 +470,36 @@ Simply double-click [`launch.bat`](file:///c:/PRISM/launch.bat) in the repositor
    * **PRISM Main Portal:** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
    * **Administrative Control Plane:** [http://127.0.0.1:8000/admin/login](http://127.0.0.1:8000/admin/login)
    * **Interactive OpenAPI Documentation:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+---
+
+## Vercel Deployment Guide
+
+PRISM is configured for zero-rebuild serverless deployment on Vercel's Python 3.12 Serverless Runtime using the root entrypoint [`app.py`](file:///c:/PRISM/app.py) and [`vercel.json`](file:///c:/PRISM/vercel.json).
+
+### 10-Step Deployment Checklist
+
+1. **Import Repository:** Go to [vercel.com/new](https://vercel.com/new) and import your GitHub repository (`abhinavg138/PRISM`, branch `main`).
+2. **Framework Preset:** Select **Other** (if Vercel does not automatically detect FastAPI/Python).
+3. **Root Directory:** Keep `./` (the repository root).
+4. **Configure Environment Variables:** In the Vercel project settings, add:
+   * `ENVIRONMENT`: `production`
+   * `SESSION_COOKIE_SECURE`: `true`
+   * `APP_URL`: `https://your-project.vercel.app` (replace with your assigned Vercel URL)
+   * `GEMINI_API_KEY`: *(Optional)* Your Google Gemini API key for Copilot grounded synthesis.
+   * `PRISM_ADMIN_USERNAME`: Custom production admin username.
+   * `PRISM_ADMIN_PASSWORD`: Custom production admin password.
+   * `PRISM_ADMIN_SECRET`: Long random secret string for HMAC session token signing.
+   * `ALLOWED_ORIGINS`: *(Optional)* Comma-separated list of allowed origins. Defaults to `APP_URL` and `https://*.vercel.app`.
+5. **Deploy:** Click **Deploy**. Vercel will install dependencies from `requirements.txt` and package the application bundle.
+6. **Verify `/`:** Open `https://your-project.vercel.app/` in your browser. Ensure the PRISM homepage and Early Warning Radar render immediately.
+7. **Verify `/api/health`:** Visit `https://your-project.vercel.app/api/health` and verify `"status": "operational"`, `"dataSource": "PAIMANA"`, and `totalProjectsMonitored: 2054`.
+8. **Verify Dashboard:** Confirm KPI counters, Sector cards, Priority Action Queue, and Project Directory table.
+9. **Verify Copilot:** Open the PRISM Copilot panel and submit a query (e.g., "List top critical projects").
+10. **Verify Admin Separately:** Navigate to `/admin/login`, authenticate with your configured admin credentials, and verify project inspection and audit logging.
+
+> [!IMPORTANT]
+> **Vercel Serverless Persistence Note:** Vercel serverless functions run in ephemeral, stateless execution environments. In PRISM, the SQLite database is automatically initialized and backed up to `/tmp/prism_admin.db` with an in-memory fallback to ensure the application never crashes during demonstrations. However, `/tmp` storage is ephemeral and does not provide durable production persistence across cold restarts. For permanent production database state, connect to an external managed database.
 
 ---
 
