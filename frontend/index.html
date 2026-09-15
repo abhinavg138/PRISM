@@ -14,6 +14,9 @@
     <!-- Tailwind CSS (Progressive enhancement CDN for utility classes) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+
     <!-- PRISM Source Stylesheets -->
     <link rel="stylesheet" href="/css/styles.css" />
     <link rel="stylesheet" href="/css/components.css" />
@@ -29,8 +32,8 @@
       <!-- Sidebar Brand Header -->
       <div class="sidebar-header p-4 border-b border-slate-100 flex items-center justify-between min-h-[64px]">
         <a href="/home" id="sidebar-brand-home-link" class="flex items-center gap-3 overflow-hidden group cursor-pointer" title="Return to PRISM Orientation (Home)">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0 group-hover:scale-105 transition-transform">
-            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          <div class="w-9 h-9 rounded-xl bg-slate-900/5 p-1 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-slate-200/60 shadow-xs">
+            <img src="/assets/riskiq-mark-transparent.png" alt="RiskIQ" class="w-7 h-7 object-contain" />
           </div>
           <div class="sidebar-brand-text">
             <div class="flex items-center gap-2">
@@ -126,6 +129,9 @@
             <button id="btn-sidebar-hamburger" class="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100" aria-label="Open navigation menu" title="Open Navigation Menu">
               <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
+            <a href="/home" class="md:hidden flex items-center shrink-0" title="PRISM Home">
+              <img src="/assets/riskiq-mark-transparent.png" alt="RiskIQ" class="w-7 h-7 object-contain" />
+            </a>
             <div>
               <div class="flex items-center gap-2">
                 <span id="header-view-title" class="text-sm sm:text-base font-black tracking-tight text-slate-900">Dashboard</span>

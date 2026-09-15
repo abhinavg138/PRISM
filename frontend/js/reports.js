@@ -33,10 +33,13 @@ export function openFlashReport() {
     <div class="printable-area">
       <!-- Report Header -->
       <div class="border-b-2 border-slate-900 pb-4 mb-4 flex justify-between items-start">
-        <div>
-          <div class="text-xs font-bold text-blue-700 uppercase tracking-widest">Government of India &bull; MoSPI &bull; SIH 2026</div>
-          <h1 class="text-xl font-black text-slate-900 mt-1">PRISM National Infrastructure Executive Flash Report</h1>
-          <div class="text-xs text-slate-500 mt-0.5">Automated Portfolio Risk Assessment & Intervention Directives</div>
+        <div class="flex items-start gap-3">
+          <img src="/assets/riskiq-logo-transparent.png" alt="RiskIQ Logo" class="w-14 h-auto object-contain mt-0.5 shrink-0" />
+          <div>
+            <div class="text-xs font-bold text-blue-700 uppercase tracking-widest">Government of India &bull; MoSPI &bull; SIH 2026</div>
+            <h1 class="text-xl font-black text-slate-900 mt-1">PRISM National Infrastructure Executive Flash Report</h1>
+            <div class="text-xs text-slate-500 mt-0.5">Automated Portfolio Risk Assessment & Intervention Directives</div>
+          </div>
         </div>
         <div class="text-right text-xs">
           <div class="font-mono font-bold text-slate-800">CYCLE: JUL-2026</div>
