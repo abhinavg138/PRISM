@@ -292,5 +292,8 @@ async function loadInitialData() {
 
 export function openProvenanceModal() {
   const modal = document.getElementById('provenance-modal');
-  if (modal) modal.classList.add('active');
+  if (modal) {
+    modal.classList.add('active');
+    renderIcons();
+  }
 }
