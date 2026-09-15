@@ -36,10 +36,10 @@ def test_delhi_state_partition_invariant():
 
 
 def test_delhi_dedicated_risk_distribution():
-    """Verify Delhi dedicated risk distribution: CRITICAL=0, HIGH=6, MODERATE=6, LOW=5."""
+    """Verify Delhi dedicated risk distribution: CRITICAL=0, HIGH=9, MODERATE=3, LOW=5."""
     partition = ProjectQueryService.get_state_partition("Delhi")
     assert partition is not None
     assert partition['dedicatedByRisk'].get("CRITICAL", 0) == 0
-    assert partition['dedicatedByRisk'].get("HIGH", 0) == 6
-    assert partition['dedicatedByRisk'].get("MODERATE", 0) == 6
+    assert partition['dedicatedByRisk'].get("HIGH", 0) == 9
+    assert partition['dedicatedByRisk'].get("MODERATE", 0) == 3
     assert partition['dedicatedByRisk'].get("LOW", 0) == 5

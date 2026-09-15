@@ -72,9 +72,9 @@ def calc_progress_velocity(obs: List[PaimanaObservation]) -> RiskIndicator:
     if avg_delta >= 5:
         norm_score = 0.0
     elif avg_delta >= 0:
-        norm_score = 75.0 - linear_norm(avg_delta, 0.0, 5.0) * 75.0 / 100.0
+        norm_score = 90.0 - linear_norm(avg_delta, 0.0, 5.0) * 0.90
     else:
-        norm_score = 75.0 + linear_norm(abs(avg_delta), 0.0, 2.0) * 25.0 / 100.0
+        norm_score = 90.0 + linear_norm(abs(avg_delta), 0.0, 2.0) * 0.10
     norm_score = clamp(norm_score, 0.0, 100.0)
 
     weight = 25
@@ -229,7 +229,7 @@ def calc_cost_escalation(obs: List[PaimanaObservation]) -> RiskIndicator:
             elif avg > latest.original_cost_cr * 0.01:
                 mom_penalty = 8.0
 
-    norm_score = clamp(linear_norm(overrun_pct, 0.0, 200.0) + mom_penalty, 0.0, 100.0)
+    norm_score = clamp(linear_norm(overrun_pct, 0.0, 80.0) + mom_penalty, 0.0, 100.0)
     weight = 15
     contribution = (norm_score * weight) / 100.0
     norm_score_int = js_round(norm_score)

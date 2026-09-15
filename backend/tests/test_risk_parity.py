@@ -9,10 +9,10 @@ from backend.services.risk_engine import PRISMRiskEngine
 
 
 def test_project_701396_risk():
-    """Project 701396 is a known canonical benchmark: score 81, CRITICAL tier."""
+    """Project 701396 is a known canonical benchmark: score 85, CRITICAL tier."""
     proj = paimana_repository.get_project_by_id("701396")
     assert proj is not None, "Project 701396 must exist in PAIMANA repository"
-    assert proj.riskScore == 81, f"Expected riskScore 81 for 701396, got {proj.riskScore}"
+    assert proj.riskScore == 85, f"Expected riskScore 85 for 701396, got {proj.riskScore}"
     assert proj.riskTier == "CRITICAL", f"Expected riskTier CRITICAL for 701396, got {proj.riskTier}"
 
 
@@ -43,5 +43,5 @@ def test_deterministic_repeatability():
 
     # All 10 assessments must be identical
     assert all(s == scores[0] for s in scores)
-    assert scores[0][0] == 81
+    assert scores[0][0] == 85
     assert scores[0][1] == "CRITICAL"

@@ -158,8 +158,8 @@ class TestSimulationEndpointCanonicalContract:
         data = res.json()
 
         assert data["projectId"] == "701396"
-        assert data["originalRiskScore"] == 81
-        assert data["simulatedRiskScore"] < 81
+        assert data["originalRiskScore"] == 85
+        assert data["simulatedRiskScore"] < 85
         assert data["riskScoreDelta"] < 0
         assert data["simulatedRiskTier"] in ("CRITICAL", "HIGH", "MODERATE", "LOW")
         assert data["simulatedPriorityScore"] is not None
@@ -247,7 +247,7 @@ class TestSliderPropagationIntoScenarioEngine:
         # 50%: expected deduction = (50 / 100) * 8.5 = 4.25 -> rounded in ScenarioEngine to 4.2
         p50 = SimulationParams(projectId="701396", weatherGeologicalMitigationLevel=50.0)
         res50 = ScenarioEngine.simulate(self.project, p50)
-        assert res50.simulatedRiskScore == 77
+        assert res50.simulatedRiskScore == 81
         assert res50.riskScoreDelta == -4.0
 
         geo_impact = next((i for i in res50.assumptionImpacts if "Geotechnical" in i.lever), None)
