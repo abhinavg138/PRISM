@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import { state, subscribe, notify, DEMO_USER_ROLES } from './state.js';
+import { state, subscribe, notify, DEMO_USER_ROLES, isDemoLoggedIn, clearDemoLogin, getDemoUser } from './state.js';
 import { api } from './api.js';
 import { renderIcons } from './utils.js';
 import { renderDashboard } from './dashboard.js';
@@ -24,6 +24,12 @@ window.prismApp = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Lightweight client-side gate for simulated demo portal
+  if (!isDemoLoggedIn() && !window.location.search.includes('guest=true') && !window.location.search.includes('bypass_login=true')) {
+    window.location.href = '/login';
+    return;
+  }
+
   initNavbar();
   initSubscribers();
   initProjectsView();
@@ -125,12 +131,16 @@ function initNavbar() {
     document.getElementById('provenance-modal')?.classList.remove('active');
   });
 
-  // 8. Role selector
+  // 8. Role selector & session identity
   const roleSelect = document.getElementById('user-role-select');
   if (roleSelect) {
     roleSelect.innerHTML = DEMO_USER_ROLES.map(r => `
       <option value="${r.id}">${r.name} (${r.accessLevel})</option>
     `).join('');
+
+    if (state.currentRole && state.currentRole.id) {
+      roleSelect.value = state.currentRole.id;
+    }
 
     roleSelect.addEventListener('change', (e) => {
       const selected = DEMO_USER_ROLES.find(r => r.id === e.target.value);
@@ -141,6 +151,29 @@ function initNavbar() {
       }
     });
   }
+
+  // 9. Simulated Session Sign Out
+  document.getElementById('btn-demo-signout')?.addEventListener('click', () => {
+    clearDemoLogin();
+    window.location.href = '/';
+  });
+
+  // 10. Back to Home Orientation Navigation (Brand wordmark & dedicated nav button)
+  function navigateToHome(e) {
+    if (e) e.preventDefault();
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      window.location.href = '/home';
+      return;
+    }
+    document.body.classList.add('page-navigating');
+    setTimeout(() => {
+      window.location.href = '/home';
+    }, 180);
+  }
+
+  document.getElementById('sidebar-brand-home-link')?.addEventListener('click', navigateToHome);
+  document.getElementById('nav-btn-home')?.addEventListener('click', navigateToHome);
 }
 
 function switchView(viewName) {
@@ -171,28 +204,47 @@ function switchView(viewName) {
     }
   });
 
-  // Toggle view containers
-  document.querySelectorAll('.view-section').forEach(sec => {
-    sec.classList.remove('active');
-  });
+  const targetSection = document.getElementById(`view-${viewName}`);
+  const currentActive = document.querySelector('.view-section.active');
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const activeSection = document.getElementById(`view-${viewName}`);
-  if (activeSection) {
-    activeSection.classList.add('active');
+  function activateTarget() {
+    document.querySelectorAll('.view-section').forEach(sec => {
+      sec.classList.remove('active', 'view-leaving', 'view-entering');
+    });
+
+    if (targetSection) {
+      targetSection.classList.add('active');
+      if (!prefersReducedMotion) {
+        targetSection.classList.add('view-entering');
+        setTimeout(() => {
+          targetSection.classList.remove('view-entering');
+        }, 180);
+      }
+    }
+
+    // Trigger view renderers
+    if (viewName === 'dashboard') {
+      renderDashboard();
+    } else if (viewName === 'projects') {
+      applyFiltersAndRender();
+    } else if (viewName === 'gis') {
+      renderGISMap();
+    } else if (viewName === 'analytics') {
+      renderSectorAnalytics();
+    }
+
+    renderIcons();
   }
 
-  // Trigger view renderers
-  if (viewName === 'dashboard') {
-    renderDashboard();
-  } else if (viewName === 'projects') {
-    applyFiltersAndRender();
-  } else if (viewName === 'gis') {
-    renderGISMap();
-  } else if (viewName === 'analytics') {
-    renderSectorAnalytics();
+  if (currentActive && currentActive !== targetSection && !prefersReducedMotion) {
+    currentActive.classList.add('view-leaving');
+    setTimeout(() => {
+      activateTarget();
+    }, 140);
+  } else {
+    activateTarget();
   }
-
-  renderIcons();
 }
 
 function initSubscribers() {

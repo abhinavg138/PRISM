@@ -13,10 +13,27 @@ export const DEMO_USER_ROLES = [
   { id: 'role-state', name: 'Chief Secretary (State Task Force)', department: 'State Infrastructure Coordination', accessLevel: 'State' }
 ];
 
+// Retrieve any previously saved demo session
+function getInitialRole() {
+  try {
+    const raw = localStorage.getItem('prism_demo_user');
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.roleId) {
+        const found = DEMO_USER_ROLES.find(r => r.id === data.roleId);
+        if (found) return found;
+      }
+    }
+  } catch (e) {
+    // Ignore storage parse error
+  }
+  return DEMO_USER_ROLES[0];
+}
+
 export const state = {
   // Navigation
   activeView: 'dashboard', // 'dashboard' | 'projects' | 'gis' | 'analytics'
-  currentRole: DEMO_USER_ROLES[0],
+  currentRole: getInitialRole(),
 
   // Datasets
   allProjects: [],
@@ -80,3 +97,37 @@ export function notify(event, payload) {
     }
   }
 }
+
+/**
+ * Demo Session Management Helpers
+ */
+export function isDemoLoggedIn() {
+  return localStorage.getItem('prism_logged_in') === 'true';
+}
+
+export function getDemoUser() {
+  try {
+    const raw = localStorage.getItem('prism_demo_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setDemoLogin(username, roleId) {
+  const role = DEMO_USER_ROLES.find(r => r.id === roleId) || DEMO_USER_ROLES[0];
+  state.currentRole = role;
+  localStorage.setItem('prism_logged_in', 'true');
+  localStorage.setItem('prism_demo_user', JSON.stringify({
+    username: username || 'demo_user',
+    roleId: role.id,
+    roleName: role.name,
+    timestamp: Date.now()
+  }));
+}
+
+export function clearDemoLogin() {
+  localStorage.removeItem('prism_logged_in');
+  localStorage.removeItem('prism_demo_user');
+}
+

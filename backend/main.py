@@ -90,13 +90,45 @@ if FRONTEND_DIR.exists():
     async def no_cache_static(request, call_next):
         response = await call_next(request)
         path = request.url.path
-        if path.startswith("/js/") or path.startswith("/css/") or path.startswith("/admin/") or path == "/":
+        if path.startswith("/js/") or path.startswith("/css/") or path.startswith("/admin/") or path in ["/", "/login", "/home", "/home.html", "/dashboard", "/index.html"]:
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
         return response
 
     @app.get("/")
+    async def serve_landing():
+        landing_file = FRONTEND_DIR / "landing.html"
+        if landing_file.exists():
+            return FileResponse(landing_file)
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/login")
+    async def serve_login():
+        login_file = FRONTEND_DIR / "login.html"
+        if login_file.exists():
+            return FileResponse(login_file)
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/home")
+    async def serve_home():
+        home_file = FRONTEND_DIR / "home.html"
+        if home_file.exists():
+            return FileResponse(home_file)
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/home.html")
+    async def serve_home_html():
+        home_file = FRONTEND_DIR / "home.html"
+        if home_file.exists():
+            return FileResponse(home_file)
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/dashboard")
+    async def serve_dashboard():
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/index.html")
     async def serve_index():
         return FileResponse(FRONTEND_DIR / "index.html")
 else:

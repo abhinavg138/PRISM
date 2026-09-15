@@ -263,12 +263,62 @@ button, input, select, textarea {
   transition: width 0.3s ease;
 }
 
-/* Views display toggle */
+/* Views display toggle & Smooth View Transitions */
 .view-section {
   display: none;
 }
+
 .view-section.active {
   display: block;
+}
+
+.view-section.active.view-entering {
+  animation: viewEnter 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.view-section.view-leaving {
+  display: block !important;
+  animation: viewLeave 0.14s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes viewEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes viewLeave {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Full page cross-navigation fade (Home <-> Dashboard) */
+body.page-navigating {
+  opacity: 0 !important;
+  transition: opacity 0.18s ease-out !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-section,
+  .view-section.active,
+  .view-section.view-leaving {
+    animation: none !important;
+    transition: none !important;
+  }
+  body.page-navigating {
+    transition: none !important;
+  }
 }
 
 /* ============================================================================
@@ -492,4 +542,158 @@ body.sidebar-collapsed .sidebar-header {
     pointer-events: none;
   }
 }
+
+/* ==========================================================================
+   PRISM Minimal Landing Page (v4) — Wordmark & Light Refraction Transition
+   ========================================================================== */
+.prism-hero-wordmark {
+  background-size: 200% auto;
+  background-position: 0% center;
+  transition: background-position 0.5s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
+  will-change: transform, opacity, filter;
+}
+
+#prism-hero-trigger:hover .prism-hero-wordmark {
+  background-position: 100% center;
+  filter: drop-shadow(0 12px 30px rgba(37, 99, 235, 0.2));
+}
+
+/* Subtle atmospheric glow behind the wordmark */
+.prism-ambient-glow {
+  position: absolute;
+  inset: -15%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.12) 0%, rgba(79, 70, 229, 0.08) 50%, transparent 75%);
+  filter: blur(40px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  transform: scale(0.9);
+  z-index: -1;
+}
+
+#prism-hero-trigger:hover .prism-ambient-glow {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+/* Prism Spectral Light Refraction Flare */
+.prism-refraction-flare {
+  position: absolute;
+  inset: -30% -50%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(239, 68, 68, 0.45) 38%,
+    rgba(245, 158, 11, 0.55) 44%,
+    rgba(16, 185, 129, 0.55) 50%,
+    rgba(37, 99, 235, 0.65) 56%,
+    rgba(99, 102, 241, 0.6) 62%,
+    rgba(168, 85, 247, 0.5) 68%,
+    transparent 76%
+  );
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  transform: translateX(-80%) rotate(4deg);
+}
+
+/* Transition active state on body */
+body.prism-transitioning {
+  pointer-events: none;
+  user-select: none;
+}
+
+body.prism-transitioning .prism-refraction-flare {
+  opacity: 1;
+  animation: prismSpectralSweep 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+body.prism-transitioning #prism-hero-trigger {
+  animation: prismWordmarkExit 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes prismSpectralSweep {
+  0% {
+    transform: translateX(-75%) scaleY(0.7) rotate(2deg);
+    opacity: 0.1;
+  }
+  35% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(75%) scaleY(1.4) rotate(7deg);
+    opacity: 0;
+  }
+}
+
+@keyframes prismWordmarkExit {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0px);
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.85;
+    filter: blur(2px);
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+    filter: blur(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-hero-wordmark,
+  .prism-ambient-glow,
+  body.prism-transitioning #prism-hero-trigger,
+  body.prism-transitioning .prism-refraction-flare {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   PRISM Animated Multilingual Greeting (v5)
+   ========================================================================== */
+.multilingual-greeting {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans',
+    'Noto Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Bengali', 'Noto Sans Telugu',
+    'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Gujarati', 'Noto Sans Gurmukhi',
+    'Noto Sans Oriya', 'Noto Sans Arabic', 'Noto Sans SC', 'Noto Sans JP', sans-serif;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  overflow: hidden;
+}
+
+.multilingual-greeting.greeting-transitioning {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.multilingual-greeting .greeting-text {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  color: var(--color-slate-900);
+}
+
+.multilingual-greeting .greeting-lang {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-slate-400);
+  background-color: var(--color-slate-100);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+  margin-left: 0.35rem;
+}
+
+
 

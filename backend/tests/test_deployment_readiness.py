@@ -10,6 +10,33 @@ def test_root_index_html():
     assert "<title>" in res.text
     assert "PRISM" in res.text
 
+def test_login_and_dashboard_routes():
+    res_login = client.get("/login")
+    assert res_login.status_code == 200
+    assert "PRISM" in res_login.text
+    assert "multilingual-greeting" in res_login.text
+
+    res_dash = client.get("/dashboard")
+    assert res_dash.status_code == 200
+    assert "PRISM" in res_dash.text
+    assert "user-role-select" in res_dash.text
+
+    res_login_js = client.get("/js/login.js")
+    assert res_login_js.status_code == 200
+
+    res_greeting_js = client.get("/js/greeting.js")
+    assert res_greeting_js.status_code == 200
+
+def test_home_orientation_route():
+    res_home = client.get("/home")
+    assert res_home.status_code == 200
+    assert "What is PRISM?" in res_home.text
+    assert "btn-enter-dashboard" in res_home.text
+
+    res_home_html = client.get("/home.html")
+    assert res_home_html.status_code == 200
+    assert "What is PRISM?" in res_home_html.text
+
 def test_static_files():
     res_css = client.get("/css/styles.css")
     assert res_css.status_code == 200

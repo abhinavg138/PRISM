@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PRISM — Welcome &amp; Orientation</title>
+    <meta
+      name="description"
+      content="Welcome and orientation for PRISM Predictive Risk Intelligence platform. Smart India Hackathon 2026."
+    />
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tailwind CSS (CDN progressive enhancement) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- PRISM Base Stylesheets -->
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+
+    <!-- Lucide Icons -->
+    <script src="/assets/lucide.min.js"></script>
+
+    <style>
+      /* Staggered entrance animations */
+      .anim-fade-up {
+        opacity: 0;
+        transform: translateY(14px);
+        animation: homeFadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .anim-delay-1 { animation-delay: 0.05s; }
+      .anim-delay-2 { animation-delay: 0.15s; }
+      .anim-delay-3 { animation-delay: 0.25s; }
+      .anim-delay-4 { animation-delay: 0.35s; }
+      .anim-delay-5 { animation-delay: 0.45s; }
+      .anim-delay-6 { animation-delay: 0.55s; }
+
+      @keyframes homeFadeUp {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Page exit fade */
+      body.home-navigating {
+        opacity: 0;
+        transition: opacity 0.2s ease-out;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .anim-fade-up {
+          animation: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        body.home-navigating {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-full bg-slate-50 text-slate-800 antialiased font-sans flex flex-col justify-between p-4 sm:p-8 selection:bg-blue-100 selection:text-blue-900">
+    <!-- Top Bar with Wordmark & Skip Shortcut -->
+    <header class="max-w-5xl mx-auto w-full flex items-center justify-between py-2 anim-fade-up anim-delay-1">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-xs">
+          <i data-lucide="shield-alert" class="w-4 h-4"></i>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-base font-black tracking-tight text-slate-900">PRISM</span>
+          <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-bold">SIH26103</span>
+        </div>
+      </div>
+
+      <a
+        href="/dashboard"
+        id="btn-skip-intro"
+        class="text-xs font-semibold text-slate-500 hover:text-blue-700 flex items-center gap-1 py-1.5 px-3 rounded-lg hover:bg-slate-100 transition"
+      >
+        <span>Skip intro</span>
+        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+      </a>
+    </header>
+
+    <!-- Main Orientation Card Container -->
+    <main class="max-w-4xl mx-auto w-full my-auto py-8">
+      <!-- Headline & Purpose -->
+      <div class="text-center max-w-2xl mx-auto mb-10 anim-fade-up anim-delay-2">
+        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full">
+          Platform Orientation
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
+          What is PRISM?
+        </h1>
+        <p class="text-sm sm:text-base text-slate-600 mt-2 leading-relaxed">
+          Predictive Risk Intelligence &amp; Smart Monitoring for India's national infrastructure investments under MoSPI PAIMANA.
+        </p>
+      </div>
+
+      <!-- 4 Quick-Read Core Pillars (Readable in under 15 seconds) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-10">
+        <!-- Card 1: What it is -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all anim-fade-up anim-delay-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+            <i data-lucide="cpu" class="w-5 h-5"></i>
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">01 &bull; Core Engine</div>
+          <h2 class="text-sm font-bold text-slate-900 mb-1.5">Deterministic Risk Scoring</h2>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Evaluates major projects on a calibrated 0–100 scale using 6 objective mathematical indicators, with zero black-box fabrication.
+          </p>
+        </div>
+
+        <!-- Card 2: Why it's needed -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs hover:border-red-300 hover:shadow-sm transition-all anim-fade-up anim-delay-4">
+          <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mb-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-red-600 mb-1">02 &bull; Problem Solved</div>
+          <h2 class="text-sm font-bold text-slate-900 mb-1.5">Proactive Early Warnings</h2>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Quarterly reporting catches project delays only after deadlines expire. PRISM detects stagnation and spend disparities months in advance.
+          </p>
+        </div>
+
+        <!-- Card 3: What it can do -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs hover:border-indigo-300 hover:shadow-sm transition-all anim-fade-up anim-delay-5">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-1">03 &bull; Capabilities</div>
+          <h2 class="text-sm font-bold text-slate-900 mb-1.5">Multi-Tier Analytics &amp; AI</h2>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Provides 9-sector rankings, state GIS risk maps, physical-vs-spend gap analyses, and an anti-hallucination grounded AI copilot.
+          </p>
+        </div>
+
+        <!-- Card 4: Who it's for -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs hover:border-emerald-300 hover:shadow-sm transition-all anim-fade-up anim-delay-6">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+            <i data-lucide="users" class="w-5 h-5"></i>
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">04 &bull; Target Users</div>
+          <h2 class="text-sm font-bold text-slate-900 mb-1.5">Cabinet &amp; Ministry Oversight</h2>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Built for MoSPI directors, Cabinet Secretariat Project Monitoring Groups (PMG), and infrastructure agency executives.
+          </p>
+        </div>
+      </div>
+
+      <!-- Bottom Action CTA -->
+      <div class="text-center anim-fade-up anim-delay-6">
+        <a
+          href="/dashboard"
+          id="btn-enter-dashboard"
+          class="inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-800 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
+        >
+          <span>Go to Dashboard</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+        <div class="text-[11px] text-slate-400 mt-2.5">
+          Prototype demonstration &bull; All PAIMANA datasets preloaded
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer Attribution -->
+    <footer class="max-w-5xl mx-auto w-full text-center py-2 text-[11px] text-slate-400 border-t border-slate-200/60 anim-fade-up anim-delay-6">
+      MoSPI PAIMANA Infrastructure Intelligence &bull; Smart India Hackathon Prototype (SIH26103)
+    </footer>
+
+    <!-- Interactive Navigation Scripts -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+
+        // Smooth exit transition handler
+        function navigateToDashboard(e) {
+          if (e) e.preventDefault();
+          const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (prefersReducedMotion) {
+            window.location.href = '/dashboard';
+            return;
+          }
+
+          document.body.classList.add('home-navigating');
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 180);
+        }
+
+        document.getElementById('btn-enter-dashboard')?.addEventListener('click', navigateToDashboard);
+        document.getElementById('btn-skip-intro')?.addEventListener('click', navigateToDashboard);
+      });
+    </script>
+  </body>
+</html>
