@@ -447,13 +447,12 @@ def resolve_query_factual_context(
             refuse_score_calc=True,
             summary_text="""The PRISM Risk Engine is the sole authoritative source of project risk intelligence.
 
-PRISM computes risk scores deterministically using 6 evidence-based indicators derived from longitudinal MoSPI PAIMANA monthly observations (April–July 2026):
+PRISM computes risk scores deterministically using 5 evidence-based indicators derived from longitudinal MoSPI PAIMANA monthly observations (April–July 2026):
 1. **Progress Velocity (25% weight)**: Month-over-month rate of physical advancement.
 2. **Progress Stagnation (20% weight)**: Consecutive reporting intervals with ≤ 0.5 pp progress.
 3. **Schedule Pressure (20% weight)**: Time remaining until revised target completion.
-4. **Cost Escalation (15% weight)**: Percentage cost overrun against original sanction.
-5. **Physical-Financial Divergence (10% weight)**: Expenditure percentage exceeding physical progress.
-6. **Deteriorating Trend (10% weight)**: Negative deceleration comparing earlier vs recent velocities.
+4. **Cost Escalation (20% weight)**: Percentage cost overrun against original sanction.
+5. **Physical-Financial Divergence (15% weight)**: Expenditure percentage exceeding physical progress.
 
 Under public governance guidelines (MoSPI/CAG/Cabinet Secretariat), AI models are strictly prohibited from modifying, overriding, inventing, or fabricating deterministic project scores. Risk scores can only change through officially certified project progress and expenditure updates.""",
             grounded_projects=[active_project] if active_project else [],
@@ -467,13 +466,12 @@ Under public governance guidelines (MoSPI/CAG/Cabinet Secretariat), AI models ar
     ]):
         return FactualContext(
             intent='RISK_INDICATORS_METHODOLOGY',
-            summary_text="""The PRISM Risk Engine evaluates every project using 6 deterministic indicators (scale 0–100):
+            summary_text="""The PRISM Risk Engine evaluates every project using 5 deterministic indicators (scale 0–100):
 - **Progress Velocity (Weight: 25)**: Evaluates whether physical advancement is keeping pace with project targets.
 - **Progress Stagnation (Weight: 20)**: Flags chronic project freezes where progress changes by ≤ 0.5 pp over consecutive months.
 - **Schedule Pressure (Weight: 20)**: Measures the gap between elapsed project time and remaining work before the revised target date.
-- **Cost Escalation (Weight: 15)**: Reflects total cost growth relative to original approved budget.
-- **Physical-Financial Divergence (Weight: 10)**: Identifies projects where capital drawdowns heavily outpace actual on-ground physical delivery.
-- **Deteriorating Trend (Weight: 10)**: Compares early observation velocity against recent observation velocity to detect slowing momentum.
+- **Cost Escalation (Weight: 20)**: Reflects total cost growth relative to original approved budget.
+- **Physical-Financial Divergence (Weight: 15)**: Identifies projects where capital drawdowns heavily outpace actual on-ground physical delivery.
 
 Risk Tiers:
 - **CRITICAL**: 80–100 (Immediate PMG escalation)
@@ -742,7 +740,7 @@ Monthly breakdown:
     ]) or ('sector' in q and 'average risk' in q)
     is_stagnant_query = any(k in q for k in ['stagnant', 'stagnation', 'stalled'])
     is_intervention_priority = any(k in q for k in ['need intervention first', 'intervention first', 'attention first', 'priority queue', 'prioritized projects'])
-    is_healthy_pace = any(k in q for k in ['good pace', 'best pace', 'on track', 'healthy pace'])
+    is_healthy_pace = any(k in q for k in ['good pace', 'best pace', 'on track', 'healthy pace', 'performing well', 'healthy', 'on schedule', 'best performing'])
 
     if parsed['is_structured'] and not is_pure_state_overview and not is_sector_overview and not is_stagnant_query and not is_intervention_priority and not is_healthy_pace:
         res = ProjectQueryService.query_structured(
@@ -910,6 +908,68 @@ Top prioritized projects in {matched_state} requiring administrative interventio
                 total_matching=res['totalMatching']
             )
 
+        # 4B.5 State Healthy Pace Portfolio
+        if is_healthy_pace:
+            healthy_res = ProjectQueryService.get_healthy_pace_projects(state=matched_state, limit=5)
+            canon_st = matched_state
+            part = ProjectQueryService.get_state_partition(matched_state)
+            if part:
+                canon_st = part['canonicalState']
+
+            if healthy_res['totalHealthy'] == 0:
+                return FactualContext(
+                    intent='HEALTHY_PACE_PORTFOLIO',
+                    summary_text=f"""PRISM Verified Healthy Pace Assessment for **{canon_st}**:
+There are currently **0 projects** in {canon_st} that strictly satisfy PRISM's healthy execution standards:
+1. **PRISM Risk Tier LOW** (Risk Index 0–39)
+2. **Zero Schedule Slippage** (0 recorded overrun months)
+3. **Zero Cost Escalation** (Within original sanction)
+4. **Verified Physical Progress** (> 0%)
+
+> ⚠️ **Qualification Rule:** In infrastructure project monitoring, high physical completion alone (e.g. 98%) does NOT equal "good pace" if a project suffered multi-year delays or extensive budget revisions. Only projects executing on-time and within-budget qualify.
+
+No projects in {canon_st} currently meet all four strict healthy-pace criteria.""",
+                    grounded_projects=[],
+                    suggested_questions=[
+                        f"Show high-risk projects in {canon_st}",
+                        f"Show all projects in {canon_st}",
+                        "Show projects with good pace nationally"
+                    ],
+                    total_matching=0
+                )
+
+            list_text = '\n\n'.join([
+                f"{i + 1}. **{p.name}** (`{p.code or p.id}`)\n"
+                f"   - **PRISM Risk Index**: **{p.riskScore}/100** [{p.riskTier}]\n"
+                f"   - **Physical Progress**: **{p.physicalProgressPercent}%**\n"
+                f"   - **Schedule Overrun**: 0 months (Strictly On Schedule)\n"
+                f"   - **Cost Overrun**: 0% (Within Sanctioned Budget)\n"
+                f"   - **Sector & State**: {p.sector} • {p.state}"
+                for i, p in enumerate(healthy_res['projects'])
+            ])
+
+            return FactualContext(
+                intent='HEALTHY_PACE_PORTFOLIO',
+                summary_text=f"""PRISM Verified Healthy Pace Assessment for **{canon_st}**:
+In **{canon_st}**, exactly **{healthy_res['totalHealthy']} projects** strictly satisfy PRISM's healthy execution standards:
+1. **PRISM Risk Tier LOW** (Risk Index 0–39)
+2. **Zero Schedule Slippage** (0 recorded overrun months)
+3. **Zero Cost Escalation** (Within original sanction)
+4. **Verified Physical Progress** (> 0%)
+
+> ⚠️ **Qualification Rule:** In infrastructure project monitoring, high physical completion alone (e.g. 98%) does NOT equal "good pace" if a project suffered multi-year delays or extensive budget revisions. Only projects executing on-time and within-budget qualify.
+
+Top verified healthy-pace infrastructure projects in {canon_st}:
+{list_text}""",
+                grounded_projects=healthy_res['projects'],
+                suggested_questions=[
+                    f"Show high-risk projects in {canon_st}",
+                    f"Show all projects in {canon_st}",
+                    "Which projects have the highest risk?"
+                ],
+                total_matching=healthy_res['totalHealthy']
+            )
+
         # 4C. State General Summary
         partition = ProjectQueryService.get_state_partition(matched_state)
         if not partition:
@@ -959,7 +1019,7 @@ Top elevated-risk dedicated in-state projects:
         )
 
     # 5. Healthy / Good Pace Portfolio
-    if any(k in q for k in ['good pace', 'performing well', 'healthy', 'on schedule', 'best performing']):
+    if is_healthy_pace:
         healthy_res = ProjectQueryService.get_healthy_pace_projects(limit=5)
         list_text = '\n\n'.join([
             f"{i + 1}. **{p.name}** (`{p.code or p.id}`)\n"
@@ -1302,7 +1362,8 @@ Synthesize and explain this verified PAIMANA data directly in response to the us
                         groundedProjects=grounded_entities,
                         suggestedQuestions=factual.suggested_questions,
                         totalMatching=factual.total_matching or len(grounded_entities),
-                        displayedCount=len(grounded_entities)
+                        displayedCount=len(grounded_entities),
+                        intent=factual.intent
                     )
             except Exception as err:
                 print(f"[CopilotService] Gemini API call failed, using deterministic fallback: {err}")
@@ -1313,7 +1374,8 @@ Synthesize and explain this verified PAIMANA data directly in response to the us
             groundedProjects=grounded_entities,
             suggestedQuestions=factual.suggested_questions,
             totalMatching=factual.total_matching or len(grounded_entities),
-            displayedCount=len(grounded_entities)
+            displayedCount=len(grounded_entities),
+            intent=factual.intent
         )
 
     ask = chat

@@ -244,4 +244,3 @@ if (typeof window !== 'undefined') {
   window.formatCurrencyCr = formatCurrencyCr;
   window.formatPercent = formatPercent;
 }
-

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Copilot Regression Tests - Phase 3 Audit
 Tests the exact bug: HIGH Delhi -> LOW Delhi must return DIFFERENT (LOW) projects.
 Also covers all LOW/HIGH synonyms, conversation context carry-forward, and zero-result safety.
@@ -140,3 +140,29 @@ class TestZeroResults:
             assert tier == "LOW", (
                 f"REGRESSION: LOW-risk query returned {tier} — no HIGH/CRITICAL substitution allowed."
             )
+
+
+class TestHealthyPaceStateIntent:
+    """Validates fix for combined 'good pace' + state queries."""
+
+    def test_good_pace_delhi_returns_healthy_pace_portfolio(self):
+        resp = copilot_query("good pace projects in delhi")
+        assert resp.get("intent") == "HEALTHY_PACE_PORTFOLIO", (
+            f"Expected intent HEALTHY_PACE_PORTFOLIO, got {resp.get('intent')}"
+        )
+        projs = resp.get("groundedProjects", [])
+        assert projs, "Expected grounded projects for healthy pace in Delhi"
+        for p in projs:
+            assert p["riskTier"] == "LOW", f"Expected LOW risk tier, got {p['riskTier']}"
+        # Ensure it is NOT sorted highest-risk first
+        scores = [p["riskScore"] for p in projs]
+        assert scores != sorted(scores, reverse=True) or len(set(scores)) <= 1 or all(s < 40 for s in scores)
+
+    def test_plain_state_query_retains_state_summary(self):
+        """Plain query without good pace qualifier must still return top-risk STATE_SUMMARY."""
+        resp = copilot_query("projects in delhi")
+        assert resp.get("intent") == "STATE_SUMMARY", (
+            f"Expected intent STATE_SUMMARY for plain state query, got {resp.get('intent')}"
+        )
+        tiers = grounded_tiers(resp)
+        assert "HIGH" in tiers or "CRITICAL" in tiers, "Expected high/critical projects in general state summary"

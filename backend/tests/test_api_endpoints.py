@@ -53,8 +53,8 @@ def test_projects_filter_delhi_high():
     res = client.get("/api/projects?state=Delhi&riskTier=HIGH")
     assert res.status_code == 200
     data = res.json()
-    assert data["totalCount"] == 9
-    assert len(data["projects"]) == 9
+    assert data["totalCount"] == 7
+    assert len(data["projects"]) == 7
 
 
 def test_project_by_id_endpoint():
@@ -62,7 +62,7 @@ def test_project_by_id_endpoint():
     assert res.status_code == 200
     data = res.json()
     assert data["id"] == "701396"
-    assert data["riskScore"] == 85
+    assert data["riskScore"] == 92
     assert data["riskTier"] == "CRITICAL"
 
 
@@ -94,9 +94,9 @@ def test_project_risk_endpoint():
     assert res.status_code == 200
     data = res.json()
     assert data["projectId"] == "701396"
-    assert data["riskScore"] == 85
+    assert data["riskScore"] == 92
     assert data["riskTier"] == "CRITICAL"
-    assert len(data["indicators"]) == 6
+    assert len(data["indicators"]) == 5
 
 
 def test_priorities_endpoint():
@@ -106,7 +106,7 @@ def test_priorities_endpoint():
     assert data["dataSource"] == "PAIMANA"
     assert "priorities" in data
     assert "p1Count" in data
-    assert data["p1Count"] == 566
+    assert data["p1Count"] == 540
     assert len(data["priorities"]) == 10
 
 
@@ -135,7 +135,7 @@ def test_sectors_endpoint():
     assert data["totalProjects"] == 2054
     water_sector = next((s for s in data["sectors"] if s["sector"] == "Water Resources"), None)
     assert water_sector is not None
-    assert water_sector["avgRiskScore"] == 61.7
+    assert water_sector["avgRiskScore"] == 62.5
 
 
 def test_analytics_endpoint():
@@ -166,7 +166,7 @@ def test_simulation_simulate():
     assert res.status_code == 200
     data = res.json()
     assert data["projectId"] == "701396"
-    assert data["originalRiskScore"] == 85
+    assert data["originalRiskScore"] == 92
     assert "officerBrief" in data
     assert "disclaimer" in data["officerBrief"]
     assert "Illustrative Policy Scenario" in data["officerBrief"]["disclaimer"]

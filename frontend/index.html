@@ -145,11 +145,25 @@
 
           <!-- Right Header Controls: Role Switcher & Admin Portal Link -->
           <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Role Scope Indicator (shown when role-scoped) -->
+            <div id="role-scope-indicator" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs font-medium">
+              <span>Viewing: <strong id="role-scope-text">Railways only</strong></span>
+              <button id="btn-reset-role-scope" class="ml-1 text-blue-500 hover:text-blue-900 cursor-pointer font-bold leading-none" title="Reset to MoSPI National Oversight">&times;</button>
+            </div>
+
             <!-- Role Switcher -->
             <div class="flex items-center gap-1.5 text-xs bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg" title="Simulated Administrative Role Profile">
               <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-500"></i>
               <select id="user-role-select" class="bg-transparent font-medium text-slate-800 text-xs border-none focus:outline-none cursor-pointer" aria-label="Select administrative role">
                 <!-- Injected by app.js -->
+              </select>
+            </div>
+
+            <!-- State Selector (shown only for Chief Secretary / State Task Force) -->
+            <div id="user-state-container" class="hidden items-center gap-1.5 text-xs bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg" title="Select State Jurisdiction for State Task Force">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500"></i>
+              <select id="user-state-select" class="bg-transparent font-medium text-slate-800 text-xs border-none focus:outline-none cursor-pointer" aria-label="Select state jurisdiction">
+                <option value="">-- Select State --</option>
               </select>
             </div>
 
@@ -160,9 +174,9 @@
             </button>
 
             <!-- Admin Link -->
-            <a href="/admin" target="_blank" class="text-xs text-slate-500 hover:text-blue-700 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-blue-200 hover:bg-blue-50/50 transition hidden lg:inline-flex items-center gap-1.5 font-medium" title="Open PRISM Admin Operations Plane">
+            <a href="/admin" target="_blank" class="text-xs text-slate-500 hover:text-blue-700 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-blue-200 hover:bg-blue-50/50 transition hidden lg:inline-flex items-center gap-1.5 font-medium" title="Open PRISM Admin Operations Panel">
               <i data-lucide="settings" class="w-3.5 h-3.5"></i>
-              <span>Admin Plane</span>
+              <span>Admin Panel</span>
             </a>
           </div>
         </div>

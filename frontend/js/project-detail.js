@@ -116,14 +116,13 @@ function renderDossierContent(p, observations) {
     titleEl.textContent = p.name || `Project ${p.id}`;
   }
 
-  // Authoritative 6 PRISM Risk Indicators
+  // Authoritative 5 PRISM Risk Indicators
   const indicators = p.indicators || [
     { label: 'Progress Velocity', normalisedScore: 45, weight: 25, description: 'Month-over-month rate of physical milestone completion.' },
     { label: 'Progress Stagnation', normalisedScore: 50, weight: 20, description: 'Duration of stalled physical progress across monitoring cycles.' },
     { label: 'Schedule Pressure', normalisedScore: 65, weight: 20, description: 'Remaining scope compared against remaining scheduled timeframe.' },
-    { label: 'Cost Escalation', normalisedScore: 40, weight: 15, description: 'Ratio of revised sanctioned cost to original approval.' },
-    { label: 'Physical-Financial Divergence', normalisedScore: 30, weight: 10, description: 'Expenditure burn rate relative to verified physical completion.' },
-    { label: 'Deteriorating Trend', normalisedScore: 35, weight: 10, description: 'Sequential degradation trajectory in MoSPI flash reporting.' }
+    { label: 'Cost Escalation', normalisedScore: 40, weight: 20, description: 'Ratio of revised sanctioned cost to original approval.' },
+    { label: 'Physical-Financial Divergence', normalisedScore: 30, weight: 15, description: 'Expenditure burn rate relative to verified physical completion.' }
   ];
 
   body.innerHTML = `

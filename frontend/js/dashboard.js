@@ -6,7 +6,7 @@
  * ============================================================================
  */
 
-import { state, notify } from './state.js';
+import { state, notify, getRoleScopedProjects, getRoleScopedSectorStats, getRoleScopedAlerts } from './state.js';
 import { formatCurrencyCr, formatPercent, getRiskBadgeHtml, getPriorityBadgeHtml, renderIcons, escapeHtml } from './utils.js';
 
 export function renderDashboard() {
@@ -25,7 +25,7 @@ export function renderKPIs() {
   const container = document.getElementById('dashboard-kpis');
   if (!container) return;
 
-  const projects = state.allProjects || [];
+  const projects = getRoleScopedProjects();
   const totalProjects = projects.length;
   
   let totalCost = 0;
@@ -151,7 +151,7 @@ export function renderKPIs() {
           ${riskTierLabel}
         </div>
         <div class="text-[10px] text-slate-400 mt-1">
-          Calibrated 6-indicator model
+          Calibrated 5-indicator model
         </div>
       </div>
       <!-- SVG Gauge -->
@@ -194,7 +194,7 @@ export function renderEarlyWarningWidget() {
   const container = document.getElementById('dashboard-alerts-widget');
   if (!container) return;
 
-  const alerts = state.alerts || [];
+  const alerts = getRoleScopedAlerts();
 
   if (alerts.length === 0) {
     container.innerHTML = '';
@@ -266,7 +266,17 @@ export function renderSectorCards() {
   const canvas = document.getElementById('dashboard-sector-chart');
   if (!canvas) return;
 
-  const stats = state.sectorStats || [];
+  let stats = getRoleScopedSectorStats();
+  if (stats.length === 0 && state.currentRole?.sectorFilter) {
+    const roleSec = state.currentRole.sectorFilter;
+    const projs = getRoleScopedProjects();
+    if (projs.length > 0) {
+      const totalBudget = projs.reduce((acc, p) => acc + (p.revisedCostCr || p.originalCostCr || 0), 0);
+      const scored = projs.filter(p => p.riskScore != null);
+      const avgScore = scored.reduce((acc, p) => acc + p.riskScore, 0) / Math.max(1, scored.length);
+      stats = [{ sector: roleSec, avgRiskScore: Math.round(avgScore), totalProjects: projs.length, totalBudgetCr: totalBudget }];
+    }
+  }
   if (stats.length === 0) return;
 
   // Rank top 6 sectors by average risk score
@@ -361,7 +371,7 @@ export function renderPriorityQueue() {
   const container = document.getElementById('dashboard-priority-queue');
   if (!container) return;
 
-  const topPriorities = [...(state.allProjects || [])]
+  const topPriorities = [...getRoleScopedProjects()]
     .sort((a, b) => ((b.priorityScore || 0) - (a.priorityScore || 0)) || ((b.riskScore || 0) - (a.riskScore || 0)))
     .slice(0, 5);
 
@@ -437,7 +447,7 @@ export function renderPortfolioRiskInsights() {
   const container = document.getElementById('dashboard-risk-insights');
   if (!container) return;
 
-  const projects = state.allProjects || [];
+  const projects = getRoleScopedProjects();
   const total = projects.length || 1;
 
   const counts = {

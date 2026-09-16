@@ -23,6 +23,7 @@ class CopilotResponse(BaseModel):
     suggestedQuestions: List[str] = Field(default_factory=list)
     totalMatching: Optional[int] = None
     displayedCount: Optional[int] = None
+    intent: Optional[str] = None
     error: Optional[str] = None
 
 class InterventionNarrativeRequest(BaseModel):

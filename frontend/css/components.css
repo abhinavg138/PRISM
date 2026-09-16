@@ -289,6 +289,38 @@ input:checked + .slider-toggle:before {
   .no-print {
     display: none !important;
   }
+
+  /* Reset modal ancestor constraints so the report can paginate normally */
+  .modal-backdrop {
+    position: static !important;
+    display: block !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+  }
+  .modal-container {
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  .modal-body {
+    overflow: visible !important;
+    max-height: none !important;
+    flex: none !important;
+    padding: 0 !important;
+  }
+
+  /* Prevent table rows and KPI cards from awkward page-breaking */
+  tr, .grid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 }
 
 /* Simulated Portal & Landing Components (Additive Only) */

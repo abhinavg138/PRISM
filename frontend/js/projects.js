@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import { state, notify } from './state.js';
+import { state, notify, getRoleScopedProjects } from './state.js';
 import { api } from './api.js';
 import { formatCurrencyCr, formatPercent, getRiskBadgeHtml, getPriorityBadgeHtml, renderIcons, escapeHtml } from './utils.js';
 
@@ -94,9 +94,10 @@ export function bindFilterEvents() {
   });
 
   resetBtn?.addEventListener('click', () => {
+    const roleSector = state.currentRole?.sectorFilter;
     state.filters = {
       search: '',
-      sector: 'ALL',
+      sector: roleSector || 'ALL',
       state: 'ALL',
       riskTier: 'ALL',
       minCost: 0,
@@ -106,7 +107,7 @@ export function bindFilterEvents() {
     };
     if (searchInput) searchInput.value = '';
     if (stateSelect) stateSelect.value = 'ALL';
-    if (sectorSelect) sectorSelect.value = 'ALL';
+    if (sectorSelect) sectorSelect.value = roleSector || 'ALL';
     if (riskSelect) riskSelect.value = 'ALL';
     if (sortSelect) sortSelect.value = 'id-asc';
     state.pagination.page = 1;
@@ -115,7 +116,7 @@ export function bindFilterEvents() {
 }
 
 export function applyFiltersAndRender() {
-  const all = state.allProjects || [];
+  const all = getRoleScopedProjects();
   const { search, sector, state: filterState, riskTier, sortBy, sortDirection } = state.filters;
 
   let filtered = all.filter(p => {

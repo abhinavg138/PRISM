@@ -230,7 +230,7 @@ def calc_cost_escalation(obs: List[PaimanaObservation]) -> RiskIndicator:
                 mom_penalty = 8.0
 
     norm_score = clamp(linear_norm(overrun_pct, 0.0, 80.0) + mom_penalty, 0.0, 100.0)
-    weight = 15
+    weight = 20
     contribution = (norm_score * weight) / 100.0
     norm_score_int = js_round(norm_score)
     weighted_contrib = round(contribution, 2)
@@ -269,7 +269,7 @@ def calc_physical_financial_divergence(obs: List[PaimanaObservation]) -> RiskInd
             trend_penalty = 8.0
 
     norm_score = clamp(linear_norm(divergence, -20.0, 60.0) * 80.0 / 100.0 + (10.0 if divergence > 0 else 0.0) + trend_penalty, 0.0, 100.0)
-    weight = 10
+    weight = 15
     contribution = (norm_score * weight) / 100.0
     norm_score_int = js_round(norm_score)
     weighted_contrib = round(contribution, 2)
@@ -288,60 +288,6 @@ def calc_physical_financial_divergence(obs: List[PaimanaObservation]) -> RiskInd
         weight=weight,
         weightedContribution=weighted_contrib,
         category='Execution',
-        severity=severity_from_score(norm_score_int)
-    )
-
-def calc_deteriorating_trend(obs: List[PaimanaObservation]) -> RiskIndicator:
-    ind_id = 'deteriorating_trend'
-    if len(obs) < 3:
-        return RiskIndicator(
-            id=ind_id,
-            label='Deteriorating Trend',
-            description='Insufficient monthly observations to assess progress trend direction.',
-            rawValue=None,
-            normalisedScore=30,
-            weight=10,
-            weightedContribution=3.0,
-            category='Trend',
-            severity='low'
-        )
-    deltas = [obs[i].physical_progress_pct - obs[i - 1].physical_progress_pct for i in range(1, len(obs))]
-    mid = len(deltas) // 2
-    early_avg = sum(deltas[:mid]) / mid
-    recent_avg = sum(deltas[mid:]) / (len(deltas) - mid)
-    decel = early_avg - recent_avg
-
-    if decel <= -5.0:
-        norm_score = 0.0
-    elif decel <= 0.0:
-        norm_score = linear_norm(decel + 5.0, 0.0, 5.0) * 30.0 / 100.0
-    elif decel <= 10.0:
-        norm_score = 30.0 + linear_norm(decel, 0.0, 10.0) * 70.0 / 100.0
-    else:
-        norm_score = 100.0
-    norm_score = clamp(norm_score, 0.0, 100.0)
-
-    weight = 10
-    contribution = (norm_score * weight) / 100.0
-    norm_score_int = js_round(norm_score)
-    weighted_contrib = round(contribution, 2)
-
-    if decel > 2.0:
-        desc = f"Progress decelerated: early {early_avg:.2f} pp/month vs recent {recent_avg:.2f} pp/month (slowdown: {decel:.2f} pp/month)."
-    elif decel < -2.0:
-        desc = f"Progress is accelerating: recent {recent_avg:.2f} pp/month vs early {early_avg:.2f} pp/month."
-    else:
-        desc = f"Progress rate stable (early: {early_avg:.2f} pp/month, recent: {recent_avg:.2f} pp/month)."
-
-    return RiskIndicator(
-        id=ind_id,
-        label='Deteriorating Trend',
-        description=desc,
-        rawValue=round(decel, 3),
-        normalisedScore=norm_score_int,
-        weight=weight,
-        weightedContribution=weighted_contrib,
-        category='Trend',
         severity=severity_from_score(norm_score_int)
     )
 
@@ -381,7 +327,7 @@ def build_primary_concerns(indicators: List[RiskIndicator], obs: List[PaimanaObs
 class PRISMRiskEngine:
     """
     Authoritative, 100% deterministic PRISM Risk Engine.
-    Calculates composite risk score (0-100) using 6 evidence-based indicators.
+    Calculates composite risk score (0-100) using 5 evidence-based indicators.
     """
     @classmethod
     def assess(cls, observations: List[PaimanaObservation]) -> RiskAssessment:
@@ -389,13 +335,16 @@ class PRISMRiskEngine:
             raise ValueError("PRISMRiskEngine.assess() requires at least one observation")
 
         obs = sorted(observations, key=lambda o: o.report_month)
+        # Note: Risk scores shifted in v8 following removal of duplicate deteriorating_trend
+        # indicator and redistribution of weight to cost_escalation (+5 -> 20) and phys_fin_divergence (+5 -> 15).
+        # Indicators and weights sum to exactly 100:
+        # velocity (25) + stagnation (20) + schedule_pressure (20) + cost_escalation (20) + phys_fin_divergence (15) = 100
         indicators = [
             calc_progress_velocity(obs),
             calc_progress_stagnation(obs),
             calc_schedule_pressure(obs),
             calc_cost_escalation(obs),
-            calc_physical_financial_divergence(obs),
-            calc_deteriorating_trend(obs)
+            calc_physical_financial_divergence(obs)
         ]
 
         composite_score = sum(ind.weightedContribution for ind in indicators)

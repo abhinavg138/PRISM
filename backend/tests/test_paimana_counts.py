@@ -40,6 +40,6 @@ def test_delhi_dedicated_risk_distribution():
     partition = ProjectQueryService.get_state_partition("Delhi")
     assert partition is not None
     assert partition['dedicatedByRisk'].get("CRITICAL", 0) == 0
-    assert partition['dedicatedByRisk'].get("HIGH", 0) == 9
-    assert partition['dedicatedByRisk'].get("MODERATE", 0) == 3
+    assert partition['dedicatedByRisk'].get("HIGH", 0) == 7
+    assert partition['dedicatedByRisk'].get("MODERATE", 0) == 5
     assert partition['dedicatedByRisk'].get("LOW", 0) == 5

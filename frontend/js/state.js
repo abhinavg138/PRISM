@@ -6,11 +6,12 @@
  */
 
 export const DEMO_USER_ROLES = [
-  { id: 'role-mospi', name: 'MoSPI National Oversight', department: 'Infrastructure Monitoring Division', accessLevel: 'Executive' },
-  { id: 'role-railways', name: 'Ministry of Railways (MoR)', department: 'Projects & Planning Wing', accessLevel: 'Ministry' },
-  { id: 'role-road', name: 'MoRTH / NHAI', department: 'Highway Operations & EPC Contracts', accessLevel: 'Agency' },
-  { id: 'role-finance', name: 'Ministry of Finance (DEA)', department: 'Public Investment Board', accessLevel: 'Financial' },
-  { id: 'role-state', name: 'Chief Secretary (State Task Force)', department: 'State Infrastructure Coordination', accessLevel: 'State' }
+  { id: 'role-mospi', name: 'MoSPI National Oversight', department: 'Infrastructure Monitoring Division', accessLevel: 'Executive', sectorFilter: null },
+  { id: 'role-railways', name: 'Ministry of Railways (MoR)', department: 'Projects & Planning Wing', accessLevel: 'Ministry', sectorFilter: 'Railways' },
+  { id: 'role-road', name: 'MoRTH / NHAI', department: 'Highway Operations & EPC Contracts', accessLevel: 'Agency', sectorFilter: 'Road Transport & Highways' },
+  { id: 'role-finance', name: 'Ministry of Finance (DEA)', department: 'Public Investment Board', accessLevel: 'Financial', sectorFilter: null },
+  // Known limitation: State Task Force persona is state-scoped; without a configured home state, defaults to portfolio oversight.
+  { id: 'role-state', name: 'Chief Secretary (State Task Force)', department: 'State Infrastructure Coordination', accessLevel: 'State', sectorFilter: null }
 ];
 
 // Retrieve any previously saved demo session
@@ -30,10 +31,81 @@ function getInitialRole() {
   return DEMO_USER_ROLES[0];
 }
 
+/**
+ * Returns projects scoped by the currently active role's sector or state oversight.
+ */
+export function getRoleScopedProjects() {
+  let list = state.allProjects || [];
+  const roleSector = state.currentRole?.sectorFilter;
+  if (roleSector) {
+    list = list.filter(p => p.sector === roleSector || p.derivedSector === roleSector);
+  }
+  const roleState = state.roleScopedState;
+  if (roleState) {
+    const s = roleState.trim().toLowerCase();
+    list = list.filter(p => (p.state || '').trim().toLowerCase() === s);
+  }
+  return list;
+}
+
+/**
+ * Returns sector stats scoped by the currently active role.
+ */
+export function getRoleScopedSectorStats() {
+  const roleState = state.roleScopedState;
+  const roleSector = state.currentRole?.sectorFilter;
+
+  if (roleState) {
+    const projs = getRoleScopedProjects();
+    const sectorMap = new Map();
+    for (const p of projs) {
+      const sec = p.sector || p.derivedSector || 'Other';
+      if (!sectorMap.has(sec)) {
+        sectorMap.set(sec, { sector: sec, totalProjects: 0, totalBudgetCr: 0, scoredCount: 0, riskScoreSum: 0 });
+      }
+      const item = sectorMap.get(sec);
+      item.totalProjects++;
+      item.totalBudgetCr += (p.revisedCostCr || p.originalCostCr || 0);
+      if (p.riskScore != null) {
+        item.riskScoreSum += p.riskScore;
+        item.scoredCount++;
+      }
+    }
+    const result = [];
+    for (const item of sectorMap.values()) {
+      result.push({
+        sector: item.sector,
+        totalProjects: item.totalProjects,
+        totalBudgetCr: item.totalBudgetCr,
+        avgRiskScore: item.scoredCount > 0 ? Math.round(item.riskScoreSum / item.scoredCount) : 0
+      });
+    }
+    return result;
+  }
+
+  if (roleSector) {
+    return (state.sectorStats || []).filter(s => s.sector === roleSector || s.derivedSector === roleSector);
+  }
+
+  return state.sectorStats || [];
+}
+
+/**
+ * Returns alerts scoped by the currently active role's projects.
+ */
+export function getRoleScopedAlerts() {
+  const roleSector = state.currentRole?.sectorFilter;
+  const roleState = state.roleScopedState;
+  if (!roleSector && !roleState) return state.alerts || [];
+  const scopedProjectIds = new Set(getRoleScopedProjects().map(p => p.id));
+  return (state.alerts || []).filter(a => scopedProjectIds.has(a.projectId || a.id));
+}
+
 export const state = {
   // Navigation
   activeView: 'dashboard', // 'dashboard' | 'projects' | 'gis' | 'analytics'
   currentRole: getInitialRole(),
+  roleScopedState: null, // Scoped state when role-state is active
 
   // Datasets
   allProjects: [],

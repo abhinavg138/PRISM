@@ -250,9 +250,8 @@ class ScenarioEngine:
                 {'id': 'velocity', 'label': 'Progress Velocity', 'weight': 25, 'normalisedScore': round(min(100, max(0, (100 - (p.physicalProgressPercent or 0.0)) * 0.75))), 'weightedContribution': 0.0},
                 {'id': 'stagnation', 'label': 'Progress Stagnation', 'weight': 20, 'normalisedScore': 85 if (p.alert and p.alert.alertType == 'Progress Stagnation') else (75 if original_score >= 75 else 30), 'weightedContribution': 0.0},
                 {'id': 'schedule_pressure', 'label': 'Schedule Pressure', 'weight': 20, 'normalisedScore': min(100, max(10, round((p.timeOverrunMonths or 0) * 2.2))), 'weightedContribution': 0.0},
-                {'id': 'cost_escalation', 'label': 'Cost Escalation', 'weight': 15, 'normalisedScore': min(100, max(0, round((p.costOverrunPercent or 0.0) * 1.1))), 'weightedContribution': 0.0},
-                {'id': 'divergence', 'label': 'Phys-Financial Divergence', 'weight': 10, 'normalisedScore': min(100, max(0, round(abs((p.expenditurePctOfRevisedCost or 0.0) - (p.physicalProgressPercent or 0.0)) * 1.4))), 'weightedContribution': 0.0},
-                {'id': 'deteriorating_trend', 'label': 'Deteriorating Trend', 'weight': 10, 'normalisedScore': 65 if original_score >= 60 else 25, 'weightedContribution': 0.0}
+                {'id': 'cost_escalation', 'label': 'Cost Escalation', 'weight': 20, 'normalisedScore': min(100, max(0, round((p.costOverrunPercent or 0.0) * 1.1))), 'weightedContribution': 0.0},
+                {'id': 'divergence', 'label': 'Phys-Financial Divergence', 'weight': 15, 'normalisedScore': min(100, max(0, round(abs((p.expenditurePctOfRevisedCost or 0.0) - (p.physicalProgressPercent or 0.0)) * 1.4))), 'weightedContribution': 0.0}
             ]
         )
 
@@ -292,10 +291,6 @@ class ScenarioEngine:
                     reduction = round(cash_boost * 0.8 + (geo_mitigation / 100.0) * 4.0)
                     if cash_boost > 0:
                         driver = 'Contractor mobilization synchronizes physical progress with expenditure burn'
-                elif ind_id in ('deteriorating_trend', 'trend'):
-                    reduction = round((geo_mitigation / 100.0) * 12.0 + hpc * 8.0)
-                    if geo_mitigation > 0 or hpc:
-                        driver = 'Downside trend arrested by engineered buffers and high-power monitoring'
 
             orig_score = ind.get('normalisedScore', 0)
             sim_score = max(0, min(100, orig_score - reduction))

@@ -515,8 +515,12 @@ class ProjectQueryService:
         proj_list = paimana_repository.list_projects()['allMatching']
 
         if state and state != 'ALL':
-            s = state.strip().lower()
-            proj_list = [p for p in proj_list if p.state.lower() == s]
+            partition = cls.get_state_partition(state)
+            if partition:
+                proj_list = partition['allAssociatedProjects']
+            else:
+                s = state.strip().lower()
+                proj_list = [p for p in proj_list if p.state.strip().lower() == s or s in p.state.lower()]
 
         if sector and sector != 'ALL':
             sec = sector.strip().lower()

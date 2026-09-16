@@ -5,11 +5,11 @@
  * ============================================================================
  */
 
-import { state, subscribe, notify, DEMO_USER_ROLES, isDemoLoggedIn, clearDemoLogin, getDemoUser } from './state.js';
+import { state, subscribe, notify, DEMO_USER_ROLES, isDemoLoggedIn, clearDemoLogin, getDemoUser, getRoleScopedProjects, getRoleScopedSectorStats, getRoleScopedAlerts } from './state.js';
 import { api } from './api.js';
-import { renderIcons } from './utils.js';
+import { renderIcons, escapeHtml } from './utils.js';
 import { renderDashboard } from './dashboard.js';
-import { initProjectsView, applyFiltersAndRender } from './projects.js';
+import { initProjectsView, applyFiltersAndRender, populateFilterDropdowns } from './projects.js';
 import { openProjectDetail } from './project-detail.js';
 import { initCopilot, openCopilot, closeCopilot } from './copilot.js';
 import { renderSectorAnalytics } from './analytics.js?v=portfolio-v2';
@@ -141,14 +141,68 @@ function initNavbar() {
     if (state.currentRole && state.currentRole.id) {
       roleSelect.value = state.currentRole.id;
     }
+    updateRoleScopeUI();
 
     roleSelect.addEventListener('change', (e) => {
       const selected = DEMO_USER_ROLES.find(r => r.id === e.target.value);
       if (selected) {
         state.currentRole = selected;
-        const roleLabel = document.getElementById('current-role-label');
-        if (roleLabel) roleLabel.textContent = selected.department;
+        // When switching away from role-state, clear state.roleScopedState
+        if (selected.id !== 'role-state') {
+          state.roleScopedState = null;
+        }
+        localStorage.setItem('prism_demo_user', JSON.stringify({
+          username: 'demo_user',
+          roleId: selected.id,
+          roleName: selected.name,
+          timestamp: Date.now()
+        }));
+        updateRoleScopeUI();
+
+        // Scope projects directory filters
+        if (selected.sectorFilter) {
+          state.filters.sector = selected.sectorFilter;
+          const secSelect = document.getElementById('filter-sector');
+          if (secSelect) secSelect.value = selected.sectorFilter;
+        } else {
+          state.filters.sector = 'ALL';
+          const secSelect = document.getElementById('filter-sector');
+          if (secSelect) secSelect.value = 'ALL';
+        }
+        state.pagination.page = 1;
+
+        // Re-render views consistently according to role filter
+        renderDashboard();
+        applyFiltersAndRender();
+        if (state.activeView === 'analytics') {
+          renderSectorAnalytics();
+        } else if (state.activeView === 'gis') {
+          renderGISMap();
+        }
       }
+    });
+
+    // State selector listener for Chief Secretary (State Task Force)
+    const stateSelect = document.getElementById('user-state-select');
+    stateSelect?.addEventListener('change', (e) => {
+      state.roleScopedState = e.target.value || null;
+      updateRoleScopeUI();
+
+      // Re-render views consistently according to state filter
+      renderDashboard();
+      applyFiltersAndRender();
+      if (state.activeView === 'analytics') {
+        renderSectorAnalytics();
+      } else if (state.activeView === 'gis') {
+        renderGISMap();
+      }
+    });
+
+    document.getElementById('btn-reset-role-scope')?.addEventListener('click', () => {
+      state.roleScopedState = null;
+      const defaultRole = DEMO_USER_ROLES[0];
+      roleSelect.value = defaultRole.id;
+      roleSelect.dispatchEvent(new Event('change'));
     });
   }
 
@@ -288,6 +342,64 @@ function initGlobalModalHandlers() {
   });
 }
 
+export function updateRoleScopeUI() {
+  const indicator = document.getElementById('role-scope-indicator');
+  const scopeText = document.getElementById('role-scope-text');
+  const stateContainer = document.getElementById('user-state-container');
+  const stateSelect = document.getElementById('user-state-select');
+  const roleSector = state.currentRole?.sectorFilter;
+  const roleState = state.roleScopedState;
+  const isStateRole = state.currentRole?.id === 'role-state';
+
+  // Toggle state dropdown container
+  if (stateContainer) {
+    if (isStateRole) {
+      stateContainer.classList.remove('hidden');
+      stateContainer.classList.add('inline-flex');
+      renderIcons();
+    } else {
+      stateContainer.classList.add('hidden');
+      stateContainer.classList.remove('inline-flex');
+    }
+  }
+
+  if (stateSelect && isStateRole) {
+    stateSelect.value = roleState || '';
+  }
+
+  if (roleSector) {
+    if (indicator) {
+      indicator.classList.remove('hidden');
+      indicator.classList.add('inline-flex');
+    }
+    if (scopeText) scopeText.textContent = `${roleSector} only`;
+  } else if (isStateRole && roleState) {
+    if (indicator) {
+      indicator.classList.remove('hidden');
+      indicator.classList.add('inline-flex');
+    }
+    if (scopeText) scopeText.textContent = `${roleState} only`;
+  } else {
+    if (indicator) {
+      indicator.classList.add('hidden');
+      indicator.classList.remove('inline-flex');
+    }
+  }
+
+  const roleLabel = document.getElementById('current-role-label');
+  if (roleLabel && state.currentRole) {
+    roleLabel.textContent = state.currentRole.department || '';
+  }
+}
+
+export function populateStateSelector() {
+  const stateSelect = document.getElementById('user-state-select');
+  if (!stateSelect || !state.availableStates) return;
+  const current = state.roleScopedState || '';
+  stateSelect.innerHTML = `<option value="">-- Select State --</option>` +
+    state.availableStates.map(s => `<option value="${escapeHtml(s)}" ${s === current ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('');
+}
+
 async function loadInitialData() {
   const loadingBanner = document.getElementById('app-loading-banner');
   if (loadingBanner) loadingBanner.style.display = 'flex';
@@ -311,6 +423,26 @@ async function loadInitialData() {
     } catch (e) {
       console.warn('Projects load failed:', e);
     }
+
+    // Fallback if metadata arrays are empty
+    if (!state.availableStates.length && state.allProjects.length) {
+      state.availableStates = Array.from(new Set(state.allProjects.map(p => p.state).filter(Boolean))).sort();
+    }
+    if (!state.availableSectors.length && state.allProjects.length) {
+      state.availableSectors = Array.from(new Set(state.allProjects.map(p => p.sector || p.derivedSector).filter(Boolean))).sort();
+    }
+
+    // Fix for broken filter dropdowns (Task 3): populate state & sector options once data is ready
+    populateFilterDropdowns();
+    populateStateSelector();
+
+    // Role filtering initialization (Task 1): if initial role has a sector filter, apply it
+    if (state.currentRole?.sectorFilter) {
+      state.filters.sector = state.currentRole.sectorFilter;
+      const secSelect = document.getElementById('filter-sector');
+      if (secSelect) secSelect.value = state.currentRole.sectorFilter;
+    }
+    updateRoleScopeUI();
 
     // 3. Sectors stats
     try {
