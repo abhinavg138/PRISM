@@ -21,6 +21,10 @@
     <link rel="stylesheet" href="/css/styles.css" />
     <link rel="stylesheet" href="/css/components.css" />
 
+    <!-- Leaflet Mapping Library (State-Capital GIS Anchors) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- Local Standalone Vendor Scripts (Zero Build Tooling) -->
     <script src="/assets/chart.umd.min.js"></script>
     <script src="/assets/lucide.min.js"></script>
@@ -159,12 +163,37 @@
               </select>
             </div>
 
-            <!-- State Selector (shown only for Chief Secretary / State Task Force) -->
-            <div id="user-state-container" class="hidden items-center gap-1.5 text-xs bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg" title="Select State Jurisdiction for State Task Force">
-              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500"></i>
-              <select id="user-state-select" class="bg-transparent font-medium text-slate-800 text-xs border-none focus:outline-none cursor-pointer" aria-label="Select state jurisdiction">
-                <option value="">-- Select State --</option>
-              </select>
+            <!-- Custom State Selector Dropdown (shown only for Chief Secretary / State Task Force) -->
+            <div id="user-state-container" class="hidden relative items-center text-xs">
+              <button id="user-state-btn" type="button" class="flex items-center gap-1.5 text-xs bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-slate-300 px-2.5 py-1.5 rounded-lg font-medium text-slate-800 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20" aria-haspopup="listbox" aria-expanded="false" aria-label="Select state jurisdiction" title="Select State Jurisdiction for State Task Force">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500 shrink-0"></i>
+                <span id="user-state-selected-label" class="max-w-[130px] truncate font-medium">-- Select State --</span>
+                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400 shrink-0 ml-0.5 transition-transform duration-150" id="user-state-chevron"></i>
+              </button>
+
+              <input type="hidden" id="user-state-select" value="" />
+
+              <!-- Floating Options Panel -->
+              <div id="user-state-dropdown" class="hidden absolute right-0 top-full mt-1.5 w-64 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-xl overflow-hidden z-50">
+                <!-- Search Filter Input -->
+                <div class="p-2 border-b border-slate-100 bg-slate-50/50">
+                  <div class="relative">
+                    <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    <input type="text" id="user-state-search" placeholder="Search state or UT..." class="w-full pl-8 pr-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" autocomplete="off" />
+                  </div>
+                </div>
+
+                <!-- Scrollable State List -->
+                <ul id="user-state-options" role="listbox" aria-label="States and Union Territories" class="max-h-64 overflow-y-auto py-1 divide-y divide-slate-50 text-xs">
+                  <!-- Populated dynamically -->
+                </ul>
+
+                <!-- Footer Summary / Clear -->
+                <div class="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                  <span id="user-state-count-label">36 States/UTs</span>
+                  <button type="button" id="btn-user-state-clear" class="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer">Clear</button>
+                </div>
+              </div>
             </div>
 
             <!-- Sign Out / Exit to Landing Button -->

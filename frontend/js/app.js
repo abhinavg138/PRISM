@@ -13,12 +13,14 @@ import { initProjectsView, applyFiltersAndRender, populateFilterDropdowns } from
 import { openProjectDetail } from './project-detail.js';
 import { initCopilot, openCopilot, closeCopilot } from './copilot.js';
 import { renderSectorAnalytics } from './analytics.js?v=portfolio-v2';
-import { renderGISMap } from './map.js';
+import { renderGISMap, invalidateMapSize } from './map.js';
 import { initAlertsModal, openAlertsModal } from './alerts.js';
 import { initReports, openFlashReport } from './reports.js';
+import { initStateDropdown, populateStateDropdown, setStateDropdownValue } from './state-dropdown.js';
 
 // Expose public API methods for inline triggers
 window.prismApp = {
+  ...(window.prismApp || {}),
   openProjectDetail,
   openCopilot
 };
@@ -150,6 +152,7 @@ function initNavbar() {
         // When switching away from role-state, clear state.roleScopedState
         if (selected.id !== 'role-state') {
           state.roleScopedState = null;
+          setStateDropdownValue(null);
         }
         localStorage.setItem('prism_demo_user', JSON.stringify({
           username: 'demo_user',
@@ -182,10 +185,28 @@ function initNavbar() {
       }
     });
 
-    // State selector listener for Chief Secretary (State Task Force)
+    // Custom state dropdown initialization for Chief Secretary (State Task Force)
+    initStateDropdown({
+      onSelect: (val) => {
+        state.roleScopedState = val || null;
+        updateRoleScopeUI();
+
+        // Re-render views consistently according to state filter
+        renderDashboard();
+        applyFiltersAndRender();
+        if (state.activeView === 'analytics') {
+          renderSectorAnalytics();
+        } else if (state.activeView === 'gis') {
+          renderGISMap();
+        }
+      }
+    });
+
+    // State selector fallback change listener
     const stateSelect = document.getElementById('user-state-select');
     stateSelect?.addEventListener('change', (e) => {
       state.roleScopedState = e.target.value || null;
+      setStateDropdownValue(state.roleScopedState);
       updateRoleScopeUI();
 
       // Re-render views consistently according to state filter
@@ -200,6 +221,7 @@ function initNavbar() {
 
     document.getElementById('btn-reset-role-scope')?.addEventListener('click', () => {
       state.roleScopedState = null;
+      setStateDropdownValue(null);
       const defaultRole = DEMO_USER_ROLES[0];
       roleSelect.value = defaultRole.id;
       roleSelect.dispatchEvent(new Event('change'));
@@ -284,6 +306,9 @@ function switchView(viewName) {
       applyFiltersAndRender();
     } else if (viewName === 'gis') {
       renderGISMap();
+      setTimeout(() => {
+        invalidateMapSize();
+      }, 150);
     } else if (viewName === 'analytics') {
       renderSectorAnalytics();
     }
@@ -366,6 +391,7 @@ export function updateRoleScopeUI() {
   if (stateSelect && isStateRole) {
     stateSelect.value = roleState || '';
   }
+  setStateDropdownValue(roleState);
 
   if (roleSector) {
     if (indicator) {
@@ -393,11 +419,7 @@ export function updateRoleScopeUI() {
 }
 
 export function populateStateSelector() {
-  const stateSelect = document.getElementById('user-state-select');
-  if (!stateSelect || !state.availableStates) return;
-  const current = state.roleScopedState || '';
-  stateSelect.innerHTML = `<option value="">-- Select State --</option>` +
-    state.availableStates.map(s => `<option value="${escapeHtml(s)}" ${s === current ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('');
+  populateStateDropdown(state.availableStates || [], state.roleScopedState);
 }
 
 async function loadInitialData() {
