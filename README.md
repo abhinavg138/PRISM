@@ -1,617 +1,639 @@
 # PRISM — Predictive Risk Intelligence & Smart Monitoring
 
-An integrated, explainable project-monitoring platform transforming longitudinal infrastructure monitoring data into deterministic risk indices, prioritized intervention queues, and counterfactual scenario simulations for central sector oversight.
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Tests](https://img.shields.io/badge/Tests-139%20passed-brightgreen.svg?style=flat&logo=pytest&logoColor=white)](#testing)
+[![Dataset](https://img.shields.io/badge/Dataset-2%2C054%20Projects%20%7C%207%2C499%20Snapshots-F59E0B.svg?style=flat)](#data)
+[![Engine](https://img.shields.io/badge/Risk%20Engine-Deterministic%20MCDA%20(5%20Indicators)-8B5CF6.svg?style=flat)](#risk-engine)
+[![Deployment](https://img.shields.io/badge/Deployment-Vercel%20Serverless-000000.svg?style=flat&logo=vercel&logoColor=white)](https://prism-kappa-wine.vercel.app/)
+[![Prototype Status](https://img.shields.io/badge/Status-SIH26103%20Working%20Prototype-blue.svg?style=flat)](#smart-india-hackathon-2026)
+
+An integrated project-monitoring platform that transforms longitudinal infrastructure monitoring data into risk intelligence, predictive analytics, early warnings, prioritization, and decision support for central sector project oversight.
 
 ---
 
-## Badges
-
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-125%20passed-brightgreen.svg)](#testing)
-[![Dataset](https://img.shields.io/badge/PAIMANA-2054%20Projects%20%7C%207499%20Observations-orange.svg)](#cuf-field-attribution)
-[![Risk Engine](https://img.shields.io/badge/Engine-Deterministic%20MCDA%20(6%20Indicators)-purple.svg)](#data-flow--risk-scoring-pipeline)
-[![License](https://img.shields.io/badge/Status-SIH26103%20Prototype-informational.svg)](#problem-statement-context)
-
----
-
-## Table of Contents
-
-- [Problem Statement Context](#problem-statement-context)
-- [System Architecture](#system-architecture)
-- [Data Flow & Risk Scoring Pipeline](#data-flow--risk-scoring-pipeline)
-- [Key Features](#key-features)
-- [Predictive Modeling & Empirical Evaluation (SIH26103)](#predictive-modeling--empirical-evaluation-sih26103)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started & Setup](#getting-started--setup)
-- [Vercel Deployment Guide](#vercel-deployment-guide)
-- [API Reference](#api-reference)
-- [Testing](#testing)
-- [Screenshots](#screenshots)
-
----
-
-## Problem Statement Context
+## Smart India Hackathon 2026
 
 * **Problem Statement ID:** SIH26103
-* **Target Ministry:** Ministry of Statistics and Programme Implementation (MoSPI), Government of India
-* **Theme:** Development of a web-based integrated project-monitoring platform for Central Sector Infrastructure Projects costing ₹150 Crore and above.
+* **Problem Title:** Use case on web-based integrated project-monitoring platform
+* **Theme:** Smart Automation
+* **Category:** Software
+* **Target Domain:** Central Sector Infrastructure Projects costing ₹150 Crore and above (MoSPI OCMS / PAIMANA framework)
+* **Team:** RiskIQ
 
-### What "Web-Based Integrated Project-Monitoring Platform" Means
-
-National infrastructure oversight currently relies on monthly flash reports submitted through the MoSPI Online Central Monitoring System (OCMS) / PAIMANA framework. While these reports compile milestone percentages and expenditure totals, raw monthly snapshots obscure critical operational trends:
-1. **Stagnation masked by static progress:** Projects that make zero progress across multiple consecutive quarters remain indistinguishable from active projects when reviewing one monthly report at a time.
-2. **Capital outflow without physical delivery:** Projects experiencing substantial financial disbursements without commensurate physical advancement escape early intervention.
-3. **Imminent deadline compressions:** Distant target commissioning dates mask severe early-stage progress deceleration until deadlines become impossible to meet.
-
-PRISM delivers a centralized digital cockpit designed for oversight authorities—including the Cabinet Secretariat, the Project Monitoring Group (PMG), and MoSPI's Infrastructure and Project Monitoring Division (IPMD). It unifies multi-month reporting snapshots into an auditable intelligence pipeline:
-
-$$\text{PAIMANA / CUF Data} \longrightarrow \text{Deterministic Risk Index} \longrightarrow \text{Intervention Prioritization} \longrightarrow \text{Counterfactual Simulation} \longrightarrow \text{Executive Action}$$
-
-### Specific SIH26103 Requirements Addressed
-
-| SIH26103 Requirement | PRISM Implementation | Code Reference |
-| :--- | :--- | :--- |
-| **Comprehensive Central Sector Oversight** | Ingests and monitors all 2,054 central sector infrastructure projects across 7,499 multi-month snapshots (April–July 2026). | [`backend/repositories/paimana_repository.py`](file:///c:/PRISM/backend/repositories/paimana_repository.py) |
-| **Objective Project Risk Assessment** | Deterministic multi-criteria decision analysis (MCDA) generating an explainable 0–100 composite risk score without black-box opacity. | [`backend/services/risk_engine.py`](file:///c:/PRISM/backend/services/risk_engine.py) |
-| **Actionable Prioritization Queue** | Separates operational urgency from raw risk score to classify projects into distinct P1, P2, and P3 intervention tiers. | [`backend/services/priority_engine.py`](file:///c:/PRISM/backend/services/priority_engine.py) |
-| **Common Upload Form (CUF) Attribution** | Formulates empirical prediction models and evaluates incremental predictive power of native CUF fields vs. engineered indicators. | [`ml/train_real_models.py`](file:///c:/PRISM/ml/train_real_models.py) & [CUF Section](#common-upload-form-cuf-field-attribution) |
-| **Intervention Simulation ("What-If" Lab)** | Interactive counterfactual modeling assessing the quantitative impact of land clearance fast-tracking, contractor liquidity injections, and High-Powered Committees. | [`backend/services/scenario_engine.py`](file:///c:/PRISM/backend/services/scenario_engine.py) |
-| **Grounded Conversational Intelligence** | Copilot assistant strictly constrained to verified repository facts, calculating zero scores dynamically to eliminate LLM hallucinations. | [`backend/services/copilot_service.py`](file:///c:/PRISM/backend/services/copilot_service.py) |
-| **Administrative Control & Governance** | Role-based control plane allowing project updates, administrative additions, and soft archival backed by an immutable SQLite audit log. | [`backend/routes/admin.py`](file:///c:/PRISM/backend/routes/admin.py) & [`backend/services/admin_service.py`](file:///c:/PRISM/backend/services/admin_service.py) |
+> [!NOTE]
+> **Prototype Declaration:** PRISM is an independent working software prototype developed for Smart India Hackathon (SIH26103). It demonstrates how central sector monitoring data can be converted into objective, auditable risk intelligence. It is not currently deployed, endorsed, or officially operated by the Ministry of Statistics and Programme Implementation (MoSPI) or the Government of India.
 
 ---
 
-## System Architecture
+## 🚀 Live Demo
 
-```mermaid
-flowchart TD
-    subgraph Data_Layer ["1. Data Foundation"]
-        MOSPI["MoSPI PAIMANA Excel / CSV Snapshot<br/>(7,499 Observations / 2,054 Projects)"]
-        SQLITE[("Admin Persistent SQLite<br/>(Overrides, Added Projects, Audit Log)")]
-        REPO["PAIMANA Repository<br/>(paimana_repository.py)"]
-        MOSPI --> REPO
-        SQLITE --> REPO
-    end
+The production prototype is deployed on Vercel Serverless Functions:
 
-    subgraph Analytical_Engines ["2. Core Analytical Engines"]
-        RISK["PRISM Risk Engine<br/>(risk_engine.py)<br/>6 Weighted Indicators"]
-        PRIORITY["Priority Engine<br/>(priority_engine.py)<br/>P1 / P2 / P3 Tiers"]
-        ALERT["Alert Engine<br/>(alert_engine.py)<br/>Rule-Based Early Warnings"]
-        SCENARIO["Scenario Engine<br/>(scenario_engine.py)<br/>What-If Simulation"]
-        COPILOT["Copilot Service<br/>(copilot_service.py)<br/>Grounded Gemini + Fallback"]
-        ADMIN["Admin Service<br/>(admin_service.py)<br/>Auth, Validation & Audit"]
-
-        REPO --> RISK
-        REPO --> PRIORITY
-        REPO --> ALERT
-        REPO --> SCENARIO
-        REPO --> COPILOT
-        REPO --> ADMIN
-    end
-
-    subgraph API_Gateway ["3. FastAPI Application Layer (main.py)"]
-        ROUTERS["REST API Routers<br/>/projects · /priorities · /alerts · /sectors<br/>/analytics · /simulate · /copilot · /admin · /health"]
-        RISK --> ROUTERS
-        PRIORITY --> ROUTERS
-        ALERT --> ROUTERS
-        SCENARIO --> ROUTERS
-        COPILOT --> ROUTERS
-        ADMIN --> ROUTERS
-    end
-
-    subgraph UI_Surfaces ["4. User Interface Layer"]
-        PORTAL["PRISM Public Portal<br/>Portfolio Analytics, Project Directory,<br/>Interactive Dossiers & Intervention Lab"]
-        ADMIN_UI["PRISM Admin Control Plane<br/>Project Form, Diff Modals, Audit Ledger,<br/>System Diagnostics & Validation Scanner"]
-        ROUTERS --> PORTAL
-        ROUTERS --> ADMIN_UI
-    end
-```
+* **Live Prototype (Landing):** [https://prism-kappa-wine.vercel.app/](https://prism-kappa-wine.vercel.app/)
+* **Platform Orientation:** [https://prism-kappa-wine.vercel.app/home](https://prism-kappa-wine.vercel.app/home)
+* **Executive Dashboard:** [https://prism-kappa-wine.vercel.app/dashboard](https://prism-kappa-wine.vercel.app/dashboard)
+* **API Health Check:** [https://prism-kappa-wine.vercel.app/api/health](https://prism-kappa-wine.vercel.app/api/health)
+* **Interactive API Docs (Swagger UI):** [https://prism-kappa-wine.vercel.app/docs](https://prism-kappa-wine.vercel.app/docs)
 
 ---
 
-## Data Flow & Risk Scoring Pipeline
+## 🎥 Demo Video
 
-PRISM's authoritative risk rating is 100% deterministic, auditable, and mathematical. It combines 6 orthogonal indicators across a project's longitudinal reporting history:
+<!-- YOUTUBE DEMO VIDEO — TO BE ADDED -->
+🎬 **Demo video coming soon.**
 
-```mermaid
-flowchart LR
-    subgraph Input_Variables ["Raw CUF Inputs"]
-        P["Physical Progress %"]
-        C["Original / Revised Cost"]
-        E["Cumulative Expenditure"]
-        D["Target Dates (MM/YYYY)"]
-    end
+> *To add the final video: replace `YOUR_VIDEO_ID` with the YouTube video ID after publication.*
 
-    subgraph Indicator_Scoring ["6 Weighted Indicators (Sum = 100%)"]
-        I1["Progress Velocity (25%)<br/>MoM delta across snapshots"]
-        I2["Progress Stagnation (20%)<br/>Consecutive plateau streak"]
-        I3["Schedule Pressure (20%)<br/>Work remaining vs. target deadline"]
-        I4["Cost Escalation (15%)<br/>Sanction overrun % + MoM spikes"]
-        I5["Phys-Fin Divergence (10%)<br/>Expenditure % minus physical %"]
-        I6["Deteriorating Trend (10%)<br/>Deceleration between early & recent intervals"]
-    end
+---
 
-    Input_Variables --> I1
-    Input_Variables --> I2
-    Input_Variables --> I3
-    Input_Variables --> I4
-    Input_Variables --> I5
-    Input_Variables --> I6
+## Problem Statement
 
-    subgraph Aggregation ["Score & Tiering"]
-        SCORE["Composite Risk Score<br/>(0 to 100 Scale)"]
-        TIER["Risk Tier Classification<br/>CRITICAL (80-100)<br/>HIGH (60-79)<br/>MODERATE (40-59)<br/>LOW (0-39)"]
-        PRIOR["Priority Urgency Synthesis<br/>P1 (Urgent Intervention)<br/>P2 (Elevated Review)<br/>P3 (Standard Monitoring)"]
-        
-        I1 --> SCORE
-        I2 --> SCORE
-        I3 --> SCORE
-        I4 --> SCORE
-        I5 --> SCORE
-        I6 --> SCORE
+Central Sector Infrastructure Projects (costing ₹150 Crore and above) form the foundation of national economic development across railways, road transport, energy, urban transit, and petroleum. In India, these projects are tracked via monthly flash reporting submitted through monitoring systems such as PAIMANA / OCMS under the Ministry of Statistics and Programme Implementation (MoSPI).
 
-        SCORE --> TIER
-        TIER --> PRIOR
-    end
+Monitoring thousands of high-capital projects across diverse implementing agencies presents significant operational challenges:
 
-    subgraph Actionable_Output ["Downstream Surfaces"]
-        DASH["Portfolio Dashboard"]
-        DOSSIER["Project Dossier S-Curves"]
-        SIM["Intervention Lab"]
-        BOT["Grounded Copilot"]
-        
-        PRIOR --> DASH
-        PRIOR --> DOSSIER
-        PRIOR --> SIM
-        PRIOR --> BOT
-    end
+1. **Information Overload Across Longitudinal Reports:** Portfolios spanning over 2,000 active projects generate vast volumes of monthly milestone and expenditure data. Reviewing monthly tabular reports sequentially obscures multi-month trends.
+2. **Progress Stagnation Hidden by Static Percentages:** A project reporting 45% completion month after month looks identical to an active project on a single-month sheet unless longitudinal change rates (velocity) are computed across successive reporting intervals.
+3. **Physical-Financial Divergence:** Substantial cumulative capital expenditure can occur without commensurate physical progress on the ground, creating hidden fiscal exposure before formal milestone slippage is flagged.
+4. **Prioritization Deficit:** Project monitoring authorities have finite operational capacity. Raw risk metrics indicate how severely a project is performing, but they do not account for time urgency, reporting confidence, or actionability when deciding which projects require immediate administrative escalation.
+
+---
+
+## PRISM Solution
+
+PRISM is a web-based decision-support and risk-intelligence platform that bridges the gap between raw longitudinal data collection and proactive executive oversight.
+
+```
+PAIMANA / Project Monitoring Data
+               ↓
+    Ingestion & Validation
+               ↓
+Deterministic Risk Index + Predictive Analytics
+               ↓
+      Early Warning Signals
+               ↓
+          Priority Queue
+               ↓
+  Benchmarking / Scenario Analysis
+               ↓
+        Decision Dashboard
+               ↓
+       Grounded AI Copilot
 ```
 
-### Risk Indicator Breakdown
+### Core Operating Paradigm: Prediction → Explanation → Prioritization → Action
 
-| Indicator ID | Label | Category | Weight | Description |
-| :--- | :--- | :--- | :---: | :--- |
-| `velocity` | **Progress Velocity** | Progress | **25%** | Average month-over-month physical advancement rate ($pp/\text{month}$). High deceleration or negative velocity incurs critical penalties. |
-| `stagnation` | **Progress Stagnation** | Progress | **20%** | Detects consecutive reporting intervals with $\le 0.5\ pp$ progress change, penalizing protracted stall periods. |
-| `schedule_pressure` | **Schedule Pressure** | Schedule | **20%** | Evaluates required delivery velocity against remaining months until revised completion target. Automatically flags expired targets. |
-| `cost_escalation` | **Cost Escalation** | Cost | **15%** | Percentage escalation from original sanction budget to latest revised cost, with penalties for sharp month-over-month increases. |
-| `phys_fin_divergence` | **Physical-Financial Divergence** | Execution | **10%** | Measures discrepancy between capital disbursement ($\%$ of revised cost) and certified physical delivery ($\%$). Disproportionate spend without physical progress signals high risk. |
-| `deteriorating_trend` | **Deteriorating Trend** | Trend | **10%** | Compares earlier velocity against recent velocity to identify projects that are actively slowing down. |
+* **Prediction:** Leverages empirical machine learning benchmarks to forecast expected time-overrun trends from historical monitoring patterns.
+* **Explanation:** Breaks composite scores down into five granular, auditable operational indicators so project officers understand precisely *why* a project is classified at risk.
+* **Prioritization:** Combines risk severity with remaining schedule urgency, recent physical deterioration, and reporting observation confidence to rank projects into actionable operational tiers (P1, P2, P3).
+* **Action:** Connects diagnostic insights directly to prescriptive recommended actions, counterfactual scenario simulations in the Intervention Lab, and natural-language query resolution via the grounded AI Copilot.
 
 ---
 
 ## Key Features
 
-* **Portfolio Risk Intelligence (`GET /api/projects`, `GET /api/analytics`)**:
-  Real-time executive dashboard summarizing total capital outlay (₹ Cr), expenditure absorption, active project status, and risk tier stratification across 2,054 central infrastructure assets.
-* **Deterministic Risk Scoring (`GET /api/projects/{id}/risk`)**:
-  Auditable factor attribution displaying raw metric values, normalized scores, indicator weights, and weighted point contributions for any given project.
-* **Prioritized Intervention Queue (`GET /api/priorities`)**:
-  Synthesizes risk scores, schedule urgency, recent deterioration velocity, and capital exposure to route critical projects into actionable P1, P2, and P3 review tiers.
-* **Proactive Early-Warning Alerts (`GET /api/alerts`)**:
-  Automated rules engine scanning every project snapshot for stagnation plateaus, cost revisions, schedule slippages, and severe physical-financial divergence.
-* **Longitudinal S-Curve Tracking (`GET /api/projects/{id}/history`)**:
-  Traces certified physical progress and financial expenditure across consecutive monthly monitoring snapshots (April, May, June, July 2026).
-* **Peer Sector Benchmarking (`GET /api/projects/{id}/benchmark`)**:
-  Benchmarks individual project metrics against sector-wide medians for physical progress velocity, cost escalation, and delay profiles.
-* **Counterfactual Intervention Lab (`POST /api/simulate`)**:
-  Calculates what-if policy trajectories by modeling statutory land acquisition clearance acceleration (weeks), contractor liquidity advances ($\%$), weather mitigation measures, and High-Powered Committee (HPC) oversight.
-* **Grounded AI Copilot (`POST /api/copilot/chat`)**:
-  Natural language inquiry interface powered by Google Gemini (with rule-based fallback). The assistant is strictly grounded on deterministic engine calculations and verified project attributes.
-* **Administrative Control Plane (`/admin`)**:
-  Authenticated operations dashboard supporting administrative project creation, field modifications with before/after diff audit cards, soft archiving, and rollback of overrides to restore original PAIMANA baselines.
-* **Automated Data Validation Scanner (`GET /api/admin/data-validation`)**:
-  Integrity auditor scanning effective records for schema completeness, negative expenditure anomalies, progress bounds violations, and chronological inconsistencies.
+* **Deterministic Risk Intelligence:** Computes an objective 0–100 composite risk score from multi-month snapshot data across 5 distinct indicators with full mathematical auditability.
+* **Intervention Priority Queue:** Separates operational urgency from raw risk, ensuring oversight teams focus immediately on high-impact projects nearing critical milestones.
+* **Early Warning Radar:** Continuously evaluates project trajectories against 6 empirical alert rules (stagnation, cost revision, schedule pressure, expenditure divergence, deceleration, critical thresholds).
+* **Predictive Analytics Benchmark:** Empirically validated ablation study assessing the predictive contribution of native Common Upload Form (CUF) fields versus engineered longitudinal indicators for time-overrun forecasting.
+* **Comparative Sector Benchmarking:** Automatically benchmarks each project's progress rate, cost escalation, and risk index against peers within the same infrastructure sector.
+* **Intervention Lab ("What-If" Simulation):** Interactive policy sandbox simulating the quantitative impact of land clearance acceleration, contractor liquidity injections, geotechnical mitigation, and High-Powered Committee (HPC) fast-tracking.
+* **Grounded AI Copilot:** Natural-language conversational interface powered by Google Gemini, backed by strict structured query filtering in Python to prevent LLM hallucinations or synthetic record fabrication.
+* **Administrative Governance Plane:** Role-based administrative interface providing dataset reload capabilities, manual data override management, and an immutable SQLite audit log tracking every user modification.
+* **Responsive Mobile Experience:** Mobile-first responsive UI featuring sticky bottom navigation, touch-optimized card interactions (>= 44px targets), safe-area compliance, and full desktop parity.
 
 ---
 
-## Predictive Modeling & Empirical Evaluation (SIH26103)
+## How PRISM Works
 
-To rigorously fulfill Smart India Hackathon 2026 Problem Statement **SIH26103**, PRISM implements an empirical benchmark pipeline ([`ml/train_real_models.py`](file:///c:/PRISM/ml/train_real_models.py)) trained on 7,499 longitudinal monitoring observations across 2,054 unique projects from [`data/PRISM_ML_features_v1.csv`](file:///c:/PRISM/data/PRISM_ML_features_v1.csv).
+PRISM maintains a strict distinction between **deterministic operational risk intelligence** (which governs official rankings, alerts, and dashboard decisions) and **predictive/statistical ML analytics** (which provides empirical benchmarks for timeline forecasting).
 
-This pipeline directly evaluates the two specific technical dimensions mandated in the problem statement:
-1. **Technical Dimension (b):** Assessment of whether AI/ML techniques provide significant gains over conventional statistical methods in terms of prediction accuracy, early warning capabilities, and decision-support.
-2. **Technical Dimension (c):** Assessment of the extent to which predictive performance is attributable to current Common Upload Form (CUF) fields vis-à-vis additional variables not presently captured.
-
----
-
-### Part 1: AI/ML vs. Conventional Statistical Methods (SIH26103 Requirement b)
-
-The official problem statement explicitly requires:
-
-> *"Assessment of whether Artificial Intelligence (AI) and Machine Learning (ML) techniques provide significant gains over conventional statistical methods in terms of prediction accuracy, early warning capabilities and decision-support for infrastructure project monitoring."*
-
-To test this requirement without bias, PRISM evaluates three models predicting schedule delay (`time_overrun_months`) under an identical 80/20 `GroupShuffleSplit` partitioned strictly by `project_id` (1,497 held-out test observations) to eliminate temporal observation leakage:
-
-1. **Conventional Statistical Baseline:** Ordinary Least Squares (OLS) Linear Regression fitted on native CUF fields.
-2. **Model A (Machine Learning):** `GradientBoostingRegressor` fitted on native CUF fields.
-3. **Model B (Machine Learning + Domain Engineering):** `GradientBoostingRegressor` fitted on native CUF fields, derived financial-physical divergence ratios, and one-hot sector classifications.
-
-#### Three-Way Empirical Comparison Table
-
-| Model Class | Methodology & Model Description | Input Feature Set | MAE (months) | RMSE (months) | Explained Variance ($R^2$) |
-| :--- | :--- | :--- | :---: | :---: | :---: |
-| **Conventional Statistical Baseline** | Ordinary Least Squares (OLS) Linear Regression | Native CUF Only (4 fields) | **16.82** | **26.41** | **0.188** |
-| **Model A: Machine Learning** | Gradient Boosting Regressor (100 trees, depth 4) | Native CUF Only (4 fields) | **16.52** | **25.46** | **0.245** |
-| **Model B: ML + Feature Engineering** | Gradient Boosting Regressor (100 trees, depth 4) | CUF + Engineered + Sectors (16 features) | **15.46** | **24.89** | **0.279** |
-
-*(Empirically verified from [`ml/artifacts/real_model_metadata.json`](file:///c:/PRISM/ml/artifacts/real_model_metadata.json))*
-
-#### Honest Empirical Interpretation
-
-* **Prediction Accuracy (Modest algorithmic gain; decisive feature engineering gain):**
-  - Evaluating ML against conventional statistics on identical raw CUF fields (Model A vs. OLS Baseline) yields only a modest MAE reduction of **0.30 months (1.8% error reduction)**, though explained variance improves by **+30.3%** ($R^2$ 0.188 $\rightarrow$ 0.245).
-  - The decisive predictive gain occurs when non-linear ML is combined with domain feature engineering (Model B vs. OLS Baseline), achieving a **1.36-month reduction in MAE (8.1% gain)** and increasing $R^2$ to **0.279 (+48.4% gain)**.
-* **Early Warning Capabilities (ML captures toxic interaction patterns):**
-  - Linear models assess covariates additively. In contrast, gradient-boosted trees detect non-linear interactions (e.g., severe physical-financial divergence where capital disbursement surges while physical progress stalls).
-  - Engineered interaction features (`cost_revision_pct`, `progress_expenditure_gap`, `expenditure_pct_of_revised_cost`) represent over 37% of model decision weight, serving as effective leading indicators before formal stagnation occurs.
-* **Decision-Support Limits (Why PRISM uses deterministic MCDA in production):**
-  - Even the best ML model leaves over 70% of delay variance unexplained ($R^2 = 0.279$, MAE = 15.46 months) due to unobserved real-world factors (land litigation, forest clearances, contractor arbitration).
-  - For statutory Cabinet Secretariat / MoSPI oversight and CAG audit scrutiny, a model with an average error of ~15 months cannot autonomously trigger interventions. PRISM therefore uses ML strictly for empirical benchmarking and exploratory forecasting, reserving production prioritization for its auditable, deterministic 6-indicator MCDA risk engine.
-
----
-
-### Part 2: Common Upload Form (CUF) Field Attribution (SIH26103 Requirement c)
-
-The problem statement also mandates:
-
-> *"along with an assessment of the extent to which predictive performance is attributable to the current CUF fields vis-à-vis additional variables not presently captured in the CUF."*
-
-#### 1. Feature Classification
-
-| Feature Name | Native CUF Field? | Feature Category | Description / Derivation | Model Inclusion |
-| :--- | :---: | :---: | :--- | :---: |
-| `original_cost_cr` | **Yes** | Raw Input | Sanctioned / original project budget in ₹ Crore | Model A & B |
-| `revised_cost_cr` | **Yes** | Raw Input | Anticipated / revised project budget in ₹ Crore | Model A & B |
-| `cumulative_expenditure_cr` | **Yes** | Raw Input | Cumulative financial expenditure to date in ₹ Crore | Model A & B |
-| `physical_progress_pct` | **Yes** | Raw Input | Cumulative certified physical completion percentage | Model A & B |
-| `expenditure_pct_of_revised_cost` | **No** | Derived Indicator | $\frac{\text{cumulative\_expenditure\_cr}}{\text{revised\_cost\_cr}} \times 100$ | Model B Only |
-| `progress_expenditure_gap` | **No** | Derived Indicator | $\text{expenditure\_pct\_of\_revised\_cost} - \text{physical\_progress\_pct}$ | Model B Only |
-| `cost_revision_pct` | **No** | Derived Indicator | $\frac{\text{revised\_cost\_cr} - \text{original\_cost\_cr}}{\text{original\_cost\_cr}} \times 100$ | Model B Only |
-| `derived_sector` | **No** | Domain Variable | One-hot encoded infrastructure sector classification | Model B Only |
-
-#### 2. Empirical CUF Ablation Results (Model A vs. Model B)
-
-Both models utilize identical `GradientBoostingRegressor` hyperparameters on the same held-out test split:
-
-| Metric | Model A (Native CUF Only) | Model B (CUF + Engineered Variables) | Incremental Improvement ($\Delta$) | Relative Gain |
-| :--- | :---: | :---: | :---: | :---: |
-| **Mean Absolute Error (MAE)** | 16.52 months | **15.46 months** | **-1.05 months** | **6.4% reduction** |
-| **Root Mean Squared Error (RMSE)** | 25.46 months | **24.89 months** | **-0.57 months** | **2.2% reduction** |
-| **Explained Variance ($R^2$)** | 0.245 | **0.279** | **+0.033** | **13.5% gain** |
-
-*(Verified from [`ml/artifacts/real_model_metadata.json`](file:///c:/PRISM/ml/artifacts/real_model_metadata.json))*
-
-#### 3. Key Findings & Causal Attribution Disclaimer
-
-* **Finding:** While native CUF fields capture basic project magnitude, deriving relational indicators (such as the gap between financial expenditure and physical progress, plus cost escalation percentage) improves delay prediction accuracy by over 1 month of MAE.
-* **Feature Importance:** Feature importance analysis reveals that physical progress percentage ($31.99\%$) and cost revision percentage ($19.04\%$) account for over half of total predictive importance.
-* **Causal Disclaimer:** This ablation reflects the incremental associative contribution of engineered variables under this evaluation methodology. It does not imply that engineered features directly cause project delays, but demonstrates that synthesizing financial absorption ratios and execution divergence captures failure dynamics that raw tabular totals alone cannot reflect.
-
----
-
-## Tech Stack
-
-| Architectural Layer | Technology | Version / Specification | Justification |
-| :--- | :--- | :--- | :--- |
-| **Backend Runtime** | Python | 3.10+ (Tested on 3.14) | Standard data science & asynchronous backend environment |
-| **Web Framework** | FastAPI | `>=0.115.0` | High-throughput asynchronous REST routing with native OpenAPI docs |
-| **ASGI Web Server** | Uvicorn | `>=0.30.0` | Production-grade ASGI server with asynchronous connection handling |
-| **Validation & Schemas** | Pydantic | `>=2.8.0` | Strict data serialization, request validation, and schema generation |
-| **Data Processing** | Pandas & OpenPyXL | `>=2.2.0` / `>=3.1.5` | In-memory indexing and parsing of official MoSPI PAIMANA Excel/CSV datasets |
-| **Machine Learning** | Scikit-learn | `>=1.5.0` | Gradient Boosting regression and GroupShuffleSplit validation for CUF ablation |
-| **Conversational AI** | Google GenAI SDK | `google-genai >=2.0.0` | Official client library for grounded Gemini LLM assistance |
-| **Audit Persistence** | SQLite3 | Native Standard Library | Lightweight, zero-config relational store with WAL mode for admin audit trails |
-| **Frontend Framework** | Vanilla JavaScript | ES6 Modules (`type="module"`) | Dependency-free, lightning-fast execution without bloated node build chains |
-| **Frontend Styling** | Vanilla CSS + Tailwind | Utility Layer via CDN | Responsive executive layout, dark mode elements, and mobile-ready viewports |
-| **Icons** | Lucide Icons | CDN Distribution | Clean, accessible iconography across portal and admin interfaces |
-| **Automated Testing** | Pytest & HTTPX | `>=8.0.0` / `>=0.27.0` | Comprehensive integration, contract, parity, and redteam testing |
-
----
-
-## Project Structure
-
-```text
-PRISM/
-├── backend/                        # FastAPI Backend Application
-│   ├── config.py                   # Centralized configuration & environment variables
-│   ├── main.py                     # ASGI application entrypoint & static mounts
-│   ├── requirements.txt            # Backend Python dependencies
-│   ├── models/                     # Pydantic v2 domain schemas
-│   │   ├── common.py               # Enums (RiskTier, PriorityTier) & base models
-│   │   ├── project.py              # Project & PaimanaObservation models
-│   │   ├── risk.py                 # RiskAssessment, RiskIndicator & Priority models
-│   │   └── simulation.py           # What-If simulation request/response schemas
-│   ├── repositories/               # Data access & persistence abstractions
-│   │   ├── paimana_repository.py   # Primary repository indexing 2,054 projects
-│   │   └── demo_data.py            # Synthesized fallback dataset for sandbox mode
-│   ├── routes/                     # Modular API endpoints
-│   │   ├── admin.py                # Admin auth, project CRUD, diff audit, validation
-│   │   ├── alerts.py               # Early warning anomaly alerts
-│   │   ├── analytics.py            # Aggregate portfolio KPI endpoints
-│   │   ├── copilot.py              # Conversational grounded Copilot endpoint
-│   │   ├── demo.py                 # Toggle between PAIMANA and demo data sources
-│   │   ├── health.py               # Operational liveness & health inspection
-│   │   ├── metadata.py             # Distinct sector and state lists for UI filters
-│   │   ├── priorities.py           # Multi-criteria prioritization queue
-│   │   ├── projects.py             # Project search, pagination, S-curves & benchmarks
-│   │   ├── sectors.py              # Sector-level aggregation & risk distribution
-│   │   └── simulation.py           # Counterfactual intervention lab simulation
-│   ├── services/                   # Authoritative business logic engines
-│   │   ├── admin_service.py        # SQLite admin persistence, sessions & audit logging
-│   │   ├── alert_engine.py         # Anomaly detection & warning rules
-│   │   ├── copilot_service.py      # LLM query interpretation with fact grounding
-│   │   ├── priority_engine.py      # Urgency synthesis & P1/P2/P3 classification
-│   │   ├── project_query_service.py# Multi-facet filtering & sorting
-│   │   ├── rate_limiter.py         # Request rate limiter for public endpoints
-│   │   ├── risk_engine.py          # Deterministic 6-indicator MCDA risk engine
-│   │   ├── scenario_engine.py      # Sensitivity simulation & trajectory forecasting
-│   │   └── state_manager.py        # Global application state holder
-│   └── tests/                      # Automated test suite (124 passing tests)
-│       ├── test_admin_suite.py     # Admin auth, CRUD, 404s, override rollback
-│       ├── test_adversarial_redteam.py # Prompt injection & search edge cases
-│       ├── test_api_endpoints.py   # HTTP contract verification
-│       ├── test_benchmarking_and_hardening.py # Rate limiting & peer benchmarking
-│       ├── test_canonical_matrix.py# Comprehensive KPI invariance & parity tests
-│       ├── test_copilot_regression.py # Copilot query routing & entity isolation
-│       ├── test_cuf_ablation.py    # SIH26103 CUF ablation schema & metrics
-│       ├── test_integration_fixes.py # Frontend-backend contract regression tests
-│       ├── test_paimana_counts.py  # 2,054 project count & observation invariants
-│       ├── test_priority_parity.py # Deterministic priority tier logic
-│       └── test_risk_parity.py     # Deterministic risk engine calculation tests
-├── data/                           # Canonical Datasets
-│   ├── PRISM_PAIMANA_Dataset_v1_Apr-Jul_2026.xlsx # Official 4-month PAIMANA dataset
-│   ├── PRISM_ML_features_v1.csv    # Extracted feature matrix for empirical ML
-│   └── prism_admin.db              # SQLite persistence database (auto-created)
-├── docs/                           # Architectural & Developer Documentation
-│   ├── ARCHITECTURE.md             # In-depth system architecture design document
-│   ├── PYTHON_BACKEND_GUIDE.md     # Backend service implementation details
-│   ├── QUICKSTART.md               # Rapid deployment guide
-│   └── WHERE_TO_EDIT.md            # Maintenance map for codebase navigation
-├── frontend/                       # Public & Administrative Web Interfaces
-│   ├── index.html                  # Main PRISM Portal Single-Page Application
-│   ├── admin/                      # Admin Control Plane HTML templates
-│   │   ├── admin.css               # Shared administrative styles
-│   │   ├── admin.js                # Shared admin API client & UI components
-│   │   ├── audit.html              # Tamper-evident administrative audit log
-│   │   ├── index.html              # Admin control plane dashboard
-│   │   ├── login.html              # Accessible administrative login interface
-│   │   ├── project-form.html       # Project registration & diff confirmation modal
-│   │   ├── projects.html           # Administrative project inventory management
-│   │   ├── system.html             # System diagnostics & telemetry status
-│   │   └── validation.html         # Data integrity & anomaly scanner
-│   ├── assets/                     # Third-party vendor assets (Lucide icons)
-│   ├── css/                        # Public portal style definitions
-│   │   ├── components.css          # Badges, cards, sliders, and modal components
-│   │   └── styles.css              # Core typography, color system & layout
-│   └── js/                         # Modular public frontend logic
-│       ├── alerts.js               # Early-warning notification list rendering
-│       ├── analytics.js            # Portfolio KPI cards & distribution charts
-│       ├── api.js                  # Centralized REST API client
-│       ├── app.js                  # SPA routing & hash-based view controller
-│       ├── copilot.js              # Grounded Copilot chat window controller
-│       ├── dashboard.js            # Summary KPI rendering
-│       ├── map.js                  # Geographic distribution placeholder
-│       ├── project-detail.js       # S-curve charting & project dossier modal
-│       ├── projects.js             # Project directory with facet filtering
-│       ├── reports.js              # Executive summary flash report generation
-│       ├── scenario.js             # Intervention Lab slider & simulation handler
-│       ├── state.js                # Client-side state container
-│       └── utils.js                # Currency formatting & HTML sanitization
-├── ml/                             # Machine Learning & SIH26103 CUF Ablation
-│   ├── README.md                   # Detailed CUF ablation experimental report
-│   ├── train_real_models.py        # Reproducible empirical training script
-│   └── artifacts/                  # Trained model outputs & benchmark metadata
-│       └── real_model_metadata.json# Serialized evaluation metrics & feature weights
-├── Dockerfile                      # Container build definition
-├── docker-compose.yml              # Multi-container orchestration specification
-├── launch.bat                      # One-click Windows desktop launcher
-└── package.json                    # Workspace metadata & script shortcuts
+```mermaid
+flowchart TD
+    A["MoSPI PAIMANA Longitudinal Snapshots<br/>(Apr–Jul 2026 · 2,054 Projects · 7,499 Rows)"] --> B["Data Ingestion & Integrity Pipeline<br/>(paimana_repository.py)"]
+    
+    B --> C["Deterministic Risk Engine<br/>(risk_engine.py)<br/>5 Weighted Indicators (0–100)"]
+    B --> D["Predictive Analytics Benchmark<br/>(ml/train_real_models.py)<br/>Gradient Boosting vs OLS Baseline"]
+    
+    C --> E["Early Warning Alert Engine<br/>(alert_engine.py)<br/>6 Rule-Based Alert Rules"]
+    C --> F["Intervention Priority Engine<br/>(priority_engine.py)<br/>P1, P2, P3 Operational Tiers"]
+    
+    E --> G["Executive Dashboard & Visualizations<br/>(Chart.js + Responsive Web UI)"]
+    F --> G
+    
+    G --> H["Intervention Lab<br/>(scenario_engine.py)<br/>Counterfactual What-If Sandbox"]
+    G --> I["Grounded AI Copilot<br/>(copilot_service.py)<br/>Structured Query Extraction + Gemini"]
+    
+    J[("Admin SQLite Store<br/>Overrides & Audit Logs")] <--> B
 ```
 
 ---
 
-## Getting Started & Setup
+## Risk Engine
 
-### Prerequisites
+The PRISM Risk Engine is a 100% deterministic, auditable multi-criteria decision analysis (MCDA) framework. It evaluates multi-month observations to produce a composite risk index from 0 to 100.
 
-* **Python:** 3.10, 3.11, 3.12, 3.13, or 3.14 installed and added to `PATH`.
-* **Git:** Installed on system.
+> [!IMPORTANT]
+> **Auditable Index vs. Calibrated Probability:** The 0–100 composite risk score is an objective, observable project-health index derived from observable warning signals. It represents the degree of operational stress evident in reporting data. It is **not** a calibrated percentage probability of project failure. Weights are expert-designed prototype heuristics designed for demonstrative oversight.
 
-### Option A: One-Click Windows Launch (Recommended for Windows)
+### Indicator Breakdown & Weights
 
-Simply double-click [`launch.bat`](file:///c:/PRISM/launch.bat) in the repository root. The launcher will:
-1. Detect your Python environment automatically (virtual environments, `py` launcher, or system Python).
-2. Resolve the configured port from `.env` (default: `8000`).
-3. Start the FastAPI backend server in a dedicated window.
-4. Actively poll `/api/health` until the dataset is initialized.
-5. Automatically open both the **PRISM Portal** (`http://127.0.0.1:8000/`) and **Admin Panel** (`http://127.0.0.1:8000/admin/login`) in your default browser.
+| Indicator | Weight | Category | Operational Definition |
+| :--- | :---: | :--- | :--- |
+| **Progress Velocity** | **25%** | Progress | Average month-over-month rate of physical advancement compared against expected delivery pace. |
+| **Progress Stagnation** | **20%** | Progress | Detection of consecutive reporting periods showing $\le 0.5$ percentage points of physical advancement. |
+| **Schedule Pressure** | **20%** | Schedule | Ratio of remaining physical work to remaining time until revised target completion date. |
+| **Cost Escalation** | **20%** | Cost | Percentage increase of revised project outlay over original approved outlay, plus recent revision penalties. |
+| **Physical-Financial Divergence** | **15%** | Execution | Quantitative gap between cumulative fund utilization percentage and verified physical progress percentage. |
+| **Total** | **100%** | — | — |
 
-### Option B: Manual Cross-Platform Setup
+### Risk Tiers
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/abhinavg138/PRISM.git
-   cd PRISM
-   ```
+$$\text{Composite Score} = \sum_{i=1}^{5} \left( \text{Normalized Indicator Score}_i \times \frac{\text{Weight}_i}{100} \right)$$
 
-2. **Create and Activate a Virtual Environment:**
-   ```bash
-   # On Windows:
-   python -m venv .venv
-   .venv\Scripts\activate
-
-   # On Linux / macOS:
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. **Install Dependencies:**
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-
-4. **Configure Environment Variables (Optional):**
-   Copy the template environment file:
-   ```bash
-   cp .env.example .env
-   ```
-   * *Gemini AI Copilot (Optional):* Add your `GEMINI_API_KEY` to `.env` to enable full Gemini LLM synthesis. If omitted, PRISM operates in deterministic fallback mode with zero runtime errors.
-   * *Production Configuration:* Set `ENVIRONMENT=production`, and define `PRISM_ADMIN_USERNAME`, `PRISM_ADMIN_PASSWORD`, and `PRISM_ADMIN_SECRET`. In development mode, safe local defaults (`admin` / `prismadmin2026`) are enabled automatically.
-
-5. **Start the PRISM Application:**
-   ```bash
-   python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
-   ```
-
-6. **Access the Application:**
-   * **PRISM Main Portal:** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-   * **Administrative Control Plane:** [http://127.0.0.1:8000/admin/login](http://127.0.0.1:8000/admin/login)
-   * **Interactive OpenAPI Documentation:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* **Critical Risk (80–100):** Severe, compounded execution failure requiring immediate Cabinet-level or ministerial escalation.
+* **High Risk (60–79):** Significant schedule or cost distress requiring active inter-agency mitigation.
+* **Moderate Risk (40–59):** Developing execution friction or minor budget variance requiring focused divisional monitoring.
+* **Low Risk (0–39):** Normal execution variance within acceptable parameters.
 
 ---
 
-## Vercel Deployment Guide
+## Priority Engine
 
-PRISM is configured for zero-rebuild serverless deployment on Vercel's Python 3.12 Serverless Runtime using the root entrypoint [`app.py`](file:///c:/PRISM/app.py) and [`vercel.json`](file:///c:/PRISM/vercel.json).
+A project with a high risk score might be distant from its target commissioning date, whereas a moderately risky project may face a critical milestone next month. The PRISM Priority Engine decouples risk severity from operational intervention urgency:
 
-### 10-Step Deployment Checklist
+* **Risk asks:** *"How concerning does this project currently look based on its performance history?"*
+* **Priority asks:** *"Given limited oversight capacity and monitoring resources, which projects should receive attention first?"*
 
-1. **Import Repository:** Go to [vercel.com/new](https://vercel.com/new) and import your GitHub repository (`abhinavg138/PRISM`, branch `main`).
-2. **Framework Preset:** Select **Other** (if Vercel does not automatically detect FastAPI/Python).
-3. **Root Directory:** Keep `./` (the repository root).
-4. **Configure Environment Variables:** In the Vercel project settings, add:
-   * `ENVIRONMENT`: `production`
-   * `SESSION_COOKIE_SECURE`: `true`
-   * `APP_URL`: `https://your-project.vercel.app` (replace with your assigned Vercel URL)
-   * `GEMINI_API_KEY`: *(Optional)* Your Google Gemini API key for Copilot grounded synthesis.
-   * `PRISM_ADMIN_USERNAME`: Custom production admin username.
-   * `PRISM_ADMIN_PASSWORD`: Custom production admin password.
-   * `PRISM_ADMIN_SECRET`: Long random secret string for HMAC session token signing.
-   * `ALLOWED_ORIGINS`: *(Optional)* Comma-separated list of allowed origins. Defaults to `APP_URL` and `https://*.vercel.app`.
-5. **Deploy:** Click **Deploy**. Vercel will install dependencies from `requirements.txt` and package the application bundle.
-6. **Verify `/`:** Open `https://your-project.vercel.app/` in your browser. Ensure the PRISM homepage and Early Warning Radar render immediately.
-7. **Verify `/api/health`:** Visit `https://your-project.vercel.app/api/health` and verify `"status": "operational"`, `"dataSource": "PAIMANA"`, and `totalProjectsMonitored: 2054`.
-8. **Verify Dashboard:** Confirm KPI counters, Sector cards, Priority Action Queue, and Project Directory table.
-9. **Verify Copilot:** Open the PRISM Copilot panel and submit a query (e.g., "List top critical projects").
-10. **Verify Admin Separately:** Navigate to `/admin/login`, authenticate with your configured admin credentials, and verify project inspection and audit logging.
+### Priority Formula & Weights
 
-> [!IMPORTANT]
-> **Vercel Serverless Persistence Note:** Vercel serverless functions run in ephemeral, stateless execution environments. In PRISM, the SQLite database is automatically initialized and backed up to `/tmp/prism_admin.db` with an in-memory fallback to ensure the application never crashes during demonstrations. However, `/tmp` storage is ephemeral and does not provide durable production persistence across cold restarts. For permanent production database state, connect to an external managed database.
+$$\text{Priority Score} = \left( \text{Risk Score} \times 0.40 \right) + \left( \text{Schedule Urgency} \times 0.25 \right) + \left( \text{Recent Deterioration} \times 0.20 \right) + \left( \text{Evidence Confidence} \times 0.15 \right)$$
+
+| Factor | Weight | Evaluation Criteria |
+| :--- | :---: | :--- |
+| **Composite Risk Score** | **40%** | Baseline project health score from the Risk Engine (0–100). |
+| **Schedule Urgency** | **25%** | Non-linear urgency scaling based on fractional years remaining until target commissioning date. |
+| **Recent Deterioration** | **20%** | Rate of physical progress deceleration over the latest two consecutive observation cycles. |
+| **Evidence Confidence** | **15%** | Reliability multiplier based on snapshot depth (4 months = 100%, 3 months = 75%, 2 months = 50%, 1 month = 25%). |
+
+### Operational Intervention Tiers
+
+* **P1 Tier (Score 70–100):** Immediate executive escalation, on-site task force deployment, or contractor mobilization review.
+* **P2 Tier (Score 50–69):** Active divisional oversight, milestone-linked fund clearance audits, and recovery scheduling.
+* **P3 Tier (Score 0–49):** Routine automated monitoring within regular monthly reporting cycles.
+
+---
+
+## Early Warning System
+
+The Early Warning System translates observed longitudinal deviations into deterministic, categorized alert cards across six distinct rule sets.
+
+> [!NOTE]
+> **Rule-Based Alerts vs. AI Predictions:** Early Warning alerts are generated via deterministic, empirical rule thresholds applied directly to longitudinal observation histories. They are structured rule-based alerts, not black-box AI model outputs.
+
+### Alert Classification Rules
+
+1. **Progress Stagnation:** Physical completion change $\le 0.2$ percentage points across $\ge 2$ consecutive cycles.
+2. **High/Critical Risk Threshold:** Composite PRISM Risk Index $\ge 80/100$ confirmed by longitudinal flash reports.
+3. **Physical-Financial Divergence:** Cumulative budget utilization exceeds physical completion by $\ge 20.0$ percentage points with $\ge ₹10\text{ Cr}$ expenditure.
+4. **Cost Escalation:** Sanctioned cost exceeds original approved outlay by $\ge 40.0\%$ with original outlay $\ge ₹10\text{ Cr}$.
+5. **Schedule Pressure:** Schedule urgency $\ge 85$ with remaining physical scope $> 10\%$.
+6. **Deteriorating Progress:** Significant deceleration where recent progress rate drops $\ge 1.5$ percentage points below historical multi-month average.
+
+---
+
+## Predictive Analytics / ML Benchmark
+
+To address the **SIH26103 Technical Dimension (b)** requirement (*"Assessment of AI/ML techniques vs conventional statistical methods"*), PRISM includes an empirical benchmarking suite evaluating timeline overrun prediction using native Common Upload Form (CUF) fields versus engineered longitudinal features.
+
+### Empirical Evaluation Setup
+
+* **Target Variable:** `time_overrun_months` (difference between revised target completion and original target completion date).
+* **Dataset Scope:** 7,499 longitudinal observations across 2,054 unique central sector projects (April–July 2026).
+* **Validation Strategy:** `GroupShuffleSplit` (80% train / 20% test, grouped strictly by `project_id`) across 1,497 held-out test observations. Grouped splitting guarantees that observations from the same project do not appear in both training and testing folds, preventing temporal data leakage.
+* **Baseline Algorithm:** Ordinary Least Squares (OLS) Linear Regression on native CUF fields.
+* **ML Algorithm:** Gradient Boosting Regressor (`n_estimators=100`, `max_depth=4`, `learning_rate=0.08`, `random_state=42`).
+
+### Verified Benchmark Results
+
+| Model Architecture | Input Features | MAE (Months) ↓ | RMSE (Months) ↓ | $R^2$ Score ↑ | Relative MAE Gain |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Conventional Baseline (OLS)** | Native CUF (4 fields) | **16.82** | **26.41** | **0.188** | Baseline |
+| **Gradient Boosting (Model A)** | Native CUF (4 fields) | **16.52** | **25.46** | **0.245** | +1.8% vs OLS |
+| **Gradient Boosting (Model B)** | Native CUF + Engineered Features | **15.46** | **24.89** | **0.279** | **+8.0% vs OLS** |
+
+### Metrics Definition
+* **MAE (Mean Absolute Error):** The average magnitude of absolute timeline prediction errors, measured in months.
+* **RMSE (Root Mean Squared Error):** Error metric penalizing larger prediction errors more heavily, reflecting variance stability.
+* **$R^2$ (Coefficient of Determination):** Proportion of variance in time overrun explained by the model features.
+
+### Feature Importance Attribution (Model B)
+1. Physical Progress Percentage (`physical_progress_pct`): **31.99%**
+2. Cost Revision Percentage (`cost_revision_pct`): **19.04%**
+3. Original Cost Outlay (`original_cost_cr`): **13.82%**
+4. Expenditure % of Revised Cost (`expenditure_pct_of_revised_cost`): **10.25%**
+5. Progress-Expenditure Gap (`progress_expenditure_gap`): **8.10%**
+6. Revised Cost Outlay (`revised_cost_cr`): **7.28%**
+7. Cumulative Expenditure (`cumulative_expenditure_cr`): **4.90%**
+8. Sector Encoding (Railways): **1.88%**
+
+> [!NOTE]
+> **Operational Boundary:** This predictive experiment serves as an empirical research and validation benchmark for SIH26103. The deterministic MCDA Risk Engine remains the authoritative operational ranking and decision layer within PRISM. PRISM does not claim production-grade automated forecasting or causal timeline prediction.
+
+---
+
+## AI Copilot
+
+The PRISM AI Copilot provides an interactive natural-language interface for executive query resolution, powered by Google Gemini (`gemini-3.6-flash`).
+
+```
+User Query: "Which projects in Maharashtra have critical risk and cost escalation above 50%?"
+                                ↓
+               Deterministic Entity & Intent Parser
+      (Extracts State='Maharashtra', RiskTier='CRITICAL', CostOverrun>50)
+                                ↓
+               Structured Python Repository Filtering
+             (Retrieves verified project subset from memory)
+                                ↓
+                 Grounded Context Construction
+        (Injects ONLY real PAIMANA records into the prompt)
+                                ↓
+            Gemini GenAI Synthesis & Recommendation
+```
+
+### Hallucination Prevention & Factual Grounding
+* **Structured Query Translation:** User queries are parsed by deterministic regex and string matching routines (`ProjectQueryService`) to identify states, sectors, risk tiers, cost thresholds, and project IDs before invoking the LLM.
+* **Zero Synthetic Records:** Factual project tables and counts are queried directly from the verified in-memory repository. The LLM is provided with pre-filtered, verified records as context, preventing it from inventing non-existent projects or hallucinating project metrics.
+* **Deterministic Fallback:** If the Gemini API key is not configured or network connectivity is unavailable, the Copilot automatically falls back to an internal rule-based heuristic synthesizer that provides comprehensive analytical responses without external API calls.
+
+---
+
+## Intervention Lab
+
+The Intervention Lab is an interactive counterfactual scenario sandbox designed to test the sensitivity of project risk to simulated policy interventions.
+
+### Supported Policy Levers
+1. **Land Clearance Fast-Tracking:** Accelerates statutory and right-of-way clearances by 0–52 weeks.
+2. **Contractor Liquidity Injection:** Simulates working capital mobilization relief from 0% to 100%.
+3. **Geological & Weather Mitigation:** Evaluates engineering risk reduction from 0% to 100%.
+4. **High-Powered Committee (HPC) Escalation:** Simulates inter-ministerial single-window dispute resolution.
+
+> [!WARNING]
+> **Simulation Disclaimer:** The Intervention Lab is an illustrative policy simulation sandbox. Simulated outcomes represent mathematical adjustments to risk indicators within the sandbox context. They are what-if analytical tools and do **not** alter authoritative PAIMANA records or guarantee real-world completion dates.
+
+---
+
+## Data
+
+PRISM is grounded in authentic multi-month longitudinal snapshot records reflecting the MoSPI PAIMANA reporting schema for Central Sector Infrastructure Projects:
+
+* **Total Unique Projects Monitored:** **2,054 projects**
+* **Total Longitudinal Snapshot Observations:** **7,499 observations**
+* **Observation Time Window:** **April 2026 – July 2026** (4 monthly reporting cycles)
+* **Projects with Full 4-Month Snapshots:** **1,664 projects**
+* **Sectors Monitored:** Railways, Road Transport & Highways, Power & Energy, Petroleum & Natural Gas, Coal & Mining, Urban Development & Metro, Water Resources, Ports & Shipping, Telecommunications, Steel.
+
+### Key Data Fields Utilized
+* `project_id`, `project_name`, `project_code`
+* `sector`, `derived_sector`, `state`, `implementing_agency`
+* `original_cost_cr`, `revised_cost_cr`, `cumulative_expenditure_cr`
+* `physical_progress_pct`, `expenditure_pct_of_revised_cost`
+* `original_target_completion_mm_yyyy`, `revised_target_completion_mm_yyyy`
+* `report_month` (`2026-04`, `2026-05`, `2026-06`, `2026-07`)
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client_Tier ["Client Tier (Browser / Mobile)"]
+        DESK["Desktop Cockpit<br/>(1440px / Responsive Grid)"]
+        MOB["Mobile Viewport<br/>(360px–430px / Touch UI)"]
+        UI_COMP["Vanilla ES6 Modules + Chart.js + Lucide<br/>app.js · dashboard.js · projects.js · scenario.js · copilot.js"]
+        DESK --- UI_COMP
+        MOB --- UI_COMP
+    end
+
+    subgraph Service_Tier ["Application & Service Tier (FastAPI / Uvicorn)"]
+        GATEWAY["FastAPI Application Gateway<br/>(backend/main.py · app.py)"]
+        
+        subgraph Endpoints ["API Routes"]
+            R_PROJ["/api/projects"]
+            R_PRIO["/api/priorities"]
+            R_ALRT["/api/alerts"]
+            R_SIM["/api/simulation"]
+            R_COP["/api/copilot"]
+            R_ADM["/admin/api"]
+            R_HLT["/api/health"]
+        end
+        
+        subgraph Core_Engines ["Analytical Engines"]
+            E_RISK["Risk Engine (MCDA)"]
+            E_PRIO["Priority Engine"]
+            E_ALRT["Alert Engine"]
+            E_SCEN["Scenario Engine"]
+            E_COP["Copilot Service"]
+            E_ADM["Admin Service"]
+        end
+        
+        GATEWAY --> Endpoints
+        Endpoints --> Core_Engines
+    end
+
+    subgraph Data_Tier ["Data & Persistence Tier"]
+        REPO["Paimana Repository<br/>(In-Memory Multi-Month Index)"]
+        EXCEL["data/PRISM_PAIMANA_Dataset_v1_Apr-Jul_2026.xlsx"]
+        CSV["data/PRISM_ML_features_v1.csv"]
+        SQLITE[("data/prism_admin.db<br/>(Overrides & Audit Logs)")]
+        GEMINI["Google GenAI API<br/>(Gemini 3.6 Flash)"]
+        
+        EXCEL --> REPO
+        CSV --> REPO
+        SQLITE <--> E_ADM
+        Core_Engines <--> REPO
+        E_COP <--> GEMINI
+    end
+
+    UI_COMP <--> GATEWAY
+```
+
+---
+
+## Technology Stack
+
+* **Backend Framework:** Python 3.10+ / 3.12, FastAPI 0.115+, Uvicorn (ASGI)
+* **Data Processing & ML:** Pandas 2.2+, OpenPyXL 3.1+, Scikit-learn 1.5+
+* **Validation & Schemas:** Pydantic v2 (Strict typing and request validation)
+* **Frontend Layer:** HTML5, CSS3, Vanilla Modern JavaScript (ES6 Modules, Zero Build Step)
+* **Visualizations & Icons:** Chart.js, Lucide Icons, Tailwind CSS (via CDN runtime)
+* **Generative AI:** Google GenAI SDK (`google-genai`), Gemini 3.6 Flash
+* **Testing:** Pytest 9.1+, Pytest-asyncio, HTTPX
+* **Deployment & Containerization:** Vercel (Fluid Serverless Python ASGI), Docker, Docker Compose
+
+---
+
+## Repository Structure
+
+```
+PRISM/
+├── .github/                  # GitHub workflows and issue templates
+├── backend/                  # FastAPI backend application package
+│   ├── models/               # Pydantic data schemas (project, risk, simulation, copilot)
+│   ├── repositories/         # PAIMANA dataset loader and indexing repository
+│   ├── routes/               # API route controllers (projects, alerts, copilot, admin)
+│   ├── services/             # Core analytical engines (risk, priority, alert, scenario, copilot)
+│   ├── tests/                # Automated pytest verification test suite (139 tests)
+│   ├── config.py             # Centralized environment configuration and paths
+│   └── main.py               # FastAPI application factory, middleware, static mounts
+├── data/                     # Authoritative MoSPI PAIMANA dataset files
+│   ├── PRISM_PAIMANA_Dataset_v1_Apr-Jul_2026.xlsx
+│   └── PRISM_ML_features_v1.csv
+├── docs/                     # Technical specifications, architecture docs, guides
+├── frontend/                 # Web interface assets (zero-build static frontend)
+│   ├── admin/                # Administrative dashboard interface
+│   ├── css/                  # Custom stylesheets (styles.css, mobile.css, fonts.css)
+│   ├── js/                   # ES6 JavaScript modules (app.js, dashboard.js, projects.js)
+│   ├── home.html             # Platform orientation & landing page
+│   ├── index.html            # Main executive monitoring cockpit shell
+│   └── login.html            # Admin login interface
+├── ml/                       # Machine learning benchmark artifacts and training scripts
+│   ├── artifacts/            # Model benchmark metadata and evaluation metrics
+│   ├── train_real_models.py  # CUF ablation and baseline training pipeline
+│   └── README.md             # ML benchmarking documentation
+├── app.py                    # Root ASGI entrypoint for Vercel zero-config FastAPI
+├── Dockerfile                # Production container specification
+├── docker-compose.yml        # Multi-container local orchestration
+├── requirements.txt          # Root Python dependencies (Vercel-compatible)
+├── vercel.json               # Vercel deployment and function bundling configuration
+└── README.md                 # Project documentation
+```
+
+---
+
+## Local Setup
+
+### Prerequisites
+* Python 3.10, 3.11, or 3.12 installed
+* Git installed
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/abhinavg138/PRISM.git
+cd PRISM
+```
+
+### 2. Create and Activate Virtual Environment
+**On Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+**On Linux / macOS:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure Environment Variables (Optional)
+Create a `.env` file in the repository root if you wish to configure the Gemini Copilot or production admin credentials:
+
+```ini
+# Server Settings
+API_HOST=0.0.0.0
+API_PORT=8000
+ENVIRONMENT=development
+
+# AI Copilot (Optional - fallback rule engine activates if empty)
+GEMINI_API_KEY=your_google_gemini_api_key_here
+GEMINI_MODEL=gemini-3.6-flash
+
+# Administrative Governance (Optional local defaults exist)
+PRISM_ADMIN_USERNAME=admin
+PRISM_ADMIN_PASSWORD=prismadmin2026
+PRISM_ADMIN_SECRET=prism-local-dev-secret-key
+```
+
+### 5. Launch Local Development Server
+```bash
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### Local Endpoints
+* **Platform Landing:** [http://localhost:8000/](http://localhost:8000/)
+* **Orientation Guide:** [http://localhost:8000/home](http://localhost:8000/home)
+* **Monitoring Dashboard:** [http://localhost:8000/dashboard](http://localhost:8000/dashboard)
+* **API Documentation (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+* **API Health Check:** [http://localhost:8000/api/health](http://localhost:8000/api/health)
+
+---
+
+## Docker
+
+PRISM includes a verified production container configuration with health checks.
+
+### Run with Docker Compose
+```bash
+docker compose up --build
+```
+
+The application will build, initialize the in-memory PAIMANA dataset, and listen on:
+[http://localhost:8000/](http://localhost:8000/)
+
+To stop the container:
+```bash
+docker compose down
+```
+
+---
+
+## ☁️ Deployment
+
+### Vercel Serverless Architecture
+PRISM is configured for zero-config FastAPI deployment on Vercel's Fluid Python runtime:
+
+* **Entrypoint:** [app.py](file:///c:/PRISM/app.py) exports `app` from `backend.main:app`.
+* **Bundling Configuration:** [vercel.json](file:///c:/PRISM/vercel.json) bundles `data/**` and `frontend/**` into the function package:
+  ```json
+  {
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "functions": {
+      "app.py": {
+        "includeFiles": "data/**,frontend/**",
+        "maxDuration": 30
+      }
+    }
+  }
+  ```
+* **Read-Only Serverless Filesystem Handling:** In [backend/config.py](file:///c:/PRISM/backend/config.py), PRISM dynamically detects the Vercel execution environment (`IS_VERCEL = bool(os.getenv("VERCEL"))`) and routes the SQLite admin override store to `/tmp/prism_admin.db`.
+
+> [!NOTE]
+> **Serverless Persistence Characteristic:** In a serverless environment like Vercel, storage written to `/tmp` is ephemeral and scoped to the execution container lifecycle. Manual admin overrides made in the live prototype persist across warm requests within an instance, but do not replace an external managed relational database for persistent multi-region production deployments.
 
 ---
 
 ## API Reference
 
-All routes are served directly by FastAPI and documented interactively at `/docs`.
-
-### Public & Monitoring APIs
+Comprehensive OpenAPI documentation is available interactively at [/docs](https://prism-kappa-wine.vercel.app/docs).
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/health` | Service health status, monitored project count, and dataset snapshot metadata |
-| `GET` | `/api/metadata` | Distinct lists of sectors and administrative states for frontend dropdown filters |
-| `GET` | `/api/projects` | Filter, search, and paginate projects with aggregate portfolio KPIs |
-| `GET` | `/api/projects/{id}` | Detailed attributes for a single project |
-| `GET` | `/api/projects/{id}/history` | Longitudinal monthly observations and S-curve progression (Apr–Jul 2026) |
-| `GET` | `/api/projects/{id}/observations` | Alias endpoint for full chronological observation records |
-| `GET` | `/api/projects/{id}/risk` | Transparent risk breakdown: composite score, tier, and 6 indicator contributions |
-| `GET` | `/api/projects/{id}/priority` | Priority assessment, urgency score, and recommended intervention action |
-| `GET` | `/api/projects/{id}/benchmark` | Comparison of project progress velocity and cost overrun against sector peers |
-| `GET` | `/api/projects/{id}/alert` | Active early-warning flags for a specific project |
-| `GET` | `/api/priorities` | High-priority intervention queue categorized by P1, P2, and P3 tiers |
-| `GET` | `/api/alerts` | Filterable early-warning anomalies (stagnation, cost overrun, schedule delay) |
-| `GET` | `/api/sectors` | Sector-level capital outlays, project counts, and average risk indices |
-| `GET` | `/api/analytics` | High-level portfolio aggregates, completion rates, and delay distributions |
-| `POST`| `/api/simulate` | Execute what-if simulation (land clearance, liquidity, HPC intervention) |
-| `POST`| `/api/copilot/chat` | Natural language inquiry assistant grounded on verified project data |
-| `POST`| `/api/demo/toggle` | Switch runtime state between PAIMANA dataset and synthesized demo sandbox |
-
-### Administrative Control Plane APIs
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/admin/auth/login` | Authenticate administrative user and establish secure session |
-| `POST` | `/api/admin/auth/logout` | Invalidate administrative session and clear session cookie |
-| `GET` | `/api/admin/auth/me` | Inspect current administrative session credentials and role |
-| `GET` | `/api/admin/overview` | Control plane operational summary and modification metrics |
-| `GET` | `/api/admin/projects` | Administrative project listing including archived and modified records |
-| `GET` | `/api/admin/projects/{id}` | Administrative project inspection with full override and audit history |
-| `POST` | `/api/admin/projects` | Register a new capital project into PRISM with automatic risk indexing |
-| `PUT` | `/api/admin/projects/{id}` | Apply field overrides, record audit reason, and recalculate risk score |
-| `POST` | `/api/admin/projects/{id}/archive` | Soft-archive a project to exclude it from standard public monitoring |
-| `POST` | `/api/admin/projects/{id}/unarchive` | Restore an archived project back to active monitoring |
-| `DELETE`| `/api/admin/projects/{id}/overrides` | Remove all administrative overrides and restore pristine PAIMANA values |
-| `DELETE`| `/api/admin/projects/{id}/overrides/{field}` | Remove a single field override and restore original PAIMANA value |
-| `GET` | `/api/admin/audit-log` | Chronological, immutable administrative audit log with before/after diffs |
-| `GET` | `/api/admin/data-validation` | Automated dataset scanner auditing records for schema and plausibility issues |
-| `GET` | `/api/admin/system` | System diagnostic metrics, database storage size, and environment status |
+| `GET` | `/api/health` | System health check, dataset load status, and monitoring counts |
+| `GET` | `/api/metadata` | Overview statistics, report months, and portfolio summaries |
+| `GET` | `/api/projects` | Filtered, searchable, and paginated list of all 2,054 projects |
+| `GET` | `/api/projects/{id}` | Detailed project dossier with historical multi-month observations |
+| `GET` | `/api/projects/{id}/observations` | Longitudinal snapshot observations for a specific project |
+| `GET` | `/api/projects/{id}/risk` | Granular 5-indicator MCDA risk assessment breakdown |
+| `GET` | `/api/projects/{id}/priority` | Priority score, operational tier (P1/P2/P3), and recommended action |
+| `GET` | `/api/projects/{id}/benchmark` | Sector peer comparative analysis (velocity, risk, cost overrun) |
+| `GET` | `/api/priorities` | Complete ranked priority queue with tier counts and filters |
+| `GET` | `/api/alerts` | Early warning alert list with severity and category breakdowns |
+| `GET` | `/api/sectors` | Aggregate performance statistics grouped across all sectors |
+| `GET` | `/api/analytics/portfolio` | Macro portfolio statistics, risk distributions, and progress trends |
+| `POST` | `/api/simulation/run` | Executes what-if policy intervention simulation for a project |
+| `POST` | `/api/copilot/query` | Submits natural-language query to grounded AI Copilot |
+| `POST` | `/admin/api/login` | Authenticates administrative user and issues signed session cookie |
+| `GET` | `/admin/api/audit-logs` | Retrieves immutable audit trail of administrative modifications |
 
 ---
 
 ## Testing
 
-PRISM enforces rigorous test coverage across deterministic scoring invariants, API contracts, adversarial prompt hardening, and data fidelity.
-
-### Running the Test Suite
-
-Execute the complete automated test suite:
+PRISM maintains an extensive automated pytest suite validating analytical formulas, API responses, adversarial security inputs, and deployment invariants:
 
 ```bash
-pytest backend/tests/ -v
+pytest
 ```
 
-To run targeted test suites:
+### Verified Test Suite Breakdown (139 Tests Passed)
+* `test_admin_suite.py` (12 tests): Admin authentication, session cookies, manual overrides, reload triggers, audit log integrity.
+* `test_adversarial_redteam.py` (27 tests): Boundary tests, prompt injection resistance, invalid inputs, geographic filter injection attacks.
+* `test_api_endpoints.py` (17 tests): Route responses, query parameter filters, pagination, error schemas.
+* `test_benchmarking_and_hardening.py` (5 tests): Sector benchmarking calculations, rate limiting, cache control headers.
+* `test_canonical_matrix.py` (14 tests): Scoring invariants, mathematical edge cases, tier boundary rules.
+* `test_copilot_regression.py` (20 tests): Intent extraction, grounded entity filtering, fallback behavior without API keys.
+* `test_cuf_ablation.py` (4 tests): Empirical ML benchmark verification, OLS baseline validation, feature contribution assertions.
+* `test_deployment_readiness.py` (12 tests): Dataset file presence, Vercel configuration checks, static mounts.
+* `test_integration_fixes.py` (17 tests): End-to-end user workflows, dossier rendering, tab navigation data flows.
+* `test_paimana_counts.py` (3 tests): Invariant data loading: exactly 2,054 projects and 7,499 observations.
+* `test_priority_parity.py` (5 tests): Intervention Priority Queue formulas and weight sums.
+* `test_risk_parity.py` (3 tests): Risk Engine 5-indicator weights summing to exactly 100%.
 
-```bash
-# Verify the deterministic risk engine scoring parity:
-pytest backend/tests/test_risk_parity.py -v
-
-# Verify the priority engine classification logic:
-pytest backend/tests/test_priority_parity.py -v
-
-# Verify SIH26103 CUF ablation schemas and metrics:
-pytest backend/tests/test_cuf_ablation.py -v
-
-# Verify isolated admin control plane, authentication, and override rollback:
-pytest backend/tests/test_admin_suite.py -v
-
-# Verify adversarial copilot prompt injection & search boundary attacks:
-pytest backend/tests/test_adversarial_redteam.py -v
 ```
-
-### Current Test Verification Status
-
-```text
-============================= test session starts =============================
-platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0
-rootdir: C:\PRISM
-plugins: anyio-4.15.1, asyncio-1.4.0
-collected 125 items
-
-backend/tests/test_admin_suite.py ............                           [  9%]
-backend/tests/test_adversarial_redteam.py ...........................    [ 31%]
-backend/tests/test_api_endpoints.py .................                    [ 45%]
-backend/tests/test_benchmarking_and_hardening.py .....                   [ 49%]
-backend/tests/test_canonical_matrix.py ..............                    [ 60%]
-backend/tests/test_copilot_regression.py ..................              [ 75%]
-backend/tests/test_cuf_ablation.py ....                                  [ 77%]
-backend/tests/test_integration_fixes.py .................                [ 91%]
-backend/tests/test_paimana_counts.py ...                                 [ 93%]
-backend/tests/test_priority_parity.py .....                              [ 97%]
-backend/tests/test_risk_parity.py ...                                    [100%]
-
-====================== 125 passed, 3 warnings in 57.91s =======================
+====================== 139 passed, 3 warnings in 50.10s =======================
 ```
-
-* **Total Test Cases:** **125**
-* **Passing:** **125 (100%)**
-* **Failures:** **0**
 
 ---
 
-## Screenshots
+## Security / Trust
 
-> **Note:** Visual assets and UI walkthrough media will be captured and placed in `docs/assets/` during final presentation packaging. To preview the full UI live, start the server and navigate to [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
+* **Zero Hardcoded Secrets:** No API keys, database credentials, or sensitive secrets are stored in the codebase. All sensitive keys are loaded via environment variables (`os.getenv`).
+* **Deterministic Structured Query Processing:** The Copilot converts natural language queries into deterministic structured filters in Python before retrieving data, preventing indirect prompt injection attacks from exfiltrating unauthorized records.
+* **Authentication & Signed Cookies:** The administrative control plane requires credentials and uses cryptographically signed session cookies with configurable `Secure`, `HttpOnly`, and `SameSite` flags.
+* **Input Validation & Range Clamping:** All incoming API parameters are strictly typed and sanitized using Pydantic schemas, protecting against buffer overruns, type confusion, and division-by-zero errors.
+* **Audit Trail Logging:** All administrative modifications or data overrides are committed with timestamps, field names, and change rationales to an immutable SQLite audit log table.
+* **CORS Governance:** Configurable origin whitelisting ensures API endpoints are protected against cross-origin abuse in production environments.
+
+---
+
+## Limitations
+
+1. **Temporal Observation Scope:** The dataset currently spans a four-month window (April 2026 – July 2026). While sufficient to evaluate month-over-month velocity and stagnation, deeper longitudinal seasonality requires multi-year historical data.
+2. **Heuristic Risk Weights:** While indicators are grounded in sound infrastructure monitoring practices, the relative weights (e.g., 25% velocity, 20% stagnation) are expert-designed prototype heuristics rather than statistically calibrated coefficients derived from decades of project closeout records.
+3. **Index vs. Failure Probability:** The PRISM Risk Index is a normalized indicator of observable operational stress, not an actuarial probability of project failure or contractual default.
+4. **Machine Learning Scope:** The ML predictive experiment is strictly an empirical benchmark on time overrun. It does not provide causal inference or automated root-cause diagnosis.
+5. **Simulation Environment:** The Intervention Lab is an analytical policy sandbox. Simulated reductions in risk represent mathematical sensitivity testing rather than guaranteed real-world execution timelines.
+6. **Serverless Ephemeral Storage:** The SQLite administrative store runs within `/tmp` on Vercel serverless containers, making manual overrides ephemeral across container restarts.
+
+---
+
+## Roadmap
+
+* [ ] **Multi-Year Time Series Ingestion:** Expand ingestion connectors to parse 12–36 months of longitudinal MoSPI OCMS / PAIMANA historical records.
+* [ ] **Empirical Outcome Calibration:** Calibrate risk indicator weights using historical project closeout and final completion audit data.
+* [ ] **Dedicated Cost-Overrun Forecasting:** Extend the ML benchmarking pipeline to predict quantitative cost revision amounts in addition to timeline delays.
+* [ ] **Persistent Cloud Database Integration:** Migrate the administrative audit and override plane to an external managed PostgreSQL database.
+* [ ] **Fine-Grained Role-Based Access Control (RBAC):** Introduce role-specific views for Central Ministries, State Coordinators, Implementing Agencies, and Cabinet Secretariat analysts.
+* [ ] **Automated Ingestion Pipelines:** Implement scheduled background ingestors for automated monthly PAIMANA Excel/CSV upload processing.
+* [ ] **Geospatial Infrastructure Mapping:** Integrate map-based spatial visualization for regional infrastructure corridor monitoring.
+
+---
+
+## Contributing
+
+Contributions, feedback, and discussion are welcome.
+
+1. Fork the repository: `https://github.com/abhinavg138/PRISM`
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes: `git commit -m "feat: add descriptive commit message"`
+4. Run the automated test suite: `pytest`
+5. Push to your branch: `git push origin feature/your-feature-name`
+6. Open a Pull Request on GitHub.
+
+---
+
+## References
+
+* **Smart India Hackathon (SIH 2026):** Problem Statement SIH26103 — Use case on web-based integrated project-monitoring platform.
+* **Ministry of Statistics and Programme Implementation (MoSPI):** Infrastructure and Project Monitoring Division (IPMD) Online Central Monitoring System (OCMS) & PAIMANA monitoring framework.
+* **FastAPI:** High-performance modern web framework for Python ([https://fastapi.tiangolo.com/](https://fastapi.tiangolo.com/))
+* **Scikit-learn:** Machine Learning in Python ([https://scikit-learn.org/](https://scikit-learn.org/))
+* **Google GenAI SDK:** Google Gemini Python SDK ([https://ai.google.dev/](https://ai.google.dev/))
+* **Chart.js:** Simple yet flexible JavaScript charting for designers & developers ([https://www.chartjs.org/](https://www.chartjs.org/))
+* **Vercel Documentation:** Zero-config Python Serverless Functions ([https://vercel.com/docs/functions/runtimes/python](https://vercel.com/docs/functions/runtimes/python))
+
+---
+
+### Project Links
+* **Repository:** [https://github.com/abhinavg138/PRISM](https://github.com/abhinavg138/PRISM)
+* **Live Deployment:** [https://prism-kappa-wine.vercel.app/](https://prism-kappa-wine.vercel.app/)
+* **Platform Orientation:** [https://prism-kappa-wine.vercel.app/home](https://prism-kappa-wine.vercel.app/home)
+* **Monitoring Cockpit:** [https://prism-kappa-wine.vercel.app/dashboard](https://prism-kappa-wine.vercel.app/dashboard)
+* **API Documentation:** [https://prism-kappa-wine.vercel.app/docs](https://prism-kappa-wine.vercel.app/docs)
