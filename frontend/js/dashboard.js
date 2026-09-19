@@ -15,6 +15,7 @@ export function renderDashboard() {
   renderSectorCards();
   renderPriorityQueue();
   renderPortfolioRiskInsights();
+  renderMobileDashboard();
   renderIcons();
 }
 
@@ -514,3 +515,110 @@ export function renderPortfolioRiskInsights() {
     </div>
   `;
 }
+
+let mobileDonutChartInstance = null;
+
+export function renderMobileDashboard() {
+  const projects = getRoleScopedProjects();
+  const totalProjects = projects.length;
+
+  // 1. Mobile Greeting (Screen 3)
+  const greetingEl = document.getElementById('dashboard-mobile-greeting');
+  if (greetingEl) {
+    const roleName = state.currentRole?.name || 'MoSPI Monitoring Officer';
+    const roleDept = state.currentRole?.department || 'Central Sector Project Oversight';
+    greetingEl.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider">MoSPI PAIMANA Monitoring Cycle</div>
+          <h1 class="text-lg font-black text-slate-900 tracking-tight leading-tight mt-0.5">Welcome, ${escapeHtml(roleName)}</h1>
+          <p class="text-xs text-slate-500 font-medium">${escapeHtml(roleDept)}</p>
+        </div>
+        <span class="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 shrink-0">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Live
+        </span>
+      </div>
+    `;
+  }
+
+  // 2. Mobile Donut Card & Metrics (Screen 3)
+  let criticalCount = 0;
+  let highCount = 0;
+  let moderateCount = 0;
+  let lowCount = 0;
+
+  for (const p of projects) {
+    if (p.riskTier === 'CRITICAL') criticalCount++;
+    else if (p.riskTier === 'HIGH') highCount++;
+    else if (p.riskTier === 'MODERATE') moderateCount++;
+    else if (p.riskTier === 'LOW') lowCount++;
+  }
+
+  const critHighCount = criticalCount + highCount;
+  const safeTotal = totalProjects || 1;
+  const critHighPct = Math.round((critHighCount / safeTotal) * 100);
+  const modPct = Math.round((moderateCount / safeTotal) * 100);
+  const lowPct = Math.round((lowCount / safeTotal) * 100);
+
+  const centerCountEl = document.getElementById('mobile-donut-center-count');
+  const totalBadgeEl = document.getElementById('mobile-donut-total-badge');
+  const critPctEl = document.getElementById('mobile-donut-crit-pct');
+  const modPctEl = document.getElementById('mobile-donut-mod-pct');
+  const lowPctEl = document.getElementById('mobile-donut-low-pct');
+
+  if (centerCountEl) centerCountEl.textContent = totalProjects.toLocaleString();
+  if (totalBadgeEl) totalBadgeEl.textContent = `${totalProjects} Projects`;
+  if (critPctEl) critPctEl.textContent = `${critHighPct}% (${critHighCount})`;
+  if (modPctEl) modPctEl.textContent = `${modPct}% (${moderateCount})`;
+  if (lowPctEl) lowPctEl.textContent = `${lowPct}% (${lowCount})`;
+
+  const canvas = document.getElementById('mobile-risk-donut-canvas');
+  if (canvas && window.Chart) {
+    if (mobileDonutChartInstance) {
+      mobileDonutChartInstance.destroy();
+      mobileDonutChartInstance = null;
+    }
+    const ctx = canvas.getContext('2d');
+    mobileDonutChartInstance = new window.Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Critical & High', 'Moderate', 'Low Risk'],
+        datasets: [{
+          data: [critHighCount, moderateCount, lowCount],
+          backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+          borderWidth: 2,
+          borderColor: '#ffffff',
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: false,
+        cutout: '74%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.label}: ${ctx.raw} projects`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 3. Bind Quick Actions
+  document.querySelectorAll('#dashboard-quick-actions .quick-action-btn').forEach(btn => {
+    if (!btn.dataset.bound) {
+      btn.dataset.bound = 'true';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const action = btn.getAttribute('data-action');
+        if (action) {
+          notify('NAVIGATE', action);
+        }
+      });
+    }
+  });
+}
+

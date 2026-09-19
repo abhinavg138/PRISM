@@ -126,116 +126,127 @@ function renderDossierContent(p, observations) {
   ];
 
   body.innerHTML = `
-    <!-- Top Metadata Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200">
-      <div class="flex flex-wrap items-center gap-2">
-        ${getRiskBadgeHtml(p.riskTier, p.riskScore)}
-        ${getPriorityBadgeHtml(p.priorityTier, p.priorityScore)}
-        <span class="badge bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(p.sector)}</span>
-        <span class="badge bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(p.state)}</span>
-        <span class="text-xs font-mono text-slate-400">Code: ${escapeHtml(p.code || p.id)}</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="btn-dossier-copilot" class="btn btn-copilot text-xs py-1.5 px-3">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Ask Copilot About Project
-        </button>
-      </div>
+    <!-- Mobile Segmented Tabs (Screen 5) -->
+    <div class="dossier-segmented-tabs md:hidden">
+      <button class="dossier-tab-btn active" data-target="dossier-section-overview">Overview</button>
+      <button class="dossier-tab-btn" data-target="dossier-section-indicators">Indicators</button>
+      <button class="dossier-tab-btn" data-target="dossier-section-timeline">Timeline</button>
+      <button class="dossier-tab-btn" data-target="dossier-section-intervention">Intervention</button>
     </div>
 
-    <!-- Data Trust & Provenance Bar -->
-    ${getProvenanceBannerHtml(p)}
-
-    <!-- Core Metrics Grid -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-      <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
-        <div class="text-xs text-slate-500 font-medium">Physical Progress</div>
-        <div class="text-lg font-bold text-slate-900 mt-1">${formatPercent(p.physicalProgressPercent)}</div>
-        <div class="progress-bar-bg mt-2 bg-slate-200">
-          <div class="progress-bar-fill bg-blue-600" style="width: ${Math.min(100, Math.max(0, p.physicalProgressPercent || 0))}%"></div>
+    <!-- Section 1: Overview -->
+    <div id="dossier-section-overview" class="space-y-4">
+      <!-- Top Metadata Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200">
+        <div class="flex flex-wrap items-center gap-2">
+          ${getRiskBadgeHtml(p.riskTier, p.riskScore)}
+          ${getPriorityBadgeHtml(p.priorityTier, p.priorityScore)}
+          <span class="badge bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(p.sector)}</span>
+          <span class="badge bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(p.state)}</span>
+          <span class="text-xs font-mono text-slate-400">Code: ${escapeHtml(p.code || p.id)}</span>
         </div>
-      </div>
-
-      <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
-        <div class="text-xs text-slate-500 font-medium">Financial Progress</div>
-        <div class="text-lg font-bold text-slate-900 mt-1">${formatPercent(p.financialProgressPercent)}</div>
-        <div class="progress-bar-bg mt-2 bg-slate-200">
-          <div class="progress-bar-fill bg-indigo-600" style="width: ${Math.min(100, Math.max(0, p.financialProgressPercent || 0))}%"></div>
-        </div>
-      </div>
-
-      <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
-        <div class="text-xs text-slate-500 font-medium">Sanctioned Outlay</div>
-        <div class="text-lg font-bold text-slate-900 mt-1">${formatCurrencyCr(p.revisedCostCr || p.originalCostCr)}</div>
-        <div class="text-[11px] text-slate-500 mt-1">Exp: ${formatCurrencyCr(p.cumulativeExpenditureCr)}</div>
-      </div>
-
-      <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
-        <div class="text-xs text-slate-500 font-medium">Schedule Slippage</div>
-        <div class="text-lg font-bold ${p.timeOverrunMonths > 0 ? 'text-red-600' : 'text-emerald-600'} mt-1">
-          ${formatMonths(p.timeOverrunMonths)}
-        </div>
-        <div class="text-[11px] text-slate-500 mt-1">Target: ${p.revisedCompletionDate || p.originalCompletionDate || 'N/A'}</div>
-      </div>
-    </div>
-
-    <!-- Forward-Looking Earned Schedule & EAC Forecast (ISO 21508) -->
-    <div class="mt-4 p-3.5 rounded-lg bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white border border-blue-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div>
         <div class="flex items-center gap-2">
-          <span class="text-xs font-bold text-blue-300 uppercase tracking-wider">Earned Schedule & EAC Forecast</span>
-          <span class="badge bg-blue-500/20 text-blue-200 border border-blue-400/30 text-[9px]">ISO 21508 EVM</span>
-        </div>
-        <div class="text-xs text-slate-300 mt-1">
-          Projected completion slippage derived from observed MoM physical progress velocity and financial burn rate.
+          <button id="btn-dossier-copilot" class="btn btn-copilot text-xs py-1.5 px-3 min-h-[44px]">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Ask Copilot About Project
+          </button>
         </div>
       </div>
-      <div class="flex items-center gap-4 text-right">
-        <div>
-          <div class="text-[10px] text-slate-400 uppercase font-bold">Projected Delay</div>
-          <div class="text-base font-black text-amber-300">
-            ${p.predictedDelayMonths !== null && p.predictedDelayMonths !== undefined ? `+${p.predictedDelayMonths} mos` : '0.0 mos'}
+
+      <!-- Data Trust & Provenance Bar -->
+      ${getProvenanceBannerHtml(p)}
+
+      <!-- Core Metrics Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <div class="text-xs text-slate-500 font-medium">Physical Progress</div>
+          <div class="text-lg font-bold text-slate-900 mt-1">${formatPercent(p.physicalProgressPercent)}</div>
+          <div class="progress-bar-bg mt-2 bg-slate-200">
+            <div class="progress-bar-fill bg-blue-600" style="width: ${Math.min(100, Math.max(0, p.physicalProgressPercent || 0))}%"></div>
           </div>
         </div>
-        <div class="border-l border-slate-700 pl-4">
-          <div class="text-[10px] text-slate-400 uppercase font-bold">Est. Additional Escalation</div>
-          <div class="text-base font-black text-emerald-300">
-            ${p.predictedCostEscalationCr ? `${formatCurrencyCr(p.predictedCostEscalationCr)}` : '₹0 Cr'}
+
+        <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <div class="text-xs text-slate-500 font-medium">Financial Progress</div>
+          <div class="text-lg font-bold text-slate-900 mt-1">${formatPercent(p.financialProgressPercent)}</div>
+          <div class="progress-bar-bg mt-2 bg-slate-200">
+            <div class="progress-bar-fill bg-indigo-600" style="width: ${Math.min(100, Math.max(0, p.financialProgressPercent || 0))}%"></div>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <div class="text-xs text-slate-500 font-medium">Sanctioned Outlay</div>
+          <div class="text-lg font-bold text-slate-900 mt-1">${formatCurrencyCr(p.revisedCostCr || p.originalCostCr)}</div>
+          <div class="text-[11px] text-slate-500 mt-1">Exp: ${formatCurrencyCr(p.cumulativeExpenditureCr)}</div>
+        </div>
+
+        <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <div class="text-xs text-slate-500 font-medium">Schedule Slippage</div>
+          <div class="text-lg font-bold ${p.timeOverrunMonths > 0 ? 'text-red-600' : 'text-emerald-600'} mt-1">
+            ${formatMonths(p.timeOverrunMonths)}
+          </div>
+          <div class="text-[11px] text-slate-500 mt-1">Target: ${p.revisedCompletionDate || p.originalCompletionDate || 'N/A'}</div>
+        </div>
+      </div>
+
+      <!-- Forward-Looking Earned Schedule & EAC Forecast (ISO 21508) -->
+      <div class="p-3.5 rounded-lg bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white border border-blue-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-blue-300 uppercase tracking-wider">Earned Schedule & EAC Forecast</span>
+            <span class="badge bg-blue-500/20 text-blue-200 border border-blue-400/30 text-[9px]">ISO 21508 EVM</span>
+          </div>
+          <div class="text-xs text-slate-300 mt-1">
+            Projected completion slippage derived from observed MoM physical progress velocity and financial burn rate.
+          </div>
+        </div>
+        <div class="flex items-center gap-4 text-right">
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-bold">Projected Delay</div>
+            <div class="text-base font-black text-amber-300">
+              ${p.predictedDelayMonths !== null && p.predictedDelayMonths !== undefined ? `+${p.predictedDelayMonths} mos` : '0.0 mos'}
+            </div>
+          </div>
+          <div class="border-l border-slate-700 pl-4">
+            <div class="text-[10px] text-slate-400 uppercase font-bold">Est. Additional Escalation</div>
+            <div class="text-base font-black text-emerald-300">
+              ${p.predictedCostEscalationCr ? `${formatCurrencyCr(p.predictedCostEscalationCr)}` : '₹0 Cr'}
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Agency & Implementation Context -->
-    <div class="mt-4 p-3.5 rounded-lg bg-blue-50/50 border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-700 gap-2">
-      <div>
-        <strong>Implementing Agency:</strong> ${escapeHtml(p.implementingAgency || 'N/A')}
-        <span class="mx-2 text-slate-300">|</span>
-        <strong>Ministry:</strong> ${escapeHtml(p.ministry || 'N/A')}
-      </div>
-      <div>
-        <strong>Latest Observation:</strong> ${escapeHtml(p.lastReportMonth || 'Jul-2026')}
-      </div>
-    </div>
-
-    <!-- Peer Sector Benchmarking (SIH PS 26103) -->
-    <div class="mt-6">
-      <div class="flex items-center justify-between mb-2">
+      <!-- Agency & Implementation Context -->
+      <div class="p-3.5 rounded-lg bg-blue-50/50 border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-700 gap-2">
         <div>
-          <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <i data-lucide="scale" class="w-4 h-4 text-blue-600"></i>
-            Peer Sector Benchmarking (Comparative Analytics)
-          </h4>
-          <p class="text-xs text-slate-500">Evaluating asset execution velocity and cost stability against sectoral peers</p>
+          <strong>Implementing Agency:</strong> ${escapeHtml(p.implementingAgency || 'N/A')}
+          <span class="mx-2 text-slate-300">|</span>
+          <strong>Ministry:</strong> ${escapeHtml(p.ministry || 'N/A')}
         </div>
-        <span id="benchmark-status-badge" class="badge bg-slate-100 text-slate-700 text-[10px] font-bold">Loading...</span>
+        <div>
+          <strong>Latest Observation:</strong> ${escapeHtml(p.lastReportMonth || 'Jul-2026')}
+        </div>
       </div>
-      <div id="dossier-benchmarking-content" class="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
-        <div class="text-xs text-slate-400 text-center py-2">Loading sector peer metrics...</div>
+
+      <!-- Peer Sector Benchmarking (SIH PS 26103) -->
+      <div class="mt-4">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="scale" class="w-4 h-4 text-blue-600"></i>
+              Peer Sector Benchmarking (Comparative Analytics)
+            </h4>
+            <p class="text-xs text-slate-500">Evaluating asset execution velocity and cost stability against sectoral peers</p>
+          </div>
+          <span id="benchmark-status-badge" class="badge bg-slate-100 text-slate-700 text-[10px] font-bold">Loading...</span>
+        </div>
+        <div id="dossier-benchmarking-content" class="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+          <div class="text-xs text-slate-400 text-center py-2">Loading sector peer metrics...</div>
+        </div>
       </div>
     </div>
 
-    <!-- PRISM Risk Indicators Section -->
-    <div class="mt-6">
+    <!-- Section 2: Indicators -->
+    <div id="dossier-section-indicators" class="mt-6 pt-4 border-t border-slate-200">
       <div class="flex items-center justify-between mb-3">
         <div>
           <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -271,8 +282,8 @@ function renderDossierContent(p, observations) {
       </div>
     </div>
 
-    <!-- Longitudinal Trend Chart (Apr–Jul 2026) -->
-    <div class="mt-6">
+    <!-- Section 3: Timeline -->
+    <div id="dossier-section-timeline" class="mt-6 pt-4 border-t border-slate-200">
       <div class="flex items-center justify-between mb-2">
         <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
           <i data-lucide="trending-up" class="w-4 h-4 text-indigo-600"></i>
@@ -285,9 +296,11 @@ function renderDossierContent(p, observations) {
       </div>
     </div>
 
-    <!-- Intervention Lab / Scenario Simulation Section -->
-    <div class="mt-8 pt-6 border-t border-slate-200" id="intervention-lab-container">
-      <!-- Injected by scenario.js -->
+    <!-- Section 4: Intervention Lab -->
+    <div id="dossier-section-intervention" class="mt-8 pt-6 border-t border-slate-200">
+      <div id="intervention-lab-container">
+        <!-- Injected by scenario.js -->
+      </div>
     </div>
   `;
 
@@ -297,6 +310,19 @@ function renderDossierContent(p, observations) {
   document.getElementById('btn-dossier-copilot')?.addEventListener('click', () => {
     closeProjectDetail();
     notify('OPEN_COPILOT_WITH_PROJECT', p);
+  });
+
+  // Wire Mobile Segmented Tabs
+  body.querySelectorAll('.dossier-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      body.querySelectorAll('.dossier-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const targetId = btn.getAttribute('data-target');
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   });
 
   // Render Longitudinal Chart & Benchmarking

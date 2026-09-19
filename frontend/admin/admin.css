@@ -157,3 +157,62 @@ body {
   justify-content: center;
   padding: 1rem;
 }
+
+/* ==========================================================================
+   Mobile Responsive Admin Operations (max-width: 767px)
+   ========================================================================== */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
+  .admin-navbar {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  #admin-header-nav {
+    display: flex !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    padding-bottom: 4px;
+  }
+
+  .admin-nav-link {
+    white-space: nowrap;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  main {
+    padding: 1rem !important;
+  }
+
+  .admin-card {
+    padding: 1rem !important;
+  }
+
+  /* Table Horizontal Scrolling */
+  .admin-table-wrapper,
+  .overflow-x-auto {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-table {
+    min-width: 600px;
+  }
+
+  /* Form & Action Buttons */
+  button, 
+  .btn,
+  input[type="text"],
+  input[type="number"],
+  select {
+    min-height: 44px;
+  }
+}
+

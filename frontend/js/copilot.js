@@ -47,6 +47,7 @@ export function openCopilot(project = null) {
     const p = state.copilotProject;
     addCopilotMessage({
       role: 'copilot',
+      isWelcome: true,
       text: p 
         ? `Hello! I am PRISM Copilot. I have loaded active project context for **${p.name}** (\`${p.code || `PAIMANA-${p.id}`}\`).\n\nHow can I assist you with this project's risk profile, risk drivers, schedule slippage, sector peer comparison, or potential interventions?`
         : `Hello! I am PRISM Copilot, your national infrastructure risk intelligence assistant grounded in the MoSPI PAIMANA dataset (2,054 projects). Ask me about regional bottlenecks, high-risk sectors, stagnant milestones, or specific project IDs.`,
@@ -247,7 +248,14 @@ function addCopilotMessage(msg) {
     `;
   }
 
+  const orbHtml = msg.isWelcome ? `
+    <div class="mobile-ai-orb mb-3 md:hidden">
+      <div class="copilot-orb-glow"></div>
+    </div>
+  ` : '';
+
   msgEl.innerHTML = `
+    ${orbHtml}
     <div class="copilot-content">${renderMarkdown(msg.text)}</div>
     ${groundedHtml}
     ${sourcesHtml}

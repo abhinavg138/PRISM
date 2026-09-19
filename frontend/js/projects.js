@@ -93,6 +93,20 @@ export function bindFilterEvents() {
     applyFiltersAndRender();
   });
 
+  // Mobile Quick Filter Chips (Screen 4)
+  const chips = document.querySelectorAll('.project-filter-chip');
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const risk = chip.getAttribute('data-risk') || 'ALL';
+      state.filters.riskTier = risk;
+      if (riskSelect) riskSelect.value = risk;
+      state.pagination.page = 1;
+      applyFiltersAndRender();
+    });
+  });
+
   resetBtn?.addEventListener('click', () => {
     const roleSector = state.currentRole?.sectorFilter;
     state.filters = {
@@ -105,6 +119,10 @@ export function bindFilterEvents() {
       sortBy: 'id',
       sortDirection: 'asc'
     };
+    chips.forEach(c => {
+      if (c.getAttribute('data-risk') === 'ALL') c.classList.add('active');
+      else c.classList.remove('active');
+    });
     if (searchInput) searchInput.value = '';
     if (stateSelect) stateSelect.value = 'ALL';
     if (sectorSelect) sectorSelect.value = roleSector || 'ALL';
@@ -289,5 +307,135 @@ export function renderProjectsTable() {
     });
   }
 
+  // Render Mobile Projects Feed (Screen 4)
+  renderMobileProjectsFeed(pageItems, list.length, currentPage, totalPages);
+
   renderIcons();
 }
+
+export function renderMobileProjectsFeed(pageItems, totalCount, currentPage, totalPages) {
+  const container = document.getElementById('projects-mobile-feed');
+  if (!container) return;
+
+  if (pageItems.length === 0) {
+    container.innerHTML = `
+      <div class="card p-8 text-center text-slate-500">
+        <i data-lucide="folder-search" class="w-8 h-8 mx-auto mb-2 text-slate-400"></i>
+        <div class="font-bold text-slate-800">No matching projects found</div>
+        <div class="text-xs text-slate-400 mt-1">Try selecting a different risk tier or resetting filters.</div>
+      </div>
+    `;
+    renderIcons();
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="space-y-3">
+      ${pageItems.map(p => `
+        <div class="mobile-project-card project-card-tap cursor-pointer p-4 rounded-xl border border-slate-200 bg-white shadow-xs hover:border-blue-300 transition-colors" data-project-id="${escapeHtml(p.id)}">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                ${escapeHtml(p.code || p.id)}
+              </span>
+              ${getRiskBadgeHtml(p.riskTier, p.riskScore)}
+            </div>
+            ${getPriorityBadgeHtml(p.priorityTier, p.priorityScore)}
+          </div>
+          
+          <h3 class="text-sm font-bold text-slate-900 leading-snug mb-1">
+            ${escapeHtml(p.name)}
+          </h3>
+          
+          <div class="text-[11px] text-slate-500 font-medium mb-3 flex items-center gap-1.5 flex-wrap">
+            <span>${escapeHtml(p.sector)}</span>
+            <span>&bull;</span>
+            <span>${escapeHtml(p.state)}</span>
+            ${p.implementingAgency ? `<span>&bull;</span><span>${escapeHtml(p.implementingAgency)}</span>` : ''}
+          </div>
+
+          <div class="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100 mb-3">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-500 font-medium">Physical Progress</span>
+              <span class="font-bold text-slate-800">${formatPercent(p.physicalProgressPercent)}</span>
+            </div>
+            <div class="progress-bar-bg bg-slate-200 w-full h-2 rounded-full overflow-hidden">
+              <div class="progress-bar-fill bg-blue-600 h-full rounded-full" style="width: ${Math.min(100, Math.max(0, p.physicalProgressPercent || 0))}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+              <span>Outlay: <strong class="text-slate-700">${formatCurrencyCr(p.revisedCostCr || p.originalCostCr)}</strong></span>
+              <span>Exp: <strong class="text-slate-700">${formatCurrencyCr(p.cumulativeExpenditureCr)}</strong></span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-100" onclick="event.stopPropagation()">
+            <button class="btn-mobile-copilot-card flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]" data-project-id="${escapeHtml(p.id)}">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-600"></i>
+              <span>Ask Copilot</span>
+            </button>
+            <button class="btn-mobile-view-card flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs min-h-[44px]" data-project-id="${escapeHtml(p.id)}">
+              <span>View Dossier</span>
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      `).join('')}
+
+      <!-- Mobile Pagination -->
+      <div class="flex items-center justify-between text-xs text-slate-600 py-3 px-2">
+        <button id="btn-mobile-page-prev" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[44px] flex items-center justify-center" ${currentPage <= 1 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+          Previous
+        </button>
+        <span class="font-medium text-slate-700">Page ${currentPage} of ${totalPages}</span>
+        <button id="btn-mobile-page-next" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[44px] flex items-center justify-center" ${currentPage >= totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+          Next
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Bind Card taps
+  container.querySelectorAll('.mobile-project-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const pid = card.getAttribute('data-project-id');
+      if (pid) notify('OPEN_PROJECT_DETAIL', pid);
+    });
+  });
+
+  // Bind View Dossier buttons
+  container.querySelectorAll('.btn-mobile-view-card').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.getAttribute('data-project-id');
+      if (pid) notify('OPEN_PROJECT_DETAIL', pid);
+    });
+  });
+
+  // Bind Ask Copilot buttons
+  container.querySelectorAll('.btn-mobile-copilot-card').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.getAttribute('data-project-id');
+      const proj = (state.allProjects || []).find(x => x.id === pid);
+      if (proj) notify('OPEN_COPILOT_WITH_PROJECT', proj);
+    });
+  });
+
+  // Bind Mobile Pagination buttons
+  document.getElementById('btn-mobile-page-prev')?.addEventListener('click', () => {
+    if (state.pagination.page > 1) {
+      state.pagination.page--;
+      renderProjectsTable();
+    }
+  });
+
+  document.getElementById('btn-mobile-page-next')?.addEventListener('click', () => {
+    if (state.pagination.page < totalPages) {
+      state.pagination.page++;
+      renderProjectsTable();
+    }
+  });
+
+  renderIcons();
+}
+

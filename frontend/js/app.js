@@ -14,7 +14,8 @@ import { openProjectDetail } from './project-detail.js';
 import { initCopilot, openCopilot, closeCopilot } from './copilot.js';
 import { renderSectorAnalytics } from './analytics.js?v=portfolio-v2';
 import { renderGISMap, invalidateMapSize } from './map.js';
-import { initAlertsModal, openAlertsModal } from './alerts.js';
+import { initAlertsModal, openAlertsModal, renderRadarView } from './alerts.js';
+import { initStandaloneInterventionLab } from './scenario.js';
 import { initReports, openFlashReport } from './reports.js';
 import { initStateDropdown, populateStateDropdown, setStateDropdownValue } from './state-dropdown.js';
 
@@ -228,13 +229,60 @@ function initNavbar() {
     });
   }
 
-  // 9. Simulated Session Sign Out
-  document.getElementById('btn-demo-signout')?.addEventListener('click', () => {
+  // 9. Simulated Session Sign Out (Desktop & Mobile Drawer)
+  const handleSignOut = () => {
     clearDemoLogin();
     window.location.href = '/';
+  };
+  document.getElementById('btn-demo-signout')?.addEventListener('click', handleSignOut);
+  document.getElementById('btn-mobile-drawer-signout')?.addEventListener('click', handleSignOut);
+
+  // 10. Mobile Navigation & Drawer Handlers
+  document.getElementById('btn-mobile-profile')?.addEventListener('click', openMobileSidebar);
+
+  // Mobile Bottom Navigation Bar (Screens 3-9)
+  document.querySelectorAll('#mobile-bottom-nav .mobile-nav-tab').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const view = btn.getAttribute('data-view');
+      if (view === 'copilot') {
+        openCopilot();
+      } else if (view) {
+        switchView(view);
+      }
+    });
   });
 
-  // 10. Back to Home Orientation Navigation (Brand wordmark & dedicated nav button)
+  // Mobile Back Buttons
+  document.querySelectorAll('.btn-mobile-back').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = btn.getAttribute('data-back') || 'dashboard';
+      switchView(target);
+    });
+  });
+
+  // Mobile Role Switcher in Drawer
+  const mobileRoleSelect = document.getElementById('mobile-role-select');
+  if (mobileRoleSelect) {
+    mobileRoleSelect.innerHTML = DEMO_USER_ROLES.map(r => `
+      <option value="${r.id}">${r.name} (${r.accessLevel})</option>
+    `).join('');
+
+    if (state.currentRole && state.currentRole.id) {
+      mobileRoleSelect.value = state.currentRole.id;
+    }
+
+    mobileRoleSelect.addEventListener('change', (e) => {
+      const selected = DEMO_USER_ROLES.find(r => r.id === e.target.value);
+      if (selected && roleSelect) {
+        roleSelect.value = selected.id;
+        roleSelect.dispatchEvent(new Event('change'));
+      }
+    });
+  }
+
+  // 11. Back to Home Orientation Navigation (Brand wordmark & dedicated nav button)
   function navigateToHome(e) {
     if (e) e.preventDefault();
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -260,7 +308,9 @@ function switchView(viewName) {
     dashboard: 'Dashboard',
     projects: 'Projects Directory',
     gis: 'GIS Map & States',
-    analytics: 'Sector Analytics'
+    analytics: 'Sector Analytics',
+    radar: 'Early Warnings',
+    intervention: 'Intervention Lab'
   };
 
   const headerTitle = document.getElementById('header-view-title');
@@ -277,6 +327,16 @@ function switchView(viewName) {
     } else {
       tab.classList.remove('active', 'bg-blue-50', 'text-blue-700', 'font-bold');
       tab.classList.add('text-slate-600', 'font-medium');
+    }
+  });
+
+  // Update mobile bottom nav tab active states
+  document.querySelectorAll('#mobile-bottom-nav .mobile-nav-tab').forEach(tab => {
+    const isCurrent = tab.getAttribute('data-view') === viewName;
+    if (isCurrent) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
     }
   });
 
@@ -311,6 +371,10 @@ function switchView(viewName) {
       }, 150);
     } else if (viewName === 'analytics') {
       renderSectorAnalytics();
+    } else if (viewName === 'radar') {
+      renderRadarView();
+    } else if (viewName === 'intervention') {
+      initStandaloneInterventionLab();
     }
 
     renderIcons();
@@ -415,6 +479,24 @@ export function updateRoleScopeUI() {
   const roleLabel = document.getElementById('current-role-label');
   if (roleLabel && state.currentRole) {
     roleLabel.textContent = state.currentRole.department || '';
+  }
+
+  // Sync Mobile Role Select
+  const mobileRoleSelect = document.getElementById('mobile-role-select');
+  if (mobileRoleSelect && state.currentRole?.id) {
+    mobileRoleSelect.value = state.currentRole.id;
+  }
+
+  // Update Mobile Profile Avatar Text (MO, RW, RT, FD, CS)
+  const mobileAvatarText = document.getElementById('mobile-avatar-text');
+  if (mobileAvatarText && state.currentRole) {
+    const rid = state.currentRole.id;
+    if (rid === 'role-mospi') mobileAvatarText.textContent = 'MO';
+    else if (rid === 'role-railways') mobileAvatarText.textContent = 'RW';
+    else if (rid === 'role-road') mobileAvatarText.textContent = 'RT';
+    else if (rid === 'role-finance') mobileAvatarText.textContent = 'FD';
+    else if (rid === 'role-state') mobileAvatarText.textContent = 'CS';
+    else mobileAvatarText.textContent = 'PR';
   }
 }
 

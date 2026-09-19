@@ -1,0 +1,671 @@
+/**
+ * ============================================================================
+ * PRISM — Mobile-First Design System & Responsive Stylesheet
+ * Predictive Risk Intelligence & Smart Monitoring (SIH26103 / RiskIQ)
+ *
+ * Scoped strictly to mobile devices (max-width: 767px) and progressive enhancements.
+ * Desktop layouts (>= 1200px) and tablet layouts (768px-1199px) remain 100% untouched.
+ * ============================================================================
+ */
+
+/* ==========================================================================
+   1. System Tokens & Mobile Safe Areas
+   ========================================================================== */
+@media (max-width: 767px) {
+  :root {
+    --mobile-header-height: 56px;
+    --mobile-bottom-nav-height: 62px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+
+  body {
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--safe-bottom));
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    touch-action: manipulation;
+  }
+
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Prevent awkward horizontal scroll caused by long words/numbers */
+  * {
+    min-width: 0;
+  }
+
+  /* Ensure minimum 44px touch targets on interactive controls */
+  button, 
+  .btn, 
+  .nav-tab, 
+  .mobile-nav-tab, 
+  .sidebar-nav-item, 
+  .alert-filter-btn,
+  .quick-chip {
+    min-height: 44px;
+  }
+}
+
+/* ==========================================================================
+   2. Mobile Bottom Navigation Bar (Screens 3–9)
+   ========================================================================== */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--mobile-bottom-nav-height) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background-color: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.05);
+    z-index: 45;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .mobile-nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    color: var(--color-slate-500);
+    font-size: 10.5px;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    padding: 4px 0;
+    position: relative;
+    user-select: none;
+  }
+
+  .mobile-nav-tab:active {
+    transform: scale(0.94);
+  }
+
+  .mobile-nav-tab.active {
+    color: var(--color-blue-600);
+    font-weight: 700;
+  }
+
+  .mobile-nav-tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 28%;
+    right: 28%;
+    height: 2.5px;
+    background-color: var(--color-blue-600);
+    border-radius: 0 0 4px 4px;
+  }
+
+  .mobile-nav-tab i {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.2;
+    transition: transform 0.16s ease;
+  }
+
+  .mobile-nav-tab.active i {
+    transform: translateY(-1px);
+    stroke: var(--color-blue-600);
+  }
+
+  /* Copilot Special Glow Icon */
+  .mobile-copilot-pill {
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+  }
+
+  .mobile-copilot-pill i {
+    width: 15px;
+    height: 15px;
+    stroke: white;
+  }
+}
+
+/* ==========================================================================
+   3. Mobile Top Header & Navigation Drawer (Screen 10)
+   ========================================================================== */
+@media (max-width: 767px) {
+  header.sticky {
+    padding-top: var(--safe-top);
+  }
+
+  .mobile-topbar {
+    height: var(--mobile-header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  /* Mobile User Profile Avatar Circle */
+  .mobile-avatar-pill {
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+    color: var(--color-blue-700);
+    border: 1.5px solid #bfdbfe;
+    font-weight: 800;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Enhanced Drawer Styling */
+  .app-sidebar {
+    width: min(320px, 86vw) !important;
+    max-width: 340px;
+    background-color: #ffffff;
+    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.18);
+  }
+
+  .app-sidebar .sidebar-header {
+    min-height: 64px;
+    padding-top: max(1rem, var(--safe-top));
+  }
+
+  .drawer-nav-group-title {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-slate-400);
+    padding: 0.75rem 0.875rem 0.35rem;
+  }
+
+  .drawer-link {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.7rem 0.875rem;
+    border-radius: 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--color-slate-700);
+    transition: all 0.15s ease;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+  }
+
+  .drawer-link:hover, .drawer-link:active {
+    background-color: var(--color-slate-100);
+    color: var(--color-slate-900);
+  }
+
+  .drawer-link.active {
+    background-color: var(--color-blue-50);
+    color: var(--color-blue-700);
+    font-weight: 700;
+  }
+
+  .drawer-link i {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+}
+
+/* ==========================================================================
+   4. Mobile Dashboard (Screen 3)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Dynamic Greeting Banner */
+  .mobile-greeting-banner {
+    padding: 0.25rem 0 0.75rem;
+  }
+
+  .mobile-greeting-title {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: var(--color-slate-900);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .mobile-greeting-sub {
+    font-size: 12px;
+    color: var(--color-slate-500);
+    margin-top: 3px;
+  }
+
+  /* 2-Column Responsive KPI Grid */
+  #dashboard-kpis {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.625rem !important;
+  }
+
+  #dashboard-kpis .card {
+    padding: 0.875rem !important;
+    border-radius: 16px !important;
+  }
+
+  #dashboard-kpis .card .text-2xl {
+    font-size: 1.4rem !important;
+    line-height: 1.2;
+  }
+
+  #dashboard-kpis .card .text-[11px] {
+    font-size: 10px !important;
+  }
+
+  /* Donut Distribution Card */
+  .mobile-donut-card {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid var(--color-slate-200);
+    padding: 1rem;
+    box-shadow: var(--shadow-xs);
+  }
+
+  /* Quick Actions (2x2 Grid) */
+  .mobile-quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
+
+  .quick-action-card {
+    background: #ffffff;
+    border: 1px solid var(--color-slate-200);
+    border-radius: 16px;
+    padding: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: var(--shadow-xs);
+    user-select: none;
+    text-align: left;
+  }
+
+  .quick-action-card:active {
+    transform: scale(0.97);
+    background-color: var(--color-slate-50);
+  }
+
+  .quick-action-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   5. Mobile Project Cards (Screen 4)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Hide heavy desktop table on mobile */
+  #view-projects .card.overflow-hidden > .overflow-x-auto {
+    display: none;
+  }
+
+  /* Show Card Feed on Mobile */
+  .projects-mobile-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin-top: 0.75rem;
+  }
+
+  .project-mobile-card {
+    background: #ffffff;
+    border: 1px solid var(--color-slate-200);
+    border-radius: 16px;
+    padding: 0.875rem 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    user-select: none;
+  }
+
+  .project-mobile-card:active {
+    transform: scale(0.98);
+    border-color: var(--color-blue-400);
+    background-color: var(--color-blue-50/20);
+  }
+
+  .project-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .project-mobile-id {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-slate-500);
+    background-color: var(--color-slate-100);
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+
+  .project-mobile-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--color-slate-900);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .project-mobile-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 11.5px;
+    color: var(--color-slate-500);
+  }
+
+  .project-mobile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--color-slate-100);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 11.5px;
+  }
+
+  /* Horizontal Filter Chips Scroller */
+  .filter-chips-scroller {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0.25rem 0;
+  }
+
+  .filter-chips-scroller::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background-color: #ffffff;
+    color: var(--color-slate-600);
+    border: 1px solid var(--color-slate-200);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .filter-chip.active {
+    background-color: var(--color-blue-600);
+    color: #ffffff;
+    border-color: var(--color-blue-600);
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  }
+}
+
+/* ==========================================================================
+   6. Mobile Full-Screen Project Dossier (Screen 5)
+   ========================================================================== */
+@media (max-width: 767px) {
+  #project-detail-modal {
+    padding: 0 !important;
+  }
+
+  #project-detail-modal .modal-container {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    transform: none !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #project-detail-modal .modal-header {
+    padding: 0.75rem 1rem !important;
+    background: #ffffff;
+    border-bottom: 1px solid var(--color-slate-200);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  #project-detail-modal .modal-body {
+    padding: 1rem !important;
+    overflow-y: auto !important;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Segmented Dossier Tabs */
+  .dossier-segmented-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: var(--color-slate-100);
+    border-radius: 12px;
+    padding: 3px;
+    margin-bottom: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .dossier-tab-btn {
+    flex: 1;
+    text-align: center;
+    padding: 0.45rem 0.25rem;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-slate-600);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .dossier-tab-btn.active {
+    background: #ffffff;
+    color: var(--color-blue-700);
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Collapsible Accordion Sections */
+  .dossier-accordion {
+    border: 1px solid var(--color-slate-200);
+    border-radius: 14px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    background: #ffffff;
+  }
+
+  .dossier-accordion-header {
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-slate-50/50);
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-slate-700);
+  }
+
+  .dossier-accordion-body {
+    padding: 0.875rem 1rem;
+    border-top: 1px solid var(--color-slate-100);
+  }
+}
+
+/* ==========================================================================
+   7. Mobile Early Warning Radar (Screen 7)
+   ========================================================================== */
+.radar-warning-card {
+  background: #ffffff;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 16px;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.radar-warning-card:active {
+  transform: scale(0.98);
+  border-color: var(--color-blue-300);
+}
+
+/* ==========================================================================
+   8. Mobile Standalone Intervention Lab (Screen 8)
+   ========================================================================== */
+@media (max-width: 767px) {
+  .slider-control::-webkit-slider-thumb {
+    width: 26px !important;
+    height: 26px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .intervention-run-btn {
+    height: 48px;
+    font-size: 13.5px;
+    font-weight: 700;
+    border-radius: 14px;
+    width: 100%;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+  }
+}
+
+/* ==========================================================================
+   9. Mobile Full-Screen Copilot (Screen 9)
+   ========================================================================== */
+@media (max-width: 767px) {
+  .drawer-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+  }
+
+  /* Animated AI Glowing Orb */
+  .ai-orb-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem 1rem;
+  }
+
+  .ai-orb {
+    width: 64px;
+    height: 64px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 35% 35%, #93c5fd 0%, #3b82f6 40%, #1e3a8a 85%);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.6);
+    animation: orbPulse 3s ease-in-out infinite alternate;
+  }
+
+  @keyframes orbPulse {
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+    100% {
+      transform: scale(1.05);
+      box-shadow: 0 0 40px rgba(99, 102, 241, 0.7), inset 0 0 20px rgba(255, 255, 255, 0.8);
+    }
+  }
+
+  /* Keyboard-safe sticky input bar */
+  .copilot-input-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-top: 1px solid var(--color-slate-200);
+    padding: 0.625rem 0.75rem calc(0.625rem + var(--safe-bottom));
+    z-index: 20;
+  }
+}
+
+/* ==========================================================================
+   10. Mobile Admin Styles
+   ========================================================================== */
+@media (max-width: 767px) {
+  .admin-navbar {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .admin-mobile-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background: var(--admin-navy-900, #0a1629);
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    padding: 1rem;
+  }
+
+  .admin-mobile-drawer.open {
+    transform: translateX(0);
+  }
+}
