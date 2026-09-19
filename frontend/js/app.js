@@ -262,6 +262,37 @@ function initNavbar() {
     });
   });
 
+  // Event Delegation for Mobile Quick Actions, Details, and Back buttons
+  document.addEventListener('click', (e) => {
+    // 1. Mobile Quick Actions (.quick-action-card, [data-quick-action])
+    const quickCard = e.target.closest('.quick-action-card, [data-quick-action]');
+    if (quickCard) {
+      e.preventDefault();
+      const action = quickCard.getAttribute('data-quick-action') || quickCard.getAttribute('data-action');
+      if (action) {
+        switchView(action);
+      }
+      return;
+    }
+
+    // 2. Mobile Donut Details button (.btn-goto-analytics-mobile)
+    const detailsBtn = e.target.closest('.btn-goto-analytics-mobile');
+    if (detailsBtn) {
+      e.preventDefault();
+      switchView('analytics');
+      return;
+    }
+
+    // 3. Mobile Back button fallback delegation
+    const backBtn = e.target.closest('.btn-mobile-back');
+    if (backBtn) {
+      e.preventDefault();
+      const target = backBtn.getAttribute('data-back') || 'dashboard';
+      switchView(target);
+      return;
+    }
+  });
+
   // Mobile Role Switcher in Drawer
   const mobileRoleSelect = document.getElementById('mobile-role-select');
   if (mobileRoleSelect) {

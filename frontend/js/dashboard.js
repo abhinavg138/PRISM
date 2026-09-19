@@ -442,21 +442,52 @@ export function renderPriorityQueue() {
 }
 
 /**
- * 5. Portfolio Risk Classification Summary Bar
+ * Canonical Portfolio Risk Tier Counts & Percentages (Single Source of Truth)
+ */
+export function getPortfolioRiskCounts(projects = null) {
+  const projs = projects || getRoleScopedProjects();
+  let critical = 0;
+  let high = 0;
+  let moderate = 0;
+  let low = 0;
+
+  for (const p of projs) {
+    const tier = (p.riskTier || '').toUpperCase();
+    if (tier === 'CRITICAL') critical++;
+    else if (tier === 'HIGH') high++;
+    else if (tier === 'MODERATE') moderate++;
+    else if (tier === 'LOW') low++;
+  }
+
+  const total = projs.length;
+  const safeTotal = total || 1;
+  const highAndCritical = critical + high;
+
+  return {
+    total,
+    critical,
+    high,
+    moderate,
+    low,
+    highAndCritical,
+    criticalPct: ((critical / safeTotal) * 100).toFixed(1),
+    highPct: ((high / safeTotal) * 100).toFixed(1),
+    highAndCriticalPct: Math.round((highAndCritical / safeTotal) * 100),
+    moderatePct: Math.round((moderate / safeTotal) * 100),
+    lowPct: Math.round((low / safeTotal) * 100),
+  };
+}
+
+/**
+ * 5. Portfolio Risk Classification Summary Bar (Desktop)
  */
 export function renderPortfolioRiskInsights() {
   const container = document.getElementById('dashboard-risk-insights');
   if (!container) return;
 
   const projects = getRoleScopedProjects();
-  const total = projects.length || 1;
-
-  const counts = {
-    CRITICAL: projects.filter(p => p.riskTier === 'CRITICAL').length,
-    HIGH: projects.filter(p => p.riskTier === 'HIGH').length,
-    MODERATE: projects.filter(p => p.riskTier === 'MODERATE').length,
-    LOW: projects.filter(p => p.riskTier === 'LOW').length,
-  };
+  const risk = getPortfolioRiskCounts(projects);
+  const total = risk.total || 1;
 
   container.innerHTML = `
     <div class="card p-4">
@@ -465,51 +496,51 @@ export function renderPortfolioRiskInsights() {
           <i data-lucide="shield-check" class="w-4 h-4 text-blue-600"></i>
           <span>Portfolio Risk Classification Tiers</span>
         </h3>
-        <span class="text-[11px] text-slate-400">Total: ${projects.length} Projects</span>
+        <span class="text-[11px] text-slate-400">Total: ${risk.total} Projects</span>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="p-2.5 rounded-lg bg-red-50/60 border border-red-100">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-red-800">Critical (80–100)</span>
-            <span class="badge badge-critical">${counts.CRITICAL}</span>
+            <span class="badge badge-critical">${risk.critical}</span>
           </div>
           <div class="progress-bar-bg mt-2 bg-red-100">
-            <div class="progress-bar-fill bg-red-500" style="width: ${(counts.CRITICAL / total * 100).toFixed(1)}%"></div>
+            <div class="progress-bar-fill bg-red-500" style="width: ${risk.criticalPct}%"></div>
           </div>
-          <div class="text-[10px] text-red-600 mt-1 font-medium">${(counts.CRITICAL / total * 100).toFixed(1)}% of portfolio</div>
+          <div class="text-[10px] text-red-600 mt-1 font-medium">${risk.criticalPct}% of portfolio</div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-orange-50/60 border border-orange-100">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-orange-800">High (60–79)</span>
-            <span class="badge badge-high">${counts.HIGH}</span>
+            <span class="badge badge-high">${risk.high}</span>
           </div>
           <div class="progress-bar-bg mt-2 bg-orange-100">
-            <div class="progress-bar-fill bg-orange-500" style="width: ${(counts.HIGH / total * 100).toFixed(1)}%"></div>
+            <div class="progress-bar-fill bg-orange-500" style="width: ${risk.highPct}%"></div>
           </div>
-          <div class="text-[10px] text-orange-600 mt-1 font-medium">${(counts.HIGH / total * 100).toFixed(1)}% of portfolio</div>
+          <div class="text-[10px] text-orange-600 mt-1 font-medium">${risk.highPct}% of portfolio</div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-amber-50/60 border border-amber-100">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-amber-800">Moderate (40–59)</span>
-            <span class="badge badge-moderate">${counts.MODERATE}</span>
+            <span class="badge badge-moderate">${risk.moderate}</span>
           </div>
           <div class="progress-bar-bg mt-2 bg-amber-100">
-            <div class="progress-bar-fill bg-amber-500" style="width: ${(counts.MODERATE / total * 100).toFixed(1)}%"></div>
+            <div class="progress-bar-fill bg-amber-500" style="width: ${(risk.moderate / total * 100).toFixed(1)}%"></div>
           </div>
-          <div class="text-[10px] text-amber-600 mt-1 font-medium">${(counts.MODERATE / total * 100).toFixed(1)}% of portfolio</div>
+          <div class="text-[10px] text-amber-600 mt-1 font-medium">${(risk.moderate / total * 100).toFixed(1)}% of portfolio</div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-emerald-800">Low (0–39)</span>
-            <span class="badge badge-low">${counts.LOW}</span>
+            <span class="badge badge-low">${risk.low}</span>
           </div>
           <div class="progress-bar-bg mt-2 bg-emerald-100">
-            <div class="progress-bar-fill bg-emerald-500" style="width: ${(counts.LOW / total * 100).toFixed(1)}%"></div>
+            <div class="progress-bar-fill bg-emerald-500" style="width: ${(risk.low / total * 100).toFixed(1)}%"></div>
           </div>
-          <div class="text-[10px] text-emerald-600 mt-1 font-medium">${(counts.LOW / total * 100).toFixed(1)}% of portfolio</div>
+          <div class="text-[10px] text-emerald-600 mt-1 font-medium">${(risk.low / total * 100).toFixed(1)}% of portfolio</div>
         </div>
       </div>
     </div>
@@ -520,7 +551,7 @@ let mobileDonutChartInstance = null;
 
 export function renderMobileDashboard() {
   const projects = getRoleScopedProjects();
-  const totalProjects = projects.length;
+  const risk = getPortfolioRiskCounts(projects);
 
   // 1. Mobile Greeting (Screen 3)
   const greetingEl = document.getElementById('dashboard-mobile-greeting');
@@ -543,35 +574,16 @@ export function renderMobileDashboard() {
   }
 
   // 2. Mobile Donut Card & Metrics (Screen 3)
-  let criticalCount = 0;
-  let highCount = 0;
-  let moderateCount = 0;
-  let lowCount = 0;
-
-  for (const p of projects) {
-    if (p.riskTier === 'CRITICAL') criticalCount++;
-    else if (p.riskTier === 'HIGH') highCount++;
-    else if (p.riskTier === 'MODERATE') moderateCount++;
-    else if (p.riskTier === 'LOW') lowCount++;
-  }
-
-  const critHighCount = criticalCount + highCount;
-  const safeTotal = totalProjects || 1;
-  const critHighPct = Math.round((critHighCount / safeTotal) * 100);
-  const modPct = Math.round((moderateCount / safeTotal) * 100);
-  const lowPct = Math.round((lowCount / safeTotal) * 100);
-
-  const centerCountEl = document.getElementById('mobile-donut-center-count');
-  const totalBadgeEl = document.getElementById('mobile-donut-total-badge');
-  const critPctEl = document.getElementById('mobile-donut-crit-pct');
+  // Look up elements by their actual IDs in index.html, with fallbacks for safety
+  const totalCountEl = document.getElementById('mobile-donut-total-count') || document.getElementById('mobile-donut-center-count');
+  const highPctEl = document.getElementById('mobile-donut-high-pct') || document.getElementById('mobile-donut-crit-pct');
   const modPctEl = document.getElementById('mobile-donut-mod-pct');
   const lowPctEl = document.getElementById('mobile-donut-low-pct');
 
-  if (centerCountEl) centerCountEl.textContent = totalProjects.toLocaleString();
-  if (totalBadgeEl) totalBadgeEl.textContent = `${totalProjects} Projects`;
-  if (critPctEl) critPctEl.textContent = `${critHighPct}% (${critHighCount})`;
-  if (modPctEl) modPctEl.textContent = `${modPct}% (${moderateCount})`;
-  if (lowPctEl) lowPctEl.textContent = `${lowPct}% (${lowCount})`;
+  if (totalCountEl) totalCountEl.textContent = risk.total.toLocaleString();
+  if (highPctEl) highPctEl.textContent = `${risk.highAndCriticalPct}% (${risk.highAndCritical})`;
+  if (modPctEl) modPctEl.textContent = `${risk.moderatePct}% (${risk.moderate})`;
+  if (lowPctEl) lowPctEl.textContent = `${risk.lowPct}% (${risk.low})`;
 
   const canvas = document.getElementById('mobile-risk-donut-canvas');
   if (canvas && window.Chart) {
@@ -579,13 +591,17 @@ export function renderMobileDashboard() {
       mobileDonutChartInstance.destroy();
       mobileDonutChartInstance = null;
     }
+    const existingChart = window.Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
     const ctx = canvas.getContext('2d');
     mobileDonutChartInstance = new window.Chart(ctx, {
       type: 'doughnut',
       data: {
         labels: ['Critical & High', 'Moderate', 'Low Risk'],
         datasets: [{
-          data: [critHighCount, moderateCount, lowCount],
+          data: [risk.highAndCritical, risk.moderate, risk.low],
           backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
           borderWidth: 2,
           borderColor: '#ffffff',
@@ -593,13 +609,26 @@ export function renderMobileDashboard() {
         }]
       },
       options: {
-        responsive: false,
-        cutout: '74%',
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '72%',
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: '#0f172a',
+            titleFont: { size: 11, weight: 'bold' },
+            bodyFont: { size: 11 },
+            padding: 8,
+            cornerRadius: 6,
             callbacks: {
-              label: (ctx) => ` ${ctx.label}: ${ctx.raw} projects`
+              label: (ctx) => {
+                const val = ctx.raw || 0;
+                const pct = risk.total > 0 ? ((val / risk.total) * 100).toFixed(1) : 0;
+                if (ctx.dataIndex === 0) {
+                  return ` ${ctx.label}: ${val} (${pct}%) [Critical: ${risk.critical}, High: ${risk.high}]`;
+                }
+                return ` ${ctx.label}: ${val} projects (${pct}%)`;
+              }
             }
           }
         }
@@ -607,16 +636,27 @@ export function renderMobileDashboard() {
     });
   }
 
-  // 3. Bind Quick Actions
-  document.querySelectorAll('#dashboard-quick-actions .quick-action-btn').forEach(btn => {
+  // 3. Bind Quick Actions (supporting .quick-action-card, [data-quick-action], .quick-action-btn)
+  document.querySelectorAll('.quick-action-card, [data-quick-action], .quick-action-btn').forEach(btn => {
     if (!btn.dataset.bound) {
       btn.dataset.bound = 'true';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        const action = btn.getAttribute('data-action');
+        const action = btn.getAttribute('data-quick-action') || btn.getAttribute('data-action');
         if (action) {
           notify('NAVIGATE', action);
         }
+      });
+    }
+  });
+
+  // 4. Bind Details button on Donut Card
+  document.querySelectorAll('.btn-goto-analytics-mobile').forEach(btn => {
+    if (!btn.dataset.bound) {
+      btn.dataset.bound = 'true';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        notify('NAVIGATE', 'analytics');
       });
     }
   });
